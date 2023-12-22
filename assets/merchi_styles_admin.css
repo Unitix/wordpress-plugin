@@ -1,0 +1,154 @@
+/* The snackbar - position it at the top and in the middle of the screen */
+#snackbar {
+  visibility: hidden; /* Hidden by default. Visible on click */
+  min-width: 250px; /* Set a default minimum width */
+  margin-left: -125px; /* Divide value of min-width by 2 */
+  background-color: #333; /* Black background color */
+  color: #fff; /* White text color */
+  text-align: center; /* Centered text */
+  border-radius: 2px; /* Rounded borders */
+  padding: 16px; /* Padding */
+  position: fixed; /* Sit on top of the screen */
+  z-index: 1; /* Add a z-index if needed */
+  left: 50%; /* Center the snackbar */
+  top: 40px; /* 40px from the top */
+}
+
+/* Show the snackbar when clicking on a button (class added with JavaScript) */
+#snackbar.show {
+  visibility: visible; /* Show the snackbar */
+  /* Add animation: Take 0.5 seconds to fade in and out the snackbar.
+    However, delay the fade out process for 2.5 seconds */
+  -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+  animation: fadein 0.5s, fadeout 0.5s 2.5s;
+}
+
+/* Animations to fade the snackbar in and out */
+@-webkit-keyframes fadein {
+  from {
+    top: 0;
+    opacity: 0;
+  }
+  to {
+    top: 40px;
+    opacity: 1;
+  }
+}
+
+@keyframes fadein {
+  from {
+    top: 0;
+    opacity: 0;
+  }
+  to {
+    top: 40px;
+    opacity: 1;
+  }
+}
+
+@-webkit-keyframes fadeout {
+  from {
+    top: 40px;
+    opacity: 1;
+  }
+  to {
+    top: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes fadeout {
+  from {
+    top: 40px;
+    opacity: 1;
+  }
+  to {
+    top: 0;
+    opacity: 0;
+  }
+}
+
+/* General styles */
+.caution {
+  background: #ffba00;
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-weight: bold;
+}
+
+.plugin-body {
+  background: #fff;
+  padding: 20px;
+  border-radius: 5px;
+  box-shadow: 1px 10px 20px #0000000f;
+}
+.plugin-body p,
+h2 {
+  margin-top: 0;
+}
+.plugin-body .submit {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* Progress bar */
+.plugin-body progress[value] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 250px;
+  height: 20px;
+  border-radius: 6px;
+  border: none;
+}
+
+.plugin-body progress[value]::-moz-progress-bar,
+.plugin-body progress[value]::-webkit-progress-bar {
+  border-radius: 6px;
+  border: none;
+  background: rgb(48, 61, 191);
+}
+
+
+/* Merchi products select table */
+.plugin-table-wrap {
+	margin-top: 40px;
+}
+.plugin-table-tr:nth-child(even) {
+	background: rgb(247, 247, 247);
+}
+.plugin-table-td {
+	padding: 8px 30px 8px 10px;
+}
+.plugin-bulk {
+  margin-top: 20px;
+}
+.plugin-bulk-check {
+  display: inline-block;
+  margin-right: 20px;
+}
+.plugin-table {
+  background: white;
+  padding: 1em;
+  border-radius: 5px;
+  box-shadow: 1px 10px 20px #0000000f;
+}
+.plugin-error-list {
+  padding: 0.25rem 1rem;
+  border-radius: 5px;
+  box-shadow: 1px 10px 20px #0000000f;
+  border: 2px solid #ff5353;
+  background: white;
+}
+.import-error-head {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 0.5rem 0;
+}
+.import-error-line {
+  font-size: 13px;
+}
+.import-error-head:nth-child(odd) {
+  border-top: 2px solid #ff5353;
+}

@@ -1,0 +1,27 @@
+{
+  "name": "charlie/merchi-plugin",
+  "description": "Integrate your Woocommerce store with Merchi",
+  "type": "project",
+  "license": "GPL",
+  "authors": [
+    {
+      "name": "Charlie",
+      "email": "charlows@gmail.com"
+    }
+  ],
+  "minimum-stability": "dev",
+  "require": {
+    "automattic/woocommerce": "dev-master",
+    "phpcsstandards/phpcsutils": "^1.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "MerchiPlugin\\": "./MerchiPlugin"
+    }
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    }
+  }
+}
