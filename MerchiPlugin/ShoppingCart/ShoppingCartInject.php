@@ -16,7 +16,6 @@ class ShoppingCartInject extends BaseController {
 
 
 	public function inject_merchi_cart() {
-		//wp_enqueue_script( 'merchi_cart', $this->plugin_url . 'assets/merchi_cart.js' );
 		if( get_option( 'merchi_staging_mode' ) == 'yes' ) {
 			$merchi_url = get_option( 'staging_merchi_url' );
 		}

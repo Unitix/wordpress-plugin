@@ -1,5 +1,7 @@
 // This is your test publishable API key.
-const stripe = Stripe("pk_test_51MEwo2KaqkxomscbinFiXiZ2emsYvziZ8ufgqizmMZh2TnFdETF8Im197e9WpJcoLMbj7IHQf0ngE0xbGoRC9AdD00hbjMDAk2");
+const stripe = Stripe(
+  "pk_test_51MEwo2KaqkxomscbinFiXiZ2emsYvziZ8ufgqizmMZh2TnFdETF8Im197e9WpJcoLMbj7IHQf0ngE0xbGoRC9AdD00hbjMDAk2"
+);
 
 // The items the customer wants to buy
 const items = [{ id: "xl-tshirt" }];
@@ -13,7 +15,7 @@ document
   .querySelector("#payment-form")
   .addEventListener("submit", handleSubmit);
 
-let emailAddress = '';
+let emailAddress = "";
 // Fetches a payment intent and captures the client secret
 async function initialize() {
   const { clientSecret } = await fetch("/create.php", {

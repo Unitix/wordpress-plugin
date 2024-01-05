@@ -6,8 +6,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 wc_print_notices();
 
-//do_action( 'woocommerce_before_checkout_form', $checkout );
-
 // If checkout registration is disabled and not logged in, the user cannot checkout
 if ( ! $checkout->enable_signup && ! $checkout->enable_guest_checkout && ! is_user_logged_in() ) {
 	echo esc_html( apply_filters( 'woocommerce_checkout_must_be_logged_in_message', __( 'You must be logged in to checkout.', 'woocommerce' ) ) );
@@ -72,13 +70,6 @@ if( 1 == $current_step ){
 									?>
 									<div class="woocommerce-billing-fields clearfix" <?php echo 'three' === $switch_case ? 'style="display:none;"' : ''; ?> >
 										<?php
-										/* woocommerce_form_field( 'cst_returning_customer', array( 
-										  'type' => 'checkbox', 
-										  'class' => array('input-checkbox'), 
-										  'label' => __('Returning Customer?'), 
-										  'required' => false,
-										  'default' => isset($_COOKIE['cstReturningUser']) && $_COOKIE['cstReturningUser'] === 'true' ? 1 : 0,
-										), $checked ); */
 										$fields = WC()->checkout->checkout_fields['billing'];
 										$email = '';
 										if( isset($_COOKIE['cstReturningUser']) && $_COOKIE['cstReturningUser'] === 'true' && 'three' === $switch_case ){ 
@@ -225,8 +216,6 @@ if( 1 == $current_step ){
 							<div id="order_review" class="woocommerce-checkout-review-order">
 								<?php do_action( 'cst_woocommerce_checkout_order_review' ); ?>
 							</div>
-
-							<?php //do_action( 'woocommerce_checkout_after_order_review' ); ?>
 						</div>
 					</div>
 				</div>
@@ -247,8 +236,8 @@ if( 1 == $current_step ){
 </form>
 <script>
 function getShippingGroup() {
-            // Find the "cart-5" cookie    
-            const name = 'cart-5';
+            // Find the "MerchiCart" cookie    
+            const name = 'MerchiCart';
             const cookies = document.cookie.split(';');
             let cartValue = null;
             for (let i = 0; i < cookies.length; i++) {

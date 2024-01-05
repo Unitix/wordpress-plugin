@@ -82,7 +82,6 @@ function fetchProducts() {
             hiddenProductNameprice.value = product.bestPrice;
             selectedValueDisplay.textContent = name;
             selectedValueDisplay.style.display = "inline-block";
-            // removeSelectedValue.style.display = "inline-block";
             customValueField.style.display = "inline-block";
             dropdownContent.hide();
           });
@@ -116,7 +115,6 @@ function attachprodcuttitle(product_title, product_id) {
       product_title: product_title,
       postId: postId,
       product_id: product_id,
-      //msg: msg,
     },
     success: function (response) {},
     error: function (error) {

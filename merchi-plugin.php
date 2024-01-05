@@ -48,11 +48,9 @@ if (file_exists( dirname( __FILE__ ) . '/vendor/autoload.php' )) {
 function activate_merchi_plugin() {
 	$my_account = get_page_by_path( 'my-account' );
 	if (isset( $my_account )) {
-			   wp_delete_post( $my_account->ID );
+		wp_delete_post( $my_account->ID );
 	}
-
-			  flush_rewrite_rules();
-
+	flush_rewrite_rules();
 }
 
 
@@ -306,7 +304,6 @@ function cst_check_user_registration(){
 					)
 				);
 				$cuResp = json_decode(wp_remote_retrieve_body($cuResponse));
-				//temp_dump('curesp', $cuResp);
 				if($cuResp->errorCode && $cuResp->errorCode == 6){
 					echo json_encode(array('resp'=>'error', 'msg'=>$cuResp->message));
 				}else{
@@ -347,13 +344,11 @@ function enqueue_admin_customfiles()
 	wp_enqueue_script('custom-admin-script', plugin_dir_url(__FILE__) . 'custom.js', array('cst-jquery-ui'), null, true);
 	wp_localize_script('custom-admin-script', 'frontendajax', array('ajaxurl' => admin_url('admin-ajax.php')));
 	wp_enqueue_script('custom-merchi-script', 'https://staging.merchi.co/static/js/dist/merchi-init.js', array(), null, true);
-	//wp_enqueue_script('custom-merchi-script', 'https://staging.merchi.co/static/js/dist/merchi.js', array(), null, true);
 	wp_localize_script('custom-admin-script', 'scriptData', array(
 		'merchi_mode' => MERCHI_MODE,
 		'merchi_domain' => MERCHI_DOMAIN,
 		'merchi_url' => MERCHI_URL,
 		'merchi_secret' => MERCHI_API_SECRET
-		//'isCartPage' => $is_cart
 	));
 }
 add_action('admin_enqueue_scripts', 'enqueue_admin_customfiles');
@@ -361,12 +356,10 @@ add_action('admin_enqueue_scripts', 'enqueue_admin_customfiles');
 function enqueue_my_public_script()
 {
 	wp_enqueue_style('custom-admin-style', plugin_dir_url(__FILE__) . 'custom.css');
-	//wp_enqueue_script('custom-admin-style', plugins_url('/woocommerce/checkout/checkout.css', __FILE__), array(), '1.0', true);
 	wp_enqueue_script('custom-checkout-script', plugins_url('/woocommerce/checkout/checkout.js', __FILE__), array(), '1.0', true);
 	wp_enqueue_script('custom-stripe-script', 'https://js.stripe.com/v3/', array(), '1.0', true);
 	wp_enqueue_script('custom-public-script', plugin_dir_url(__FILE__) . 'public_custom.js', array('jquery'), rand(0,1000), true);
 	wp_enqueue_script('custom-merchi-script', 'https://staging.merchi.co/static/js/dist/merchi-init.js', array(), null, true);
-	//$is_cart = (function_exists('is_cart') && is_cart());
 	
 	$is_single_product = is_product();
 	$stripeSecret = false;
@@ -375,8 +368,8 @@ function enqueue_my_public_script()
 	if($billing_values){
 		$telephoneInput = $billing_values['billing_phone'];
 	}
-	if( isset($_COOKIE['cart-'.MERCHI_DOMAIN]) && !empty($_COOKIE['cart-'.MERCHI_DOMAIN]) && is_checkout() && ( isset($_GET['step']) && $_GET['step'] == 3 ) ){
-		$cart = explode(',', $_COOKIE['cart-'.MERCHI_DOMAIN]);
+	if( isset($_COOKIE['MerchiCart']) && !empty($_COOKIE['MerchiCart']) && is_checkout() && ( isset($_GET['step']) && $_GET['step'] == 3 ) ){
+		$cart = explode(',', $_COOKIE['MerchiCart']);
 		$url = MERCHI_URL.'v6/stripe/payment_intent/cart/'.$cart[0].'/?cart_token='.$cart[1];
 		$response = wp_remote_get( $url, array('timeout'=> 20) );
 		$resp = json_decode(wp_remote_retrieve_body($response));
@@ -386,7 +379,6 @@ function enqueue_my_public_script()
 		'is_single_product' => $is_single_product,
 		'merchi_domain' => MERCHI_DOMAIN,
 		'merchi_stripe_api_key' => MERCHI_STRIPE_API_KEY,
-		//'isCartPage' => $is_cart
 	));
 	wp_localize_script('custom-public-script', 'frontendajax', array('ajaxurl' => admin_url('admin-ajax.php'), 'checkouturl' => wc_get_checkout_url(), 'stripeSecret' => $stripeSecret, 'telephoneInput' => $telephoneInput, 'billing_values'=> $billing_values));
 }
@@ -633,8 +625,6 @@ function save_meta_box_value($post_id, $post)
 }
 add_action('save_post', 'save_meta_box_value', 10, 2);
 
-// this is my nwew code 
-
 add_action('wp_ajax_media_image_attach', 'media_image_attach');
 add_action('wp_ajax_nopriv_media_image_attach', 'media_image_attach');
 
@@ -643,7 +633,6 @@ function media_image_attach()
 	$image_url = sanitize_text_field($_POST['image_url']);
 	$product_id = sanitize_text_field($_POST['postId']);
 	$mimetype = sanitize_text_field($_POST['mimetype']);
-	var_dump('reeetr', $mimetype);
 	$filename = basename($image_url);
 	if (!empty($filename)) {
 		$image_data = file_get_contents($image_url);
@@ -704,15 +693,6 @@ function media_featureimage_attach()
 		// Return attachment ID as response
 		echo json_encode($attachment_id);
 	}
-}
-
-function temp_dump( $property, $arr ){
-	echo $property.': ';
-	echo "<pre>";
-	print_r($arr);
-	echo "</pre>";
-	echo "<br/>";
-	echo "<br/>";
 }
 
 function generateRandomString($length = 10) {
@@ -782,7 +762,6 @@ function send_id_for_add_cart(){
 				if(isset($cartItem['variations'])){
 					foreach( $cartItem['variations'] as $varGroup ){
 						foreach( $varGroup as $varKey=>$variationGroup ){
-							temp_dump('variationGroup', $variationGroup);
 							foreach($variationGroup as $varG){
 								$cart_item_data['selection'][] = $varG;
 							}
@@ -799,32 +778,21 @@ function send_id_for_add_cart(){
 					$quantity = $cartItem['quantity'];
 				}
 				$cart_item_key = WC()->cart->find_product_in_cart( WC()->cart->generate_cart_id( $product_id, 0, array(), $cart_item_data ) );
-				temp_dump('cart_item_key', $cart_item_key);
-				temp_dump('cart_item_data', $cart_item_data);
 				$currentCartItem = array();
 				if( $cart_item_key && array_key_exists($cart_item_key, $productsAdded) ) {
 					$current_quantity = $productsAdded[$cart_item_key]['quantity'];
-					temp_dump('current_quantity', $current_quantity);
 					$current_subTotal = $productsAdded[$cart_item_key]['subtotal'];
 					$newQuantity = intval($current_quantity) + intval($quantity);
-					temp_dump('current_subTotal', $current_subTotal);
-					temp_dump('newQuantity', $newQuantity);
 					WC()->cart->remove_cart_item( $cart_item_key );
 					$cart_item_key = WC()->cart->add_to_cart($product_id, $newQuantity, 0, array(), $cart_item_data);
 					$currentCartItem['quantity'] = $newQuantity;
 					$currentCartItem['subtotalCost'] = floatval($current_subTotal) + floatval($cartItem['subTotal']);
 					$productsAdded[$cart_item_key] = array( 'subtotal' => $currentCartItem['subtotalCost'], 'quantity' => $newQuantity );
 				}else if( !$cart_item_key ){
-					temp_dump('itemKey', $itemKey);
-					temp_dump('product_id', $product_id);
-					temp_dump('quantity', $quantity);
 					$cart_item_key = WC()->cart->add_to_cart($product_id, $quantity, 0, array(), $cart_item_data);
-					temp_dump('cart_item_key', $cart_item_key);
 					$currentCartItem['quantity'] = $quantity;
 					$currentCartItem['subtotalCost'] = $cartItem['subTotal'];
 				}else{
-					temp_dump('itemKey', $itemKey);
-					temp_dump('Continue', 'True');
 					$productsAdded[$cart_item_key] = array( 'subtotal' => $cartItem['subTotal'], 'quantity' => $quantity );
 					continue;
 				}
@@ -860,7 +828,7 @@ function cst_cart_item_after_remove() {
 		$cart_id = $_COOKIE['cstCartId'];
 		$cart_length = $_POST['cart_length'];
 		if( 1 == $cart_length || 0 == $cart_length ){
-			setcookie('cart-'.MERCHI_DOMAIN, "", time() - 3600, "/");
+			setcookie('MerchiCart', "", time() - 3600, "/");
 			setcookie("cstCartId", "", time() - 3600, "/");
 		}
 		$options = get_option_extended("get_cart_myItems_".$cart_id);
@@ -942,8 +910,6 @@ function get_option_extended($partial_key) {
     global $wpdb;
 
     $partial_key = $wpdb->esc_like($partial_key);
-    //$partial_key = str_replace('%', '\\%', $partial_key);
-    //$partial_key = str_replace('_', '\\_', $partial_key);
 
     $option_name_pattern = '%' . $partial_key . '%';
 
@@ -1024,9 +990,7 @@ function cst_init_gateway_class() {
 
 			// We need custom JavaScript to obtain a token
 			add_action( 'wp_enqueue_scripts', array( $this, 'payment_scripts' ) );
-			
-			// You can also register a webhook here
-			// add_action( 'woocommerce_api_{webhook name}', array( $this, 'webhook' ) );
+		
  		}
 
 		/**
@@ -1093,7 +1057,6 @@ function cst_init_gateway_class() {
 			if( $this->description ) {
 				// you can instructions for test mode, I mean test card numbers etc.
 				if( $this->testmode ) {
-					//$this->description .= ' TEST MODE ENABLED. In test mode, you can use the card numbers listed in <a href="#">documentation</a>.';
 					$this->description  = trim( $this->description );
 				}
 				// display the description with <p> tags etc.
@@ -1205,7 +1168,6 @@ add_action('woocommerce_cart_calculate_fees', 'cst_add_cart_custom_fee');
 function cst_add_cart_custom_fee() {
     $extracost = WC()->session->get( 'cst_shipping_cost' );
     WC()->cart->add_fee('Shipping & Handling:', $extracost);
-	//WC()->session->__unset( 'cst_shipping_cost' );
 }
 
 add_filter('woocommerce_order_button_html', 'cst_order_button_html' );
@@ -1270,7 +1232,7 @@ add_action('init', 'clear_cart_action');
 function clear_cart_action() {
     if (isset($_POST['clear_cart']) && $_POST['clear_cart'] == 'Clear Cart') {
         WC()->cart->empty_cart();
-		setcookie('cart-'.MERCHI_DOMAIN, "", time() - 3600, "/");
+		setcookie('MerchiCart', "", time() - 3600, "/");
 		setcookie("cstCartId", "", time() - 3600, "/");
 		?>
 		<script>

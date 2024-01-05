@@ -76,7 +76,7 @@ async function createCart() {
     (response) => {
       const c = MERCHI.toJson(response);
       // Set cart cookie here
-      setCookie("cart-" + scriptData.merchi_domain, c.id + "," + c.token, 1);
+      setCookie("MerchiCart", c.id + "," + c.token, 1);
       localStorage.setItem("MerchiCart", JSON.stringify(c));
       return response;
     },
@@ -110,7 +110,7 @@ async function getCart(id, token, embed) {
 
 async function initMerchiCartLocalStorage() {
   // use this on each page load to initialise the cart ent
-  const cookie = getCookieByName("cart-" + scriptData.merchi_domain);
+  const cookie = getCookieByName("MerchiCart");
   // Try and get the cookie
   if (cookie) {
     const cookieValueArray = cookie.split(",");
@@ -247,7 +247,6 @@ async function handleSubmit(e) {
   } else if (paymentIntent && paymentIntent.status === "succeeded") {
     showMessage("Payment succeeded");
     successCallback();
-    // handleSuccess();
   } else {
     showMessage("An unexpected error occurred.");
   }
@@ -350,7 +349,7 @@ async function updateShipmentMethod(index, quoteIndex) {
   };
   var token = false;
   var id = false;
-  const cookieValue = getCookieByName("cart-" + scriptData.merchi_domain);
+  const cookieValue = getCookieByName("MerchiCart");
   if (cookieValue) {
     const cookieArray = cookieValue.split(",");
     token = cookieArray[1].trim();
@@ -472,7 +471,7 @@ function navigateStep(step) {
       var fname = document.getElementById("billing_first_name")
         ? document.getElementById("billing_first_name").value
         : false;
-      const cookieValue = getCookieByName("cart-" + scriptData.merchi_domain);
+      const cookieValue = getCookieByName("MerchiCart");
       var token = false;
       var id = false;
       if (cookieValue) {
@@ -532,9 +531,7 @@ function navigateStep(step) {
               ccart.token(token);
               addClientToCart(ccart, resp.user_id);
               patchRecieverAddress(ccart, address, step);
-              //jQuery('.checkout-navigation .button').removeAttr('disabled');
             }
-            //document.location.href = frontendajax.checkouturl+'?step='+ step;
           },
           error: function (error) {
             console.log(error);
@@ -614,7 +611,7 @@ jQuery(document).ready(function ($) {
     return false;
   });
 
-  const cookieSet = getCookieByName("cart-" + scriptData.merchi_domain);
+  const cookieSet = getCookieByName("MerchiCart");
   if (!cookieSet) {
     createCart();
   }
@@ -712,7 +709,7 @@ jQuery(document).ready(function ($) {
       target.parentNode.insertBefore(clonedElement, target.nextSibling);
       setTimeout(function () {
         if (scriptData.is_single_product) {
-          const cookie = getCookieByName("cart-" + scriptData.merchi_domain);
+          const cookie = getCookieByName("MerchiCart");
           const cookieValueArray = cookie.split(",");
           const id = cookieValueArray[0].trim();
           const token = cookieValueArray[1].trim();
@@ -817,7 +814,7 @@ jQuery(document).ready(function ($) {
     classes = classes[2].split("_");
     var actual_pos = parseInt(length) - parseInt(classes[2]);
     $this.closest("li").find(".ajax-loading").show();
-    const cookieValue = getCookieByName("cart-" + scriptData.merchi_domain);
+    const cookieValue = getCookieByName("MerchiCart");
     jQuery.ajax({
       type: "POST",
       dataType: "json",
