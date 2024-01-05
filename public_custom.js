@@ -2,6 +2,8 @@ const stripe = Stripe(scriptData.merchi_stripe_api_key);
 let elements;
 const MERCHI = MERCHI_INIT.MERCHI_SDK;
 
+const MerchiCartCookie = getCookieByName("MerchiCart");
+
 const cartShipmentQuote = {
   shipmentMethod: { originAddress: {}, taxType: {} },
 };
@@ -108,9 +110,7 @@ async function getCart(id, token, embed) {
   );
 }
 
-async function initMerchiCartLocalStorage() {
-  // use this on each page load to initialise the cart ent
-  const cookie = getCookieByName("MerchiCart");
+async function initMerchiCartLocalStorage(cookie) {
   // Try and get the cookie
   if (cookie) {
     const cookieValueArray = cookie.split(",");
@@ -132,7 +132,8 @@ async function localStorageGetCartEnt() {
     return makeMerchiCartEnt(merchiCartJson);
   } else {
     // If there is no cart in local storage then we initicalise a new cart
-    return await initMerchiCartLocalStorage();
+    var cookie = MerchiCartCookie;
+    return await initMerchiCartLocalStorage(cookie);
   }
 }
 
@@ -349,7 +350,7 @@ async function updateShipmentMethod(index, quoteIndex) {
   };
   var token = false;
   var id = false;
-  const cookieValue = getCookieByName("MerchiCart");
+  const cookieValue = MerchiCartCookie;
   if (cookieValue) {
     const cookieArray = cookieValue.split(",");
     token = cookieArray[1].trim();
@@ -471,7 +472,7 @@ function navigateStep(step) {
       var fname = document.getElementById("billing_first_name")
         ? document.getElementById("billing_first_name").value
         : false;
-      const cookieValue = getCookieByName("MerchiCart");
+      const cookieValue = MerchiCartCookie;
       var token = false;
       var id = false;
       if (cookieValue) {
@@ -611,7 +612,7 @@ jQuery(document).ready(function ($) {
     return false;
   });
 
-  const cookieSet = getCookieByName("MerchiCart");
+  const cookieSet = MerchiCartCookie;
   if (!cookieSet) {
     createCart();
   }
@@ -709,7 +710,7 @@ jQuery(document).ready(function ($) {
       target.parentNode.insertBefore(clonedElement, target.nextSibling);
       setTimeout(function () {
         if (scriptData.is_single_product) {
-          const cookie = getCookieByName("MerchiCart");
+          const cookie = MerchiCartCookie;
           const cookieValueArray = cookie.split(",");
           const id = cookieValueArray[0].trim();
           const token = cookieValueArray[1].trim();
@@ -814,7 +815,7 @@ jQuery(document).ready(function ($) {
     classes = classes[2].split("_");
     var actual_pos = parseInt(length) - parseInt(classes[2]);
     $this.closest("li").find(".ajax-loading").show();
-    const cookieValue = getCookieByName("MerchiCart");
+    const cookieValue = MerchiCartCookie;
     jQuery.ajax({
       type: "POST",
       dataType: "json",
