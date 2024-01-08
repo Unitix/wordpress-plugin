@@ -18,11 +18,11 @@
 defined( 'ABSPATH' ) || exit;
 $porto_woo_version = porto_get_woo_version_number();
 $resp = false;
-if(isset($_COOKIE['MerchiCart']) && !empty($_COOKIE['MerchiCart'])){
-	$cart = explode(',', $_COOKIE['MerchiCart']);
+if(isset($_COOKIE['cart-'.MERCHI_DOMAIN]) && !empty($_COOKIE['cart-'.MERCHI_DOMAIN])){
+	$cart = explode(',', $_COOKIE['cart-'.MERCHI_DOMAIN]);
 	$response = wp_remote_get( MERCHI_URL.'v6/stripe/payment_intent/cart/complete/'.$cart[0].'/?cart_token='.$cart[1] );
 	$resp = json_decode(wp_remote_retrieve_body($response));
-	setcookie('MerchiCart', "", time() - 3600, "/");
+	setcookie('cart-'.MERCHI_DOMAIN, "", time() - 3600, "/");
 	setcookie("cstCartId", "", time() - 3600, "/");
 	setcookie("cstReturningUser", "", time() - 3600, "/");
 	setcookie("cstExistingUser", "", time() - 3600, "/");

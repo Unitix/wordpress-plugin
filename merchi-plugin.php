@@ -368,8 +368,8 @@ function enqueue_my_public_script()
 	if($billing_values){
 		$telephoneInput = $billing_values['billing_phone'];
 	}
-	if( isset($_COOKIE['MerchiCart']) && !empty($_COOKIE['MerchiCart']) && is_checkout() && ( isset($_GET['step']) && $_GET['step'] == 3 ) ){
-		$cart = explode(',', $_COOKIE['MerchiCart']);
+	if( isset($_COOKIE['cart-'.MERCHI_DOMAIN]) && !empty($_COOKIE['cart-'.MERCHI_DOMAIN]) && is_checkout() && ( isset($_GET['step']) && $_GET['step'] == 3 ) ){
+		$cart = explode(',', $_COOKIE['cart-'.MERCHI_DOMAIN]);
 		$url = MERCHI_URL.'v6/stripe/payment_intent/cart/'.$cart[0].'/?cart_token='.$cart[1];
 		$response = wp_remote_get( $url, array('timeout'=> 20) );
 		$resp = json_decode(wp_remote_retrieve_body($response));
@@ -828,7 +828,7 @@ function cst_cart_item_after_remove() {
 		$cart_id = $_COOKIE['cstCartId'];
 		$cart_length = $_POST['cart_length'];
 		if( 1 == $cart_length || 0 == $cart_length ){
-			setcookie('MerchiCart', "", time() - 3600, "/");
+			setcookie('cart-'.MERCHI_DOMAIN, "", time() - 3600, "/");
 			setcookie("cstCartId", "", time() - 3600, "/");
 		}
 		$options = get_option_extended("get_cart_myItems_".$cart_id);
@@ -1232,7 +1232,7 @@ add_action('init', 'clear_cart_action');
 function clear_cart_action() {
     if (isset($_POST['clear_cart']) && $_POST['clear_cart'] == 'Clear Cart') {
         WC()->cart->empty_cart();
-		setcookie('MerchiCart', "", time() - 3600, "/");
+		setcookie('cart-'.MERCHI_DOMAIN, "", time() - 3600, "/");
 		setcookie("cstCartId", "", time() - 3600, "/");
 		?>
 		<script>

@@ -2,7 +2,7 @@ const stripe = Stripe(scriptData.merchi_stripe_api_key);
 let elements;
 const MERCHI = MERCHI_INIT.MERCHI_SDK;
 
-const MerchiCartCookie = getCookieByName("MerchiCart");
+const MerchiCartCookie = getCookieByName("cart-" + scriptData.merchi_domain);
 
 const cartShipmentQuote = {
   shipmentMethod: { originAddress: {}, taxType: {} },
@@ -78,7 +78,7 @@ async function createCart() {
     (response) => {
       const c = MERCHI.toJson(response);
       // Set cart cookie here
-      setCookie("MerchiCart", c.id + "," + c.token, 1);
+      setCookie("cart-" + scriptData.merchi_domain, c.id + "," + c.token, 1);
       localStorage.setItem("MerchiCart", JSON.stringify(c));
       return response;
     },

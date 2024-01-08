@@ -237,7 +237,7 @@ if( 1 == $current_step ){
 <script>
 function getShippingGroup() {
             // Find the "MerchiCart" cookie    
-            const name = 'MerchiCart';
+            const name = '<?php echo 'cart-'.MERCHI_DOMAIN; ?>';
             const cookies = document.cookie.split(';');
             let cartValue = null;
             for (let i = 0; i < cookies.length; i++) {
