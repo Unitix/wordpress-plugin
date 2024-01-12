@@ -732,14 +732,17 @@ jQuery(document).ready(function ($) {
                 var obj = {};
                 var objExtras = {};
                 var count = 0;
-                item.variationsGroups.forEach(function (group, gi) {
+                if (
+                  Array.isArray(item.variations) &&
+                  item.variations.length > 0
+                ) {
                   cartPayload["cartItems"][itemIndex]["variations"] = [];
                   cartPayload["cartItems"][itemIndex]["objExtras"] = [];
                   obj[count] = {};
                   objExtras[count] = {};
                   var loopcount = 0;
                   var varQuant = false;
-                  group.variations.forEach(function (variation, vi) {
+                  item.variations.forEach(function (variation, vi) {
                     if (variation.selectedOptions.length) {
                       obj[count][vi] = variation.selectedOptions[0].value;
                     } else if (variation.hasOwnProperty("value")) {
@@ -750,12 +753,36 @@ jQuery(document).ready(function ($) {
                   });
                   objExtras[count][loopcount] = varQuant;
                   objExtras[count]["quantity"] = varQuant;
-                  count++;
                   cartPayload["cartItems"][itemIndex]["variations"].push(obj);
                   cartPayload["cartItems"][itemIndex]["objExtras"].push(
                     objExtras
                   );
-                });
+                } else {
+                  item.variationsGroups.forEach(function (group, gi) {
+                    cartPayload["cartItems"][itemIndex]["variations"] = [];
+                    cartPayload["cartItems"][itemIndex]["objExtras"] = [];
+                    obj[count] = {};
+                    objExtras[count] = {};
+                    var loopcount = 0;
+                    var varQuant = false;
+                    group.variations.forEach(function (variation, vi) {
+                      if (variation.selectedOptions.length) {
+                        obj[count][vi] = variation.selectedOptions[0].value;
+                      } else if (variation.hasOwnProperty("value")) {
+                        obj[count][vi] = variation.value;
+                      }
+                      varQuant = variation.quantity;
+                      loopcount = vi + 1;
+                    });
+                    objExtras[count][loopcount] = varQuant;
+                    objExtras[count]["quantity"] = varQuant;
+                    count++;
+                    cartPayload["cartItems"][itemIndex]["variations"].push(obj);
+                    cartPayload["cartItems"][itemIndex]["objExtras"].push(
+                      objExtras
+                    );
+                  });
+                }
               });
               if (
                 cartJson.hasOwnProperty("cartItems") &&

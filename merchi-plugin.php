@@ -21,17 +21,20 @@ $merchi_mode = get_option('merchi_staging_mode');
 
 if($merchi_mode){
 	$merchi_url = $merchi_mode == 'yes' ? 'https://api.staging.merchi.co/' : 'https://api.merchi.co/';
+	$merchi_base_url = $merchi_mode == 'yes' ? 'https://staging.merchi.co' : 'https://merchi.co';
 	$merchi_domain = $merchi_mode == 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
 	$merchiMode = $merchi_mode == 'yes' ? 'staging' : 'live';
 	$merchiSecret = $merchi_mode == 'yes' ? get_option('staging_merchi_api_secret') : get_option('merchi_api_secret');
 	$merchiStripeKey = get_option('merchi_stripe_api_key');
 	define('MERCHI_URL', $merchi_url);
+	define('MERCHI_BASE_URL', $merchi_base_url);
 	define('MERCHI_DOMAIN', $merchi_domain);
 	define('MERCHI_MODE', $merchiMode);
 	define('MERCHI_API_SECRET', $merchiSecret);
 	define('MERCHI_STRIPE_API_KEY', $merchiStripeKey);
 }else{
 	define('MERCHI_URL', '');
+	define('MERCHI_BASE_URL', '');
 	define('MERCHI_DOMAIN', '');
 	define('MERCHI_MODE', '');
 	define('MERCHI_API_SECRET', '');
@@ -82,18 +85,7 @@ add_action( 'wp_footer', 'add_merchi_url' );
 add_action( 'admin_footer', 'add_merchi_url' );
 function add_merchi_url() {
 	
-	echo '<input type="hidden" id="plugin_merchi_url" value ="';
-	
-	if( get_option( 'merchi_staging_mode' ) == 'yes' ) {
-
-		echo 'https://staging.merchi.co';
-	}
-	else {
-
-		echo 'https://merchi.co';
-	}
-
-	echo '">';
+	echo '<input type="hidden" id="plugin_merchi_url" value ="'.MERCHI_BASE_URL.'">';
 }
 
 // Add mount point Class module shortcode
@@ -343,7 +335,7 @@ function enqueue_admin_customfiles()
 	wp_enqueue_script('cst-jquery-ui', 'https://code.jquery.com/ui/1.12.1/jquery-ui.js', array('jquery'), null, true);
 	wp_enqueue_script('custom-admin-script', plugin_dir_url(__FILE__) . 'custom.js', array('cst-jquery-ui'), null, true);
 	wp_localize_script('custom-admin-script', 'frontendajax', array('ajaxurl' => admin_url('admin-ajax.php')));
-	wp_enqueue_script('custom-merchi-script', 'https://staging.merchi.co/static/js/dist/merchi-init.js', array(), null, true);
+	wp_enqueue_script('custom-merchi-script', MERCHI_BASE_URL.'/static/js/dist/merchi-init.js', array(), null, true);
 	wp_localize_script('custom-admin-script', 'scriptData', array(
 		'merchi_mode' => MERCHI_MODE,
 		'merchi_domain' => MERCHI_DOMAIN,
@@ -359,7 +351,7 @@ function enqueue_my_public_script()
 	wp_enqueue_script('custom-checkout-script', plugins_url('/woocommerce/checkout/checkout.js', __FILE__), array(), '1.0', true);
 	wp_enqueue_script('custom-stripe-script', 'https://js.stripe.com/v3/', array(), '1.0', true);
 	wp_enqueue_script('custom-public-script', plugin_dir_url(__FILE__) . 'public_custom.js', array('jquery'), rand(0,1000), true);
-	wp_enqueue_script('custom-merchi-script', 'https://staging.merchi.co/static/js/dist/merchi-init.js', array(), null, true);
+	wp_enqueue_script('custom-merchi-script', MERCHI_BASE_URL.'/static/js/dist/merchi-init.js', array(), null, true);
 	
 	$is_single_product = is_product();
 	$stripeSecret = false;
