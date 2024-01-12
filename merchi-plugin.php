@@ -3,7 +3,7 @@
  * Plugin Name:       Merchi Plugin
  * Plugin URI:        https://merchi.co
  * Description:       Fetch your products from Merchi. This plugin requires Woocommerce.
- * Version:           1.4.0
+ * Version:           1.4.1
  * Author:            Charlie Campton
  * License:           GPL v2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
@@ -920,7 +920,7 @@ function get_option_extended($partial_key) {
     return $options;
 }
 function cst_woocommerce_cart_item_class( $string, $cart_item, $cart_item_key ) {
-	static $count = 1;
+	static $count = 0;
     $string = $string.' cst_cart_item cst_item_'.$count;
 	$count++;
     return $string;

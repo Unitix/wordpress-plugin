@@ -733,31 +733,9 @@ jQuery(document).ready(function ($) {
                 var objExtras = {};
                 var count = 0;
                 if (
-                  Array.isArray(item.variations) &&
-                  item.variations.length > 0
+                  Array.isArray(item.variationsGroups) &&
+                  item.variationsGroups.length > 0
                 ) {
-                  cartPayload["cartItems"][itemIndex]["variations"] = [];
-                  cartPayload["cartItems"][itemIndex]["objExtras"] = [];
-                  obj[count] = {};
-                  objExtras[count] = {};
-                  var loopcount = 0;
-                  var varQuant = false;
-                  item.variations.forEach(function (variation, vi) {
-                    if (variation.selectedOptions.length) {
-                      obj[count][vi] = variation.selectedOptions[0].value;
-                    } else if (variation.hasOwnProperty("value")) {
-                      obj[count][vi] = variation.value;
-                    }
-                    varQuant = variation.quantity;
-                    loopcount = vi + 1;
-                  });
-                  objExtras[count][loopcount] = varQuant;
-                  objExtras[count]["quantity"] = varQuant;
-                  cartPayload["cartItems"][itemIndex]["variations"].push(obj);
-                  cartPayload["cartItems"][itemIndex]["objExtras"].push(
-                    objExtras
-                  );
-                } else {
                   item.variationsGroups.forEach(function (group, gi) {
                     cartPayload["cartItems"][itemIndex]["variations"] = [];
                     cartPayload["cartItems"][itemIndex]["objExtras"] = [];
@@ -782,6 +760,31 @@ jQuery(document).ready(function ($) {
                       objExtras
                     );
                   });
+                } else if (
+                  Array.isArray(item.variations) &&
+                  item.variations.length > 0
+                ) {
+                  cartPayload["cartItems"][itemIndex]["variations"] = [];
+                  cartPayload["cartItems"][itemIndex]["objExtras"] = [];
+                  obj[count] = {};
+                  objExtras[count] = {};
+                  var loopcount = 0;
+                  var varQuant = false;
+                  item.variations.forEach(function (variation, vi) {
+                    if (variation.selectedOptions.length) {
+                      obj[count][vi] = variation.selectedOptions[0].value;
+                    } else if (variation.hasOwnProperty("value")) {
+                      obj[count][vi] = variation.value;
+                    }
+                    varQuant = variation.quantity;
+                    loopcount = vi + 1;
+                  });
+                  objExtras[count][loopcount] = varQuant;
+                  objExtras[count]["quantity"] = varQuant;
+                  cartPayload["cartItems"][itemIndex]["variations"].push(obj);
+                  cartPayload["cartItems"][itemIndex]["objExtras"].push(
+                    objExtras
+                  );
                 }
               });
               if (
@@ -835,11 +838,11 @@ jQuery(document).ready(function ($) {
     e.preventDefault();
     var $this = jQuery(this);
     var item_id = $this.data("cart_id");
-    var length = jQuery(".cst_cart_item").length;
     var classes = $this.parents(".cart_item").attr("class");
     classes = classes.split(" ");
     classes = classes[2].split("_");
-    var actual_pos = parseInt(length) - parseInt(classes[2]);
+    console.log("classes", classes);
+    var actual_pos = parseInt(classes[2]);
     $this.closest("li").find(".ajax-loading").show();
     const cookieValue = getCookieByName("cart-" + scriptData.merchi_domain);
     jQuery.ajax({

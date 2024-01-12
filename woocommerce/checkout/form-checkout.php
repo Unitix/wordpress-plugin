@@ -262,7 +262,8 @@ function getShippingGroup() {
 				ccart.token(carttoken);
 				var embedd = '{"cartItems":{"product":{"domain":{"company":{"defaultTaxType":{},"taxTypes":{}}},"featureImage":{},"groupVariationFields":{"options":{"linkedFile":{}}},"images":{},"independentVariationFields":{"options":{"linkedFile":{}}},"taxType":{}},"taxType":{},"variations":{"selectedOptions":{},"variationField":{"options":{"linkedFile":{},"variationCostDiscountGroup":{},"variationUnitCostDiscountGroup":{}},"variationCostDiscountGroup":{},"variationUnitCostDiscountGroup":{}},"variationFiles":{}},"variationsGroups":{"variations":{"selectedOptions":{},"variationField":{"options":{"linkedFile":{},"variationCostDiscountGroup":{},"variationUnitCostDiscountGroup":{}},"variationCostDiscountGroup":{},"variationUnitCostDiscountGroup":{}},"variationFiles":{}}}},"client":{"emailAddresses":{},"profilePicture":{}},"clientCompany":{},"domain":{"company":{"defaultTaxType":{},"isStripeAccountEnabled":{},"taxTypes":{}}},"invoice":{},"receiverAddress":{},"shipmentGroups":{"cartItems":{"product":{}},"quotes":{"shipmentMethod":{"originAddress":{},"taxType":{}}},"selectedQuote":{"shipmentMethod":{"originAddress":{},"taxType":{}}}}}';
 				embedd = JSON.parse(embedd);
-                fetch(`https://api.staging.merchi.co/v6/generate-cart-shipment-quotes/${cartid}/?cart_token=${carttoken}`,
+				var merchi_api_url = '<?php echo MERCHI_URL; ?>';
+                fetch(`${merchi_api_url}v6/generate-cart-shipment-quotes/${cartid}/?cart_token=${carttoken}`,
                         requestOptions)
                     .then(response => response.text())
                     .then(result => {
