@@ -1,6 +1,8 @@
 const stripe = Stripe(scriptData.merchi_stripe_api_key);
 let elements;
 const MERCHI = MERCHI_INIT.MERCHI_SDK;
+const site_url = scriptData.site_url
+//  console.log(site_url+'/cart');
 
 const cartShipmentQuote = {
   shipmentMethod: { originAddress: {}, taxType: {} },
@@ -173,7 +175,7 @@ async function patchRecieverAddress(cart, address, step) {
 function initializeStripe() {
   var billing_values = frontendajax.billing_values;
   if (!frontendajax.stripeSecret) {
-    console.log("stripeSecret is not set");
+    //console.log("stripeSecret is not set");
     return false;
   }
   const clientSecret = frontendajax.stripeSecret;
@@ -473,6 +475,7 @@ function navigateStep(step) {
       const cookieValue = getCookieByName("cart-" + scriptData.merchi_domain);
       var token = false;
       var id = false;
+      //console.log(phone);
       if (cookieValue) {
         const cookieArray = cookieValue.split(",");
         token = cookieArray[1].trim();
@@ -576,7 +579,7 @@ function emptyCookie(cookieName) {
     cookieName: cookieName,
   };
   jQuery.post(ajax_url, ajax_data, function (response) {
-    console.log(response);
+    //console.log(response);
   });
 }
 
@@ -601,7 +604,7 @@ jQuery(document).ready(function ($) {
   }
 
   jQuery(document).on("cst_clear_cart", function () {
-    console.log("Cart Cleared!!!");
+    //console.log("Cart Cleared!!!");
   });
 
   // Disable button using JavaScript
@@ -695,12 +698,14 @@ jQuery(document).ready(function ($) {
     });
   });
 
+
+  
   document.addEventListener("click", function (event) {
     var target = event.target;
     if (
-      target.classList.contains("btn-primary") &&
+      target.classList.contains("btn-primary") && !target.classList.contains("product-button-get-quote") &&
       !target.classList.contains("product-group-button-add")
-    ) {
+    ){
       target.parentElement.classList.add("cst-disabled-btn-parent");
       target.innerHTML = "<span>Adding To Cart...</span>";
       const clonedElement = target.cloneNode(true);
@@ -709,7 +714,7 @@ jQuery(document).ready(function ($) {
       setTimeout(function () {
         if (scriptData.is_single_product) {
           const cookie = getCookieByName("cart-" + scriptData.merchi_domain);
-          console.log(cookie);
+         // console.log(cookie);
           const cookieValueArray = cookie.split(",");
           const id = cookieValueArray[0].trim();
           const token = cookieValueArray[1].trim();
@@ -808,6 +813,7 @@ jQuery(document).ready(function ($) {
                     jQuery(document.body).trigger("wc_fragment_refresh");
                     setTimeout(function () {
                       jQuery(document.body).trigger("wc_fragment_refresh");
+                      window.location.href = site_url + '/cart/';
                     }, 1000);
                   },
                   error: function (error) {
@@ -833,6 +839,8 @@ jQuery(document).ready(function ($) {
       }, 3500);
     }
   });
+
+
 
   jQuery(document).on("click", ".remove.remove-product", function (e) {
     e.preventDefault();
@@ -916,14 +924,16 @@ jQuery(document).ready(function ($) {
     });
   });
 
-  jQuery("#cst_returning_customer").change(function () {
-    if (jQuery(this).is(":checked")) {
-      document.cookie =
-        "cstReturningUser=true; expires=Fri, 31 Dec 9999 23:59:59 GMT; path=/";
-    } else {
-      document.cookie =
-        "cstReturningUser=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
-    }
-    location.reload();
-  });
+  // jQuery("#cst_returning_customer").change(function () {
+  //   if (jQuery(this).is(":checked")) {
+  //     document.cookie =
+  //       "cstReturningUser=true; expires=Fri, 31 Dec 9999 23:59:59 GMT; path=/";
+  //   } else {
+  //     document.cookie =
+  //       "cstReturningUser=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+  //   }
+  //   location.reload();
+  // });
+
+  
 });

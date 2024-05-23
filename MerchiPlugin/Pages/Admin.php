@@ -58,17 +58,42 @@ class Admin extends BaseController {
 
 	public function setSubpages() {
 		 $this->subpages = [
+			//  [
+			// 	 'parent_slug' => 'merchi_plugin',
+			// 	 'page_title'  => 'Import / Export',
+			// 	 'menu_title'  => 'Import / Export',
+			// 	 'capability'  => 'manage_options',
+			// 	 'menu_slug'   => 'merchi_fetch',
+			// 	 'callback'    => [
+			// 		 $this->callbacks,
+			// 		 'adminCpt',
+			// 	 ],
+			//  ],
+
+			 //code by navneet start here.....
 			 [
-				 'parent_slug' => 'merchi_plugin',
-				 'page_title'  => 'Import / Export',
-				 'menu_title'  => 'Import / Export',
-				 'capability'  => 'manage_options',
-				 'menu_slug'   => 'merchi_fetch',
-				 'callback'    => [
-					 $this->callbacks,
-					 'adminCpt',
-				 ],
-			 ],
+				'parent_slug' => 'merchi_plugin',
+				'page_title'  => 'Import',
+				'menu_title'  => 'Import',
+				'capability'  => 'manage_options',
+				'menu_slug'   => 'merchi_import',
+				'callback'    => [
+					$this->callbacks,
+					'adminMerchiProductImport',
+				],
+			],
+			// [
+			// 	'parent_slug' => 'merchi_plugin',
+			// 	'page_title'  => 'Export Product',
+			// 	'menu_title'  => 'Export Product',
+			// 	'capability'  => 'manage_options',
+			// 	'menu_slug'   => 'merchi_export',
+			// 	'callback'    => [
+			// 		$this->callbacks,
+			// 		'adminMerchiProductExport',
+			// 	],
+			// ],
+			 //code by navneet end here....
 		 ];
 	}
 
@@ -149,7 +174,7 @@ class Admin extends BaseController {
 			],
 			[
 				 'option_group' => 'merchi_options_group',
-				 'option_name'  => 'merchi_curency',
+				 'option_name'  => 'woocommerce_currency',
 				 'callback'     => [
 					 $this->callbacks,
 					 'merchiOptionsGroup',
@@ -307,7 +332,7 @@ class Admin extends BaseController {
 				],
 			],
 			[
-				'id'       => 'merchi_currency',
+				'id'       => 'woocommerce_currency',
 				'title'    => 'Currency',
 				'callback' => [
 					$this->callbacks,

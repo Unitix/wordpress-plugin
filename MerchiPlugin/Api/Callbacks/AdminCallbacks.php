@@ -4,7 +4,8 @@
  */
 
 namespace MerchiPlugin\Api\Callbacks;
-
+use \MerchiPlugin\Base\MerchiProductImportListtable as MerchiProductImportListtable;
+use \MerchiPlugin\Base\MerchiProductExportList as MerchiProductExportList;
 use MerchiPlugin\Base\BaseController;
 
 class AdminCallbacks extends BaseController {
@@ -25,6 +26,40 @@ class AdminCallbacks extends BaseController {
 		return require_once( "$this->plugin_path/templates/cpt.php" );
 	}
 
+	//code by navneet start here.....
+	public function adminMerchiProductImport() {
+		?>
+        <div class="wrap">
+            <h2>Merchi Product List</h2>
+            <form method="post" action="">
+                <?php
+                $my_products_list = new MerchiProductImportListtable();
+                $my_products_list->prepare_items();
+                $my_products_list->display();
+                $my_products_list->process_bulk_action();
+                ?>
+            </form>
+        </div>
+    <?php
+	}
+
+	public function adminMerchiProductExport() {
+		?>
+		<div class="wrap">
+			<h2>Export Products</h2>
+			<form method="post" action="">
+				<?php
+				$my_products_list = new MerchiProductExportList();
+				$my_products_list->prepare_items();
+				$my_products_list->display();
+				$my_products_list->process_bulk_action();
+				?>
+			</form>
+		</div>
+		<?php
+	}
+	//code by navneet end here.....
+
 
 	public function merchiOptionsGroup( $input ) {
 		return $input;
@@ -33,6 +68,8 @@ class AdminCallbacks extends BaseController {
 
 	public function merchiAdminSection() {
 		echo 'Update your Merchi settings';
+		$current_currency = get_option('woocommerce_currency');
+		echo $current_currency;
 	}
 
 
@@ -85,9 +122,11 @@ class AdminCallbacks extends BaseController {
 		</select>';
 	}
 	public function merchiSetCurrency() {	
+		$current_currency = get_option('merchi_currency');
+		echo $current_currency;
 		$currencies = get_woocommerce_currencies();
         $current_currency = get_woocommerce_currency();
-        echo '<select name="merchi_currency" id="merchi_currency">';
+        echo '<select name="woocommerce_currency" id="woocommerce_currency">';
 
         foreach ($currencies as $currency_code => $currency_name) {
             echo '<option value="' . esc_attr($currency_code) . '" ' . selected($currency_code, $current_currency, false) . '>' . esc_html($currency_name) . ' (' . esc_html($currency_code) . ')' . '</option>';

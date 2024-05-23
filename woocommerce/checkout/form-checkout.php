@@ -267,7 +267,7 @@ function getShippingGroup() {
                         requestOptions)
                     .then(response => response.text())
                     .then(result => {
-                        console.log("from get =>", result);
+                       // console.log("from get =>", result);
                        
                         const parsedResult = JSON.parse(result); // Parse the JSON string
                         var subTotal = parsedResult.cartItemsTotalCost;
@@ -276,14 +276,14 @@ function getShippingGroup() {
                         const shipmentList = document.getElementById('shipmentList'); // Get the <ul> element
                         parsedResult.shipmentGroups.map((shipmentGroup, index) => {
                             var shipmentGroupid = shipmentGroup.id;
-                            console.log('shipmentGroup id =>', shipmentGroupid);
+                           // console.log('shipmentGroup id =>', shipmentGroupid);
                             shipmentGroup.quotes.map((quote, quoteIndex) => {
                                 const shipmentMethodName = quote.shipmentMethod.name;
                                 const transportCompanyName = quote.shipmentMethod
                                     .transportCompanyName;
                                 const totalCost = quote.totalCost;
                                 const quoteid = quote.id;
-                                console.log('quoteid id =>', quoteid);
+                               // console.log('quoteid id =>', quoteid);
                                 const listItem = document.createElement('li');
 								ccart.get((data) => {
 									var cartEnt = data;

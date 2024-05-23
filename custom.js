@@ -2,6 +2,8 @@ let offset = 0;
 let loadingData = false;
 let hasMoreProducts = true;
 let currentRequest = null;
+var domainId = scriptData.merchi_domain;
+// console.log(domainId);
 const selectedValueDisplay = document.getElementById("selected_value_display");
 const customValueField = document.getElementById("custom_value_field");
 const hiddenProductIdField = document.getElementById("hidden_product_id");
@@ -48,7 +50,7 @@ function fetchProducts() {
   searchIcon.hide();
   const limit = 1000;
   const apiKey = scriptData.merchi_secret;
-  const apiUrl = `${scriptData.merchi_url}v6/products/?apiKey=${apiKey}&limit=${limit}&offset=${offset}`;
+  const apiUrl = `${scriptData.merchi_url}v6/products/?apiKey=${apiKey}&inDomain=${domainId}&limit=${limit}&offset=${offset}`;
   const searchTerm = jQuery("#custom_value_field").val();
 
   if (loadingData || !hasMoreProducts) {
@@ -165,6 +167,7 @@ function attachMedia(imageUrl, inputString, msg) {
         jQuery("#product_image_gallery").trigger("change");
         document.getElementsByClassName("loader")[0].style.display = "none";
         document.getElementsByClassName("wrap")[0].style.filter = "none";
+		    location.reload();
       }
     },
     error: function (error) {
@@ -174,11 +177,77 @@ function attachMedia(imageUrl, inputString, msg) {
 }
 
 function spinner() {
-  document.getElementsByClassName("loader")[0].style.display = "block";
-  document.getElementsByClassName("wrap")[0].style.filter = "blur(1.5px)";
+	var postId = jQuery("#post_ID").val();
+    jQuery.ajax({
+        method: "POST",
+        url: frontendajax.ajaxurl, // Assuming frontendajax.ajaxurl contains the correct URL
+		data: {
+        action: "save_flag_for_show_meta",
+		postId: postId,
+		},
+        success: function (response) {
+            if (response && response === "success") { 
+                var elements = document.getElementsByClassName("show-after-selection");
+				for (var i = 0; i < elements.length; i++) {
+					elements[i].style.display = "block";
+				}
+            } else {
+             //   console.log("Failed to update meta.");
+            }
+        },
+        error: function (error) {
+            console.error("Error updating meta:", error);
+        }
+    });
+	
+    document.getElementsByClassName("loader")[0].style.display = "block";
+    document.getElementsByClassName("wrap")[0].style.filter = "blur(1.5px)";
 }
 
+//gc code start here
 jQuery(document).ready(function ($) {
+
+    $('#bulk-action-selector-top').change(function() {
+        var selectedValue = $(this).val();
+        if (selectedValue === 'bulk_import') {
+          $('#doaction').attr('type', 'button');
+        }
+    });
+
+    jQuery("#doaction").on("click", function () {
+      // Get the selected action value
+      var selectedAction = $('#bulk-action-selector-top').val();
+      // Check if the selected value is "bulk_import"
+      if (selectedAction === 'bulk_import') {
+        var checkedValues = [];
+        $('input[name="product[]"]').each(function() {
+            // Check if the checkbox is checked
+            if ($(this).is(':checked')) {
+                // If checked, push its value to the checkedValues array
+                checkedValues.push($(this).val());
+            }
+        });
+          jQuery.ajax({
+            method: "POST",
+            url: frontendajax.ajaxurl,
+            data: {
+                action: "gc_create_product_background_process",
+                checkedValues: checkedValues,
+            },
+            success: function (response) {
+              var jsonResponse = JSON.parse(response);
+              if(jsonResponse.success==true){
+                alert("Products are currently being imported/synced. Please wait, you will be notified once the task has been completed.");
+              }
+            },
+            error: function (error) {
+                console.error("Error updating meta:", error);
+            }
+        });
+      }
+    });
+  //gc code end here
+
   jQuery(document).on("click", function (event) {
     const searchResults = jQuery("#search_results");
     const customValueField = jQuery("#custom_value_field");
@@ -196,14 +265,24 @@ jQuery(document).ready(function ($) {
   jQuery("#custom_value_field").on("click", function () {
     const fieldValue = jQuery(this).val().trim();
 
-    // Show the dropdown if the text box has a value
-    if (fieldValue !== "") {
-      searchResults.show();
+        if (fieldValue !== "") {
+        // Check if searchResults is not empty before trying to call show()
+        if (searchResults.length > 0) {
+            searchResults.show();
+        } 
     }
   });
 
+  function yourMethod() {
+    document.getElementsByClassName("wrap")[0].style.filter = "blur(2.5px)";
+    document.getElementsByClassName("loader")[0].style.display = "block";
+    $("#loader").css("margin-top", "-50px");
+  }
+
   if (jQuery(".post-new-php.post-type-product").length > 0) {
     jQuery("#publish").trigger("click");
+    document.getElementsByClassName("wrap")[0].style.filter = "blur(2.5px)";
+    yourMethod();
   }
   jQuery("#wp-admin-bar-new-content").on("click", function () {
     setTimeout(function () {
@@ -212,6 +291,39 @@ jQuery(document).ready(function ($) {
       }
     }, 5000);
   });
+  
+  jQuery(document).ready(function($) {
+    // Find the li element with the title "Add New"
+    var addNewLi = $('ul.wp-submenu.wp-submenu-wrap li').filter(function() {
+      return $(this).text().trim() === 'Add New';
+    });
+  
+    // Attach click event handler to the "Add New" li
+    addNewLi.on('click', function(event) {
+      if (addNewLi.length > 0) {
+        $('.wrap').append('<div class="loader"></div>');
+      }
+      yourMethod();
+    });
+    
+    $('.page-title-action').on('click', function() {
+      if ($(this).text() === "Add New") {
+          console.log("The button text is 'Add New'");
+          yourMethod();
+      } else {
+          console.log("The button text is not 'Add New'");
+      }
+  });
+  
+
+    function yourMethod() {
+      document.getElementsByClassName("wrap")[0].style.filter = "blur(2.5px)";
+      // document.getElementsByClassName("loader")[0].style.display = "block";
+      $("#loader").css("margin-top", "-50px");
+    }
+  });
+  
+
 
   // Event listener for user input
   jQuery("#custom_value_field").on("input", handleInput);
@@ -230,7 +342,7 @@ jQuery(document).ready(function ($) {
     jQuery(document).on("click", ".search-result", function (event) {
       const hiddenProductId = jQuery("#hidden_product_id").val();
       const apiKey = scriptData.merchi_secret;
-      const apiUrl = `${scriptData.merchi_url}v6/products/${hiddenProductId}/?apiKey=${apiKey}&embed={"featureImage":{},"images":{}}&skip_rights=y`;
+      const apiUrl = `${scriptData.merchi_url}v6/products/${hiddenProductId}/?apiKey=${apiKey}&inDomain=${domainId}&embed={"featureImage":{},"images":{}}&skip_rights=y`;
 
       jQuery.ajax({
         url: apiUrl,
@@ -291,4 +403,16 @@ jQuery(document).ready(function ($) {
       });
     });
   }
+
+  jQuery(document).ready(function($) {
+    $('.if_import').on('click', function(e) {
+        var buttonText = $(this).text().trim();
+        if (buttonText === 'Import') {
+            // Change button text to 'Importing...'
+            $(this).text('Importing...');
+        }
+    });
+});
+
+
 });
