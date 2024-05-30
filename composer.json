@@ -12,7 +12,8 @@
   "minimum-stability": "dev",
   "require": {
     "automattic/woocommerce": "dev-master",
-    "phpcsstandards/phpcsutils": "^1.0"
+    "phpcsstandards/phpcsutils": "^1.0",
+    "deliciousbrains/wp-background-processing": "dev-master"
   },
   "autoload": {
     "psr-4": {

@@ -1,0 +1,264 @@
+#custom_value_field {
+  width: 100%;
+  padding: 8px 30px 8px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  right: 8px;
+  transform: translateY(-50%);
+  color: #777;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.search-icon i {
+  font-size: 16px;
+  margin-right: 8px;
+  margin-bottom: 45px;
+}
+.search-result {
+  padding: 10px;
+  background-color: #f7f7f7;
+  border-bottom: 1px solid #ddd;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  font-size: 14px;
+}
+
+.search-result:last-child {
+  border-bottom: none;
+}
+
+.search-result:hover {
+  background-color: #e0e0e0;
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black overlay */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999; /* Make sure the overlay is on top */
+}
+
+.loader {
+  border: 16px solid #f3f3f3;
+  border-radius: 50%;
+  border-top: 16px solid #3498db;
+  width: 50px;
+  height: 50px;
+  -webkit-animation: spin 2s linear infinite; /* Safari */
+  animation: spin 2s linear infinite;
+  display: none;
+  position: fixed;
+  z-index: 999;
+  overflow: show;
+  margin: auto;
+  top: 7%;
+  left: 0;
+  right: 0;
+}
+/* Safari */
+@-webkit-keyframes spin {
+  0% {
+    -webkit-transform: rotate(0deg);
+  }
+  100% {
+    -webkit-transform: rotate(360deg);
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+d-flex flex-row-reverse product-action-buttons-container {
+  display: none;
+}
+
+.modal-content {
+  display: none;
+}
+.cst-stripe-payment-button {
+  display: none;
+}
+
+.product-image .inner {
+  width: 100% !important;
+  float: none !important;
+  padding: 0px !important;
+  max-height: 100% !important;
+}
+
+.cst-disabled-btn-parent .btn-primary {
+  /* Styles to make it visually appear disabled */
+  opacity: 0.65; /* Reduce opacity */
+  cursor: not-allowed; /* Change cursor to 'not-allowed' */
+  pointer-events: none; /* Disable pointer events */
+  /* You can also add more styles to visually indicate it's disabled, like changing colors, etc. */
+}
+
+.cart-items {
+  display: block !important;
+  visibility: visible !important;
+}
+.woocommerce-mini-cart__total.total {
+  display: none;
+}
+#mini-cart .cart-items {
+  width: auto !important;
+  min-width: 16px;
+}
+/* Admin CSS */
+
+#search_results {
+  position: absolute;
+  width: calc(100% - 2px);
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-top: none;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+#search_results div {
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+#search_results div:hover {
+  background-color: #f0f0f0;
+}
+
+#custom_product_meta_box_id {
+  border: 1px solid #ccc;
+  margin-bottom: 20px;
+  border-radius: 5px;
+}
+
+.checkbox-container {
+  width: 50%; /* Adjust width as needed */
+  display: inline-block;
+  vertical-align: top;
+}
+
+/* Checkbox label */
+.checkbox-label {
+  display: inline-block;
+  margin-right: 10px;
+}
+
+/* Input[type="checkbox"] styles */
+.checkbox-container input[type="checkbox"] {
+  width: auto;
+  margin-top: 3px; /* Adjust margin-top for vertical alignment */
+}
+
+/* Header styles */
+.postbox-header {
+  background-color: #f0f0f0;
+  padding: 10px;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #ccc;
+}
+
+.postbox-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+/* Input and checkbox styles */
+.card-header {
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.card-body {
+  margin-bottom: 10px;
+}
+
+input[type="text"],
+input[type="checkbox"] {
+  padding: 5px;
+  margin-bottom: 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+
+/* Search box styles */
+#search_box {
+  margin-bottom: 15px;
+  position: relative;
+}
+
+#custom_value_field {
+  width: 100%;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+
+.search-icon {
+  position: absolute;
+  top: 40px;
+  right: 5px;
+  font-size: 16px;
+  color: #888;
+  cursor: pointer;
+}
+#product_meta_box {
+  position: relative;
+}
+
+.cst-loader {
+  border: 5px solid #f3f3f3;
+  border-radius: 50%;
+  border-top: 5px solid #3498db;
+  width: 10px;
+  height: 10px;
+  -webkit-animation: spin 2s linear infinite;
+  animation: spin 2s linear infinite;
+  display: none;
+  position: absolute;
+  z-index: 999;
+  margin: auto;
+  top: 20%;
+  left: 84%;
+  right: 0;
+}
+/* Loader styles */
+.loader {
+  display: none; /* Hide by default */
+  text-align: center;
+}
+
+/* Hidden and show styles */
+.hidden {
+  display: none;
+}
+
+/* Cursor pointer for certain elements */
+#selected_value_display h3,
+#remove_selected_value {
+  cursor: pointer;
+}
+
+/* Admin CSS */

@@ -58,17 +58,42 @@ class Admin extends BaseController {
 
 	public function setSubpages() {
 		 $this->subpages = [
+			//  [
+			// 	 'parent_slug' => 'merchi_plugin',
+			// 	 'page_title'  => 'Import / Export',
+			// 	 'menu_title'  => 'Import / Export',
+			// 	 'capability'  => 'manage_options',
+			// 	 'menu_slug'   => 'merchi_fetch',
+			// 	 'callback'    => [
+			// 		 $this->callbacks,
+			// 		 'adminCpt',
+			// 	 ],
+			//  ],
+
+			 //code by navneet start here.....
 			 [
-				 'parent_slug' => 'merchi_plugin',
-				 'page_title'  => 'Import / Export',
-				 'menu_title'  => 'Import / Export',
-				 'capability'  => 'manage_options',
-				 'menu_slug'   => 'merchi_fetch',
-				 'callback'    => [
-					 $this->callbacks,
-					 'adminCpt',
-				 ],
-			 ],
+				'parent_slug' => 'merchi_plugin',
+				'page_title'  => 'Import',
+				'menu_title'  => 'Import',
+				'capability'  => 'manage_options',
+				'menu_slug'   => 'merchi_import',
+				'callback'    => [
+					$this->callbacks,
+					'adminMerchiProductImport',
+				],
+			],
+			// [
+			// 	'parent_slug' => 'merchi_plugin',
+			// 	'page_title'  => 'Export Product',
+			// 	'menu_title'  => 'Export Product',
+			// 	'capability'  => 'manage_options',
+			// 	'menu_slug'   => 'merchi_export',
+			// 	'callback'    => [
+			// 		$this->callbacks,
+			// 		'adminMerchiProductExport',
+			// 	],
+			// ],
+			 //code by navneet end here....
 		 ];
 	}
 
@@ -124,6 +149,14 @@ class Admin extends BaseController {
 				 ],
 			 ],
 			 [
+				 'option_group' => 'merchi_options_group',
+				 'option_name'  => 'merchi_stripe_api_key',
+				 'callback'     => [
+					 $this->callbacks,
+					 'merchiOptionsGroup',
+				 ],
+			 ],
+			 [
 				'option_group' => 'merchi_options_group',
 				'option_name'  => 'merchi_redirect_url_quote',
 				'callback'     => [
@@ -131,30 +164,22 @@ class Admin extends BaseController {
 					'merchiOptionsGroup',
 				],
 			],
-			 // [
-				 // 'option_group' => 'merchi_options_group',
-				 // 'option_name'  => 'woo_k_s',
-				 // 'callback'     => [
-					 // $this->callbacks,
-					 // 'merchiOptionsGroup',
-				 // ],
-			 // ],
-			 // [
-				 // 'option_group' => 'merchi_options_group',
-				 // 'option_name'  => 'woo_k_p',
-				 // 'callback'     => [
-					 // $this->callbacks,
-					 // 'merchiOptionsGroup',
-				 // ],
-			 // ],
-			 [
+			[
 				 'option_group' => 'merchi_options_group',
 				 'option_name'  => 'merchi_staging_mode',
 				 'callback'     => [
 					 $this->callbacks,
 					 'merchiOptionsGroup',
 				 ],
-			 ],
+			],
+			[
+				 'option_group' => 'merchi_options_group',
+				 'option_name'  => 'woocommerce_currency',
+				 'callback'     => [
+					 $this->callbacks,
+					 'merchiOptionsGroup',
+				 ],
+			],
 		 ];
 
 		 $this->settings->setSettings( $args );
@@ -182,7 +207,7 @@ class Admin extends BaseController {
 		$args = [
 			[
 				'id'       => 'merchi_url',
-				'title'    => 'Merchi URL',
+				'title'    => 'Merchi Domain ID',
 				'callback' => [
 					$this->callbacks,
 					'merchiStoreUrl',
@@ -196,7 +221,7 @@ class Admin extends BaseController {
 			],
                         [
 				'id'       => 'merchi_api_secret',
-				'title'    => 'Merchi API secret',
+				'title'    => 'Merchi Domain API Secret',
 				'callback' => [
 					$this->callbacks,
 					'merchiApiSecret',
@@ -210,7 +235,7 @@ class Admin extends BaseController {
 			],
 			[
 				'id'       => 'staging_merchi_url',
-				'title'    => 'Staging Merchi URL',
+				'title'    => 'Staging Merchi Domain ID',
 				'callback' => [
 					$this->callbacks,
 					'stagingMerchiStoreUrl',
@@ -224,7 +249,7 @@ class Admin extends BaseController {
 			],
                         [
 				'id'       => 'staging_merchi_api_secret',
-				'title'    => 'Staging Merchi API secret',
+				'title'    => 'Staging Merchi Domain API Secret',
 				'callback' => [
 					$this->callbacks,
 					'stagingMerchiApiSecret',
@@ -278,34 +303,20 @@ class Admin extends BaseController {
 					'class'     => 'example-class',
 				],
 			],
-			// [
-				// 'id'       => 'woo_k_p',
-				// 'title'    => 'Woocommerce Public Key',
-				// 'callback' => [
-					// $this->callbacks,
-					// 'wooPublic',
-				// ],
-				// 'page'     => 'merchi_plugin',
-				// 'section'  => 'merchi_admin_index',
-				// 'args'     => [
-					// 'label_for' => 'woo_k_p',
-					// 'class'     => 'example-class',
-				// ],
-			// ],
-			// [
-				// 'id'       => 'woo_k_s',
-				// 'title'    => 'Woocommerce Secret Key',
-				// 'callback' => [
-					// $this->callbacks,
-					// 'wooSecret',
-				// ],
-				// 'page'     => 'merchi_plugin',
-				// 'section'  => 'merchi_admin_index',
-				// 'args'     => [
-					// 'label_for' => 'woo_k_s',
-					// 'class'     => 'example-class',
-				// ],
-			// ],
+			[
+				'id'       => 'merchi_stripe_api_key',
+				'title'    => 'Stripe API Key',
+				'callback' => [
+					$this->callbacks,
+					'merchiStripeKey'
+				],
+				'page'     => 'merchi_plugin',
+				'section'  => 'merchi_admin_index',
+				'args'     => [
+					'label_for' => 'merchi_stripe_api_key',
+					'class'     => 'example-class',
+				],
+			],
 			[
 				'id'       => 'merchi_staging_mode',
 				'title'    => 'Environment',
@@ -317,6 +328,20 @@ class Admin extends BaseController {
 				'section'  => 'merchi_admin_index',
 				'args'     => [
 					'label_for' => 'merchi_staging_mode',
+					'class'     => 'example-class',
+				],
+			],
+			[
+				'id'       => 'woocommerce_currency',
+				'title'    => 'Currency',
+				'callback' => [
+					$this->callbacks,
+					'merchiSetCurrency'
+				],
+				'page'     => 'merchi_plugin',
+				'section'  => 'merchi_admin_index',
+				'args'     => [
+					'label_for' => 'merchi_curency',
 					'class'     => 'example-class',
 				],
 			],
