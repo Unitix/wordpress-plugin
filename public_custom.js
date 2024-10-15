@@ -2,7 +2,6 @@ const stripe = Stripe(scriptData.merchi_stripe_api_key);
 let elements;
 const MERCHI = MERCHI_INIT.MERCHI_SDK;
 const site_url = scriptData.site_url
-//  console.log(site_url+'/cart');
 
 const cartShipmentQuote = {
   shipmentMethod: { originAddress: {}, taxType: {} },
@@ -175,7 +174,6 @@ async function patchRecieverAddress(cart, address, step) {
 function initializeStripe() {
   var billing_values = frontendajax.billing_values;
   if (!frontendajax.stripeSecret) {
-    //console.log("stripeSecret is not set");
     return false;
   }
   const clientSecret = frontendajax.stripeSecret;
@@ -328,7 +326,6 @@ function captureEmail(input) {
 async function addClientToCart(cart, userId) {
   const embed = { client: { emailAddresses: {}, profilePicture: {} } };
   const user = new MERCHI.User().id(userId);
-  const cartEnt = await localStorageGetCartEnt();
   cart.client(user);
   cart.patch(
     (response) => {
@@ -475,7 +472,6 @@ function navigateStep(step) {
       const cookieValue = getCookieByName("cart-" + scriptData.merchi_domain);
       var token = false;
       var id = false;
-      //console.log(phone);
       if (cookieValue) {
         const cookieArray = cookieValue.split(",");
         token = cookieArray[1].trim();
@@ -618,9 +614,9 @@ jQuery(document).ready(function ($) {
     createCart();
   }
 
-  var notice = document.createElement("div");
-  var noticeUl = document.createElement("ul");
-  var error = false;
+  var notice = document.createElement("div"),
+      noticeUl = document.createElement("ul");
+
   noticeUl.classList.add("woocommerce-error");
   noticeUl.setAttribute("role", "alert");
   notice.classList.add("woocommerce-NoticeGroup");
@@ -698,57 +694,126 @@ jQuery(document).ready(function ($) {
     });
   });
 
+  async function patchWooCart(cartPayload) {
+    await jQuery.ajax({
+      method: "POST",
+      url: frontendajax.ajaxurl,
+      data: {
+        action: "send_id_for_add_cart",
+        item: cartPayload,
+      },
+      success: function (response) {
+        window.location.href = site_url + '/cart/';
+      },
+      error: function (error) {
+        throw "Something went wrong, Please try again later";
+      },
+    });
+  }
 
-  
+ 
+
+
+
   document.addEventListener("click", function (event) {
     var target = event.target;
-    if (
-      target.classList.contains("btn-primary") && !target.classList.contains("product-button-get-quote") &&
-      !target.classList.contains("product-group-button-add")
-    ){
-      target.parentElement.classList.add("cst-disabled-btn-parent");
-      target.innerHTML = "<span>Adding To Cart...</span>";
-      const clonedElement = target.cloneNode(true);
-      target.style.display = "none";
-      target.parentNode.insertBefore(clonedElement, target.nextSibling);
-      setTimeout(function () {
-        if (scriptData.is_single_product) {
-          const cookie = getCookieByName("cart-" + scriptData.merchi_domain);
-         // console.log(cookie);
-          const cookieValueArray = cookie.split(",");
-          const id = cookieValueArray[0].trim();
-          const token = cookieValueArray[1].trim();
-          const cartEnt = new MERCHI.Cart().id(id).token(token);
-          cartEnt.get(
-            (cart) => {
-              localStorageUpdateCartEnt(cart);
-              const cartJson = new MERCHI.toJson(cart);
-              var cartPayload = {};
-              cartPayload["cartId"] = cartJson.id;
-              cartPayload["taxAmount"] = cartJson.taxAmount;
-              cartPayload["cartItems"] = {};
-              cartJson.cartItems.forEach(function (item, itemIndex) {
-                cartPayload["cartItems"][itemIndex] = {
-                  productID: item.product.id,
-                  quantity: item.quantity,
-                  subTotal: item.subtotalCost,
-                  totalCost: item.totalCost,
-                };
-                var obj = {};
-                var objExtras = {};
-                var count = 0;
-                if (
-                  Array.isArray(item.variationsGroups) &&
-                  item.variationsGroups.length > 0
-                ) {
-                  item.variationsGroups.forEach(function (group, gi) {
+    const $button = jQuery('.product-button-add-to-cart');
+    // the observer is used to watch the cart button for a state change on the
+    // disabled attr. We need this because if we mutate the DOM element while
+    // react is in the middle of a state change, the page will crash.
+    const observer = new MutationObserver((mutationsList) => {
+      for (const mutation of mutationsList) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'disabled') {
+          // Check if 'disabled' attribute has been removed
+          const isDisabled = mutation.target.hasAttribute('disabled');
+          // When the disabled attr is removed from the button this means that react
+          // has finished with the element; it's now save to use jQuery to change the button
+          if (!isDisabled) {
+            $button.text('Loading...');
+            $button.prop('disabled', true);
+          }
+        }
+      }
+    });
+    if (target?.classList?.contains("product-button-add-to-cart")){
+      // Start observing the target node
+      observer.observe(target, { attributes: true });
+      try {
+        setTimeout(function () {
+          // Check if the current page is a single product page
+          if (scriptData.is_single_product) {
+            // Retrieve the cart cookie to get cart details
+            const cookie = getCookieByName("cart-" + scriptData.merchi_domain);
+           // Parse the cart cookie value
+            const cookieValueArray = cookie.split(",");
+            const id = cookieValueArray[0].trim();
+            const token = cookieValueArray[1].trim();
+             // Create a new Cart instance and fetch the cart details
+            const cartEnt = new MERCHI.Cart().id(id).token(token);
+            cartEnt.get(
+              (cart) => {
+                // Update local storage with cart details
+                localStorageUpdateCartEnt(cart);
+                const cartJson = new MERCHI.toJson(cart);
+                var cartPayload = {};
+                cartPayload["cartId"] = cartJson.id;
+                cartPayload["taxAmount"] = cartJson.taxAmount;
+                cartPayload["cartItems"] = {};
+                // Process each cart item of responce
+                cartJson.cartItems.forEach(function (item, itemIndex) {
+                  cartPayload["cartItems"][itemIndex] = {
+                    productID: item.product.id,
+                    quantity: item.quantity,
+                    subTotal: item.subtotalCost,
+                    totalCost: item.totalCost,
+                  };
+                  var obj = {};
+                  var objExtras = {};
+                  var count = 0;
+                   // Process item variations groups if present
+                  // Get the selected value of responce and assing in cartPayload array
+                  if (
+                    Array.isArray(item.variationsGroups) &&
+                    item.variationsGroups.length > 0
+                  ) {
+                    item.variationsGroups.forEach(function (group, gi) {
+                      cartPayload["cartItems"][itemIndex]["variations"] = [];
+                      cartPayload["cartItems"][itemIndex]["objExtras"] = [];
+                      obj[count] = {};
+                      objExtras[count] = {};
+                      var loopcount = 0;
+                      var varQuant = false;
+                      group.variations.forEach(function (variation, vi) {
+                        if (variation.selectedOptions.length) {
+                          obj[count][vi] = variation.selectedOptions[0].value;
+                        } else if (variation.hasOwnProperty("value")) {
+                          obj[count][vi] = variation.value;
+                        }
+                        varQuant = variation.quantity;
+                        loopcount = vi + 1;
+                      });
+                      objExtras[count][loopcount] = varQuant;
+                      objExtras[count]["quantity"] = varQuant;
+                      count++;
+                      cartPayload["cartItems"][itemIndex]["variations"].push(obj);
+                      cartPayload["cartItems"][itemIndex]["objExtras"].push(
+                        objExtras
+                      );
+                    });
+                  } 
+                  // Process item variations if present
+                  // Get the selected value of responce and assing in cartPayload array
+                  if (
+                    Array.isArray(item.variations) &&
+                    item.variations.length > 0
+                  ) {
                     cartPayload["cartItems"][itemIndex]["variations"] = [];
                     cartPayload["cartItems"][itemIndex]["objExtras"] = [];
                     obj[count] = {};
                     objExtras[count] = {};
                     var loopcount = 0;
                     var varQuant = false;
-                    group.variations.forEach(function (variation, vi) {
+                    item.variations.forEach(function (variation, vi) {
                       if (variation.selectedOptions.length) {
                         obj[count][vi] = variation.selectedOptions[0].value;
                       } else if (variation.hasOwnProperty("value")) {
@@ -759,88 +824,77 @@ jQuery(document).ready(function ($) {
                     });
                     objExtras[count][loopcount] = varQuant;
                     objExtras[count]["quantity"] = varQuant;
-                    count++;
                     cartPayload["cartItems"][itemIndex]["variations"].push(obj);
                     cartPayload["cartItems"][itemIndex]["objExtras"].push(
                       objExtras
                     );
-                  });
-                } else if (
-                  Array.isArray(item.variations) &&
-                  item.variations.length > 0
-                ) {
-                  cartPayload["cartItems"][itemIndex]["variations"] = [];
-                  cartPayload["cartItems"][itemIndex]["objExtras"] = [];
-                  obj[count] = {};
-                  objExtras[count] = {};
-                  var loopcount = 0;
-                  var varQuant = false;
-                  item.variations.forEach(function (variation, vi) {
-                    if (variation.selectedOptions.length) {
-                      obj[count][vi] = variation.selectedOptions[0].value;
-                    } else if (variation.hasOwnProperty("value")) {
-                      obj[count][vi] = variation.value;
-                    }
-                    varQuant = variation.quantity;
-                    loopcount = vi + 1;
-                  });
-                  objExtras[count][loopcount] = varQuant;
-                  objExtras[count]["quantity"] = varQuant;
-                  cartPayload["cartItems"][itemIndex]["variations"].push(obj);
-                  cartPayload["cartItems"][itemIndex]["objExtras"].push(
-                    objExtras
-                  );
-                }
-              });
-              if (
-                cartJson.hasOwnProperty("cartItems") &&
-                Array.isArray(cartJson.cartItems) &&
-                cartJson.cartItems.length !== 0
-              ) {
-                jQuery.ajax({
-                  method: "POST",
-                  url: frontendajax.ajaxurl,
-                  data: {
-                    action: "send_id_for_add_cart",
-                    item: cartPayload,
-                  },
-                  success: function (response) {
-                    target.parentElement.classList.remove(
-                      "cst-disabled-btn-parent"
-                    );
-                    target.style.display = "block";
-                    clonedElement.remove();
-                    jQuery(document.body).trigger("wc_fragment_refresh");
-                    setTimeout(function () {
-                      jQuery(document.body).trigger("wc_fragment_refresh");
-                      window.location.href = site_url + '/cart/';
-                    }, 1000);
-                  },
-                  error: function (error) {
-                    alert("Something went wrong, Please try again later");
-                  },
+                  }
                 });
-              } else {
-                target.parentElement.classList.remove(
-                  "cst-disabled-btn-parent"
-                );
-                target.style.display = "block";
-                target.innerHTML = "Add To Cart";
-                clonedElement.remove();
-              }
-            },
-            (error) => {
-              console.log(error);
-              return null;
-            },
-            cartEmbed
-          );
-        }
-      }, 3500);
+                // Check if the cart has items
+                if (
+                  cartJson.hasOwnProperty("cartItems") &&
+                  Array.isArray(cartJson.cartItems) &&
+                  cartJson.cartItems.length !== 0
+                ) {
+                  //$('#overlay').show(); // Show overlay
+                  //$('#product-loader').show(); // Show loader
+                  // Send cart data to the server using AJAX
+                  jQuery.ajax({
+                    method: "POST",
+                    url: frontendajax.ajaxurl,
+                    data: {
+                      action: "send_id_for_add_cart",
+                      item: cartPayload,
+                    },
+                    success: function (response) {
+                      window.location.href = site_url + '/cart/';
+                      // On success, restore the original button state
+                      target.parentElement.classList.remove(
+                        "cst-disabled-btn-parent"
+                      );
+                      target.style.display = "block";
+                      clonedElement.remove();
+                      // Trigger a refresh of the cart fragments
+                      jQuery(document.body).trigger("wc_fragment_refresh");
+                      setTimeout(function () {
+                        // Redirect to the cart page after a short delay
+                        jQuery(document.body).trigger("wc_fragment_refresh");
+                        window.location.href = site_url + '/cart/';
+                      }, 500);
+                      //$('#overlay').hide(); // Show overlay
+                      //$('#product-loader').hide(); // Show loader
+                    },
+                    error: function (error) {
+                      // On error, show an alert to the user
+                      //$('#overlay').hide(); // Show overlay
+                      //$('#product-loader').hide(); // Show loader
+                      alert("Something went wrong, Please try again later");
+                    },
+                  });
+                } else {
+                  // If the cart is empty, restore the button state
+                  target.parentElement.classList.remove(
+                    "cst-disabled-btn-parent"
+                  );
+                  target.style.display = "block";
+                  target.innerHTML = "Add To Cart";
+                  clonedElement.remove();
+                }
+              },
+              (error) => {
+                // Handle errors from fetching cart details
+                console.log(error);
+                return null;
+              },
+              cartEmbed
+            );
+          }
+        }, 500); // Simulate a delay
+      } catch (e) {
+        console.error(e)
+      }
     }
   });
-
-
 
   jQuery(document).on("click", ".remove.remove-product", function (e) {
     e.preventDefault();
@@ -849,7 +903,6 @@ jQuery(document).ready(function ($) {
     var classes = $this.parents(".cart_item").attr("class");
     classes = classes.split(" ");
     classes = classes[2].split("_");
-    console.log("classes", classes);
     var actual_pos = parseInt(classes[2]);
     $this.closest("li").find(".ajax-loading").show();
     const cookieValue = getCookieByName("cart-" + scriptData.merchi_domain);
@@ -891,8 +944,6 @@ jQuery(document).ready(function ($) {
         const variationsGroupsEmbed = {
           variations: variationsEmbed,
         };
-        var cartData = false;
-        var cartObj = false;
         const embedd = {
           receiverAddress: {},
           client: {},
@@ -923,17 +974,4 @@ jQuery(document).ready(function ($) {
       },
     });
   });
-
-  // jQuery("#cst_returning_customer").change(function () {
-  //   if (jQuery(this).is(":checked")) {
-  //     document.cookie =
-  //       "cstReturningUser=true; expires=Fri, 31 Dec 9999 23:59:59 GMT; path=/";
-  //   } else {
-  //     document.cookie =
-  //       "cstReturningUser=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
-  //   }
-  //   location.reload();
-  // });
-
-  
 });
