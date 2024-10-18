@@ -2,6 +2,7 @@ const stripe = Stripe(scriptData.merchi_stripe_api_key);
 let elements;
 const MERCHI = MERCHI_INIT.MERCHI_SDK;
 const site_url = scriptData.site_url
+//  console.log(site_url+'/cart');
 
 const cartShipmentQuote = {
   shipmentMethod: { originAddress: {}, taxType: {} },
@@ -174,6 +175,7 @@ async function patchRecieverAddress(cart, address, step) {
 function initializeStripe() {
   var billing_values = frontendajax.billing_values;
   if (!frontendajax.stripeSecret) {
+    //console.log("stripeSecret is not set");
     return false;
   }
   const clientSecret = frontendajax.stripeSecret;
@@ -472,6 +474,7 @@ function navigateStep(step) {
       const cookieValue = getCookieByName("cart-" + scriptData.merchi_domain);
       var token = false;
       var id = false;
+      //console.log(phone);
       if (cookieValue) {
         const cookieArray = cookieValue.split(",");
         token = cookieArray[1].trim();
@@ -717,6 +720,7 @@ jQuery(document).ready(function ($) {
 
   document.addEventListener("click", function (event) {
     var target = event.target;
+	console.log('cst_tar', target.innerText);
     const $button = jQuery('.product-button-add-to-cart');
     // the observer is used to watch the cart button for a state change on the
     // disabled attr. We need this because if we mutate the DOM element while
@@ -755,6 +759,7 @@ jQuery(document).ready(function ($) {
                 // Update local storage with cart details
                 localStorageUpdateCartEnt(cart);
                 const cartJson = new MERCHI.toJson(cart);
+                console.log(cartJson);
                 var cartPayload = {};
                 cartPayload["cartId"] = cartJson.id;
                 cartPayload["taxAmount"] = cartJson.taxAmount;
@@ -895,6 +900,16 @@ jQuery(document).ready(function ($) {
       }
     }
   });
+
+
+
+
+
+
+
+
+
+
 
   jQuery(document).on("click", ".remove.remove-product", function (e) {
     e.preventDefault();

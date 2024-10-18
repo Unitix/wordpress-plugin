@@ -38,6 +38,7 @@
   background-color: #e0e0e0;
 }
 
+
 .overlay {
   position: fixed;
   top: 0;
@@ -68,7 +69,9 @@
   left: 0;
   right: 0;
 }
+
 /* Safari */
+
 @-webkit-keyframes spin {
   0% {
     -webkit-transform: rotate(0deg);
@@ -262,3 +265,7 @@ input[type="checkbox"] {
 }
 
 /* Admin CSS */
+
+#mini-cart .remove-product {
+  display: none !important;
+}
