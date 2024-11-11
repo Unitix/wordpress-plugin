@@ -3,7 +3,7 @@
  * Plugin Name:       Merchi Plugin
  * Plugin URI:        https://merchi.co
  * Description:       Fetch your products from Merchi. This plugin requires Woocommerce.
- * Version:           1.4.3
+ * Version:           1.4.4
  * Author:            Charlie Campton
  * License:           GPL v2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
@@ -645,7 +645,8 @@ function enqueue_admin_customfiles()
 		'merchi_mode' => MERCHI_MODE,
 		'merchi_domain' => MERCHI_DOMAIN,
 		'merchi_url' => MERCHI_URL,
-		'merchi_secret' => MERCHI_API_SECRET
+		'merchi_secret' => MERCHI_API_SECRET,
+		'woo_product_id' => get_the_ID()
 	));
 }
 add_action('admin_enqueue_scripts', 'enqueue_admin_customfiles');
@@ -1679,5 +1680,63 @@ function add_product_loader_to_header() {
 		  <?php
 }
 
+add_action('wp_ajax_fetch_products', 'fetch_products_from_merchi');
+add_action('wp_ajax_nopriv_fetch_products', 'fetch_products_from_merchi');
 
+function fetch_products_from_merchi() {
+    // Get necessary data from the AJAX request or set defaults
+    $api_key = sanitize_text_field($_POST['apiKey']);
+    $api_url = sanitize_url($_POST['apiUrl']);
+    $domain_id = sanitize_text_field($_POST['domainId']);
+    $offset = isset($_POST['offset']) ? intval($_POST['offset']) : 0;
+    $limit = 1000; // Or adjust as needed
+
+    // Build the API URL
+    $api_url = esc_url_raw($api_url."v6/products/?apiKey=$api_key&inDomain=$domain_id&limit=$limit&offset=$offset");
+
+
+    // Make the external API request
+    $response = wp_remote_get($api_url);
+
+    // Check if the request was successful
+    if (is_wp_error($response)) {
+        wp_send_json_error(['message' => 'Error fetching products']);
+        wp_die();
+    }
+
+    // Get and decode the API response
+    $body = wp_remote_retrieve_body($response);
+    $products = json_decode($body, true);
+
+    // Return the products to the JavaScript function
+    if (isset($products['products']) && !empty($products['products'])) {
+        wp_send_json_success($products);
+    } else {
+        wp_send_json_error(['message' => 'No products found']);
+    }
+
+    wp_die(); // Terminate to ensure no further output
+}
+
+add_action('wp_ajax_save_product_meta', 'save_product_meta_callback');
+
+function save_product_meta_callback() {
+    $product_id = intval($_POST['wooProductId']);
+    $selected_id = sanitize_text_field($_POST['selectedId']);
+    $selected_name = sanitize_text_field($_POST['selectedName']);
+    $selected_price = sanitize_text_field($_POST['selectedPrice']);
+
+    if (!$product_id) {
+        wp_send_json_error(['message' => 'Invalid product ID']);
+        wp_die();
+    }
+
+    // Update WooCommerce product meta
+    update_post_meta($product_id, 'product_id', $selected_id);
+	update_post_meta($product_id, 'product_name', $selected_name);
+	update_post_meta($product_id, '_regular_price',  $selected_price);
+
+    wp_send_json_success(['message' => 'Product meta saved successfully']);
+    wp_die();
+}
 

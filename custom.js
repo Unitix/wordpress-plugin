@@ -49,8 +49,10 @@ function fetchProducts() {
   cstloader.show();
   searchIcon.hide();
   const limit = 1000;
+  const apiUrl = scriptData.merchi_url;
   const apiKey = scriptData.merchi_secret;
-  const apiUrl = `${scriptData.merchi_url}v6/products/?apiKey=${apiKey}&inDomain=${domainId}&limit=${limit}&offset=${offset}`;
+  const domainId = scriptData.merchi_domain;
+  const wooProductId = scriptData.woo_product_id; // Get the current product ID
   const searchTerm = jQuery("#custom_value_field").val();
 
   if (loadingData || !hasMoreProducts) {
@@ -62,16 +64,27 @@ function fetchProducts() {
   }
 
   currentRequest = jQuery.ajax({
-    url: apiUrl,
-    type: "GET",
+    url: frontendajax.ajaxurl, // WordPress AJAX URL
+    type: "POST",
+    data: {
+      action: "fetch_products", // Action name defined in PHP
+      apiUrl: apiUrl,
+      apiKey: apiKey,
+      domainId: domainId,
+      wooProductId: wooProductId,
+      offset: offset,
+    },
     beforeSend: function () {
       loadingData = true;
     },
     success: function (response) {
-      if (response.products.length > 0) {
+      if (response.success && response.data.products.length > 0) {
         const dropdownContent = jQuery("#search_results");
 
-        const foundProds = searchProductsByTerm(response.products, searchTerm);
+        const foundProds = searchProductsByTerm(
+          response.data.products,
+          searchTerm
+        );
         foundProds.forEach((product) => {
           const productName = product.name;
           const div = jQuery("<div>");
@@ -82,10 +95,34 @@ function fetchProducts() {
             hiddenProductIdField.value = product.id;
             hiddenProductNameField.value = productName;
             hiddenProductNameprice.value = product.bestPrice;
-            selectedValueDisplay.textContent = name;
+            selectedValueDisplay.textContent = productName;
             selectedValueDisplay.style.display = "inline-block";
             customValueField.style.display = "inline-block";
             dropdownContent.hide();
+            jQuery.ajax({
+              url: frontendajax.ajaxurl,
+              type: "POST",
+              data: {
+                action: "save_product_meta",
+                wooProductId: wooProductId,
+                selectedId: product.id,
+                selectedName: productName,
+                selectedPrice: product.bestPrice,
+              },
+              success: function (response) {
+                if (response.success) {
+                  console.log("Product meta saved successfully");
+                } else {
+                  console.error(
+                    "Failed to save product meta:",
+                    response.data.message
+                  );
+                }
+              },
+              error: function (error) {
+                console.error("Error saving product meta:", error);
+              },
+            });
           });
           dropdownContent.append(div);
         });
@@ -167,7 +204,7 @@ function attachMedia(imageUrl, inputString, msg) {
         jQuery("#product_image_gallery").trigger("change");
         document.getElementsByClassName("loader")[0].style.display = "none";
         document.getElementsByClassName("wrap")[0].style.filter = "none";
-		    location.reload();
+        //location.reload();
       }
     },
     error: function (error) {
@@ -177,75 +214,89 @@ function attachMedia(imageUrl, inputString, msg) {
 }
 
 function spinner() {
-	var postId = jQuery("#post_ID").val();
-    jQuery.ajax({
-        method: "POST",
-        url: frontendajax.ajaxurl, // Assuming frontendajax.ajaxurl contains the correct URL
-		data: {
-        action: "save_flag_for_show_meta",
-		postId: postId,
-		},
-        success: function (response) {
-            if (response && response === "success") { 
-                var elements = document.getElementsByClassName("show-after-selection");
-				for (var i = 0; i < elements.length; i++) {
-					elements[i].style.display = "block";
-				}
-            } else {
-             //   console.log("Failed to update meta.");
-            }
-        },
-        error: function (error) {
-            console.error("Error updating meta:", error);
+  var postId = jQuery("#post_ID").val();
+  jQuery.ajax({
+    method: "POST",
+    url: frontendajax.ajaxurl, // Assuming frontendajax.ajaxurl contains the correct URL
+    data: {
+      action: "save_flag_for_show_meta",
+      postId: postId,
+    },
+    success: function (response) {
+      if (response && response === "success") {
+        var elements = document.getElementsByClassName("show-after-selection");
+        for (var i = 0; i < elements.length; i++) {
+          elements[i].style.display = "block";
         }
-    });
-	
-    document.getElementsByClassName("loader")[0].style.display = "block";
-    document.getElementsByClassName("wrap")[0].style.filter = "blur(1.5px)";
+      } else {
+        //   console.log("Failed to update meta.");
+      }
+    },
+    error: function (error) {
+      console.error("Error updating meta:", error);
+    },
+  });
+
+  document.getElementsByClassName("loader")[0].style.display = "block";
+  document.getElementsByClassName("wrap")[0].style.filter = "blur(1.5px)";
 }
 
 //gc code start here
 jQuery(document).ready(function ($) {
+  $("#remove_selected_value").on("click", function () {
+    // Hide the 'selected_value_display' element
+    $("#selected_value_display").hide();
+    $(this).hide();
+    // Show the 'search_box' element
+    $("#search_box").show();
+    // Reset the input field and hidden fields
+    $("#custom_value_field").val("");
+    hiddenProductIdField.value = "";
+    hiddenProductNameField.value = "";
+    hiddenProductNameprice.value = "";
+  });
 
-    $('#bulk-action-selector-top').change(function() {
-        var selectedValue = $(this).val();
-        if (selectedValue === 'bulk_import') {
-          $('#doaction').attr('type', 'button');
+  $("#bulk-action-selector-top").change(function () {
+    var selectedValue = $(this).val();
+    if (selectedValue === "bulk_import") {
+      $("#doaction").attr("type", "button");
+    }
+  });
+
+  jQuery("#doaction").on("click", function () {
+    // Get the selected action value
+    var selectedAction = $("#bulk-action-selector-top").val();
+    // Check if the selected value is "bulk_import"
+    if (selectedAction === "bulk_import") {
+      var checkedValues = [];
+      $('input[name="product[]"]').each(function () {
+        // Check if the checkbox is checked
+        if ($(this).is(":checked")) {
+          // If checked, push its value to the checkedValues array
+          checkedValues.push($(this).val());
         }
-    });
-
-    jQuery("#doaction").on("click", function () {
-      // Get the selected action value
-      var selectedAction = $('#bulk-action-selector-top').val();
-      // Check if the selected value is "bulk_import"
-      if (selectedAction === 'bulk_import') {
-        var checkedValues = [];
-        $('input[name="product[]"]').each(function() {
-            // Check if the checkbox is checked
-            if ($(this).is(':checked')) {
-                // If checked, push its value to the checkedValues array
-                checkedValues.push($(this).val());
-            }
-        });
-          jQuery.ajax({
-            method: "POST",
-            url: frontendajax.ajaxurl,
-            data: {
-                action: "gc_create_product_background_process",
-                checkedValues: checkedValues,
-            },
-            success: function (response) {
-              var jsonResponse = JSON.parse(response);
-              if(jsonResponse.success==true){
-                alert("Products are currently being imported/synced. Please wait, you will be notified once the task has been completed.");
-              }
-            },
-            error: function (error) {
-                console.error("Error updating meta:", error);
-            }
-        });
-      }
-    });
+      });
+      jQuery.ajax({
+        method: "POST",
+        url: frontendajax.ajaxurl,
+        data: {
+          action: "gc_create_product_background_process",
+          checkedValues: checkedValues,
+        },
+        success: function (response) {
+          var jsonResponse = JSON.parse(response);
+          if (jsonResponse.success == true) {
+            alert(
+              "Products are currently being imported/synced. Please wait, you will be notified once the task has been completed."
+            );
+          }
+        },
+        error: function (error) {
+          console.error("Error updating meta:", error);
+        },
+      });
+    }
+  });
   //gc code end here
 
   jQuery(document).on("click", function (event) {
@@ -265,11 +316,11 @@ jQuery(document).ready(function ($) {
   jQuery("#custom_value_field").on("click", function () {
     const fieldValue = jQuery(this).val().trim();
 
-        if (fieldValue !== "") {
-        // Check if searchResults is not empty before trying to call show()
-        if (searchResults.length > 0) {
-            searchResults.show();
-        } 
+    if (fieldValue !== "") {
+      // Check if searchResults is not empty before trying to call show()
+      if (searchResults.length > 0) {
+        searchResults.show();
+      }
     }
   });
 
@@ -291,30 +342,29 @@ jQuery(document).ready(function ($) {
       }
     }, 5000);
   });
-  
-  jQuery(document).ready(function($) {
+
+  jQuery(document).ready(function ($) {
     // Find the li element with the title "Add New"
-    var addNewLi = $('ul.wp-submenu.wp-submenu-wrap li').filter(function() {
-      return $(this).text().trim() === 'Add New';
+    var addNewLi = $("ul.wp-submenu.wp-submenu-wrap li").filter(function () {
+      return $(this).text().trim() === "Add New";
     });
-  
+
     // Attach click event handler to the "Add New" li
-    addNewLi.on('click', function(event) {
+    addNewLi.on("click", function (event) {
       if (addNewLi.length > 0) {
-        $('.wrap').append('<div class="loader"></div>');
+        $(".wrap").append('<div class="loader"></div>');
       }
       yourMethod();
     });
-    
-    $('.page-title-action').on('click', function() {
+
+    $(".page-title-action").on("click", function () {
       if ($(this).text() === "Add New") {
-          console.log("The button text is 'Add New'");
-          yourMethod();
+        console.log("The button text is 'Add New'");
+        yourMethod();
       } else {
-          console.log("The button text is not 'Add New'");
+        console.log("The button text is not 'Add New'");
       }
-  });
-  
+    });
 
     function yourMethod() {
       document.getElementsByClassName("wrap")[0].style.filter = "blur(2.5px)";
@@ -322,8 +372,6 @@ jQuery(document).ready(function ($) {
       $("#loader").css("margin-top", "-50px");
     }
   });
-  
-
 
   // Event listener for user input
   jQuery("#custom_value_field").on("input", handleInput);
@@ -404,15 +452,13 @@ jQuery(document).ready(function ($) {
     });
   }
 
-  jQuery(document).ready(function($) {
-    $('.if_import').on('click', function(e) {
-        var buttonText = $(this).text().trim();
-        if (buttonText === 'Import') {
-            // Change button text to 'Importing...'
-            $(this).text('Importing...');
-        }
+  jQuery(document).ready(function ($) {
+    $(".if_import").on("click", function (e) {
+      var buttonText = $(this).text().trim();
+      if (buttonText === "Import") {
+        // Change button text to 'Importing...'
+        $(this).text("Importing...");
+      }
     });
-});
-
-
+  });
 });
