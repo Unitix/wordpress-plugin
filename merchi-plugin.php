@@ -1691,11 +1691,12 @@ function fetch_products_from_merchi() {
     $api_key = sanitize_text_field($_POST['apiKey']);
     $api_url = sanitize_url($_POST['apiUrl']);
     $domain_id = sanitize_text_field($_POST['domainId']);
+		$q = sanitize_text_field($_POST['q']);
     $offset = isset($_POST['offset']) ? intval($_POST['offset']) : 0;
-    $limit = 1000; // Or adjust as needed
+    $limit = 25;
 
     // Build the API URL
-    $api_url = esc_url_raw($api_url."v6/products/?apiKey=$api_key&inDomain=$domain_id&limit=$limit&offset=$offset");
+    $api_url = esc_url_raw($api_url."v6/products/?apiKey=$api_key&inDomain=$domain_id&limit=$limit&offset=$offset&q=$q");
 
 
     // Make the external API request
