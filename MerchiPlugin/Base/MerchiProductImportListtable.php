@@ -10,6 +10,9 @@ class MerchiProductImportListtable extends \WP_List_Table
 {
     public $apiKey;  //'UA5_mG2q-XILdYPU1nbOZSZtjDHUnZ0IweQVdTq3Cs2wwwfV2WYXmgwxbdAKEl4bgDo9BGXO1Wi3Wwg4DZOszQ';
     public $domain_id;
+    public $session_token;
+    public $api_url;
+    
     public function __construct()
     {
         parent::__construct(
@@ -21,6 +24,8 @@ class MerchiProductImportListtable extends \WP_List_Table
         );
         $this->prepare_items();
         $merchi_mode = get_option('merchi_staging_mode');
+        $this->session_token = get_option('merchi_api_session_token');
+        $this->api_url = 'https://api.staging.merchi.co/v6/products/';
         if($merchi_mode){
             $this->domain_id = $merchi_mode == 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
             $this->apiKey = $merchi_mode == 'yes' ? get_option('staging_merchi_api_secret') : get_option('merchi_api_secret');
@@ -29,11 +34,12 @@ class MerchiProductImportListtable extends \WP_List_Table
 
     private function fetch_api_data()
     {
+ 
         $curl = curl_init();
         curl_setopt_array(
             $curl,
             array(
-                CURLOPT_URL => "https://api.staging.merchi.co/v6/products/?apiKey=$this->apiKey&limit=0&offset=0&inDomain=$this->domain_id&session_token=5VrrvZy6hAx6KsVqsOZUyz4aG9cz8MLHmwxfAp-EuWhD60AomCg-Y-0dqxM08BbH5wAGzu-hOxZ3NdpTjzmXCQ&embed={%22featureImage%22%3A{}%2C%22images%22%3A{}}&skip_rights=y",
+                CURLOPT_URL => "$this->api_url?apiKey=$this->apiKey&limit=0&offset=0&inDomain=$this->domain_id&session_token=$this->session_token&embed={%22featureImage%22%3A{}%2C%22images%22%3A{}}&skip_rights=y",
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
@@ -176,9 +182,7 @@ class MerchiProductImportListtable extends \WP_List_Table
             $this->_column_headers = array($columns, $hidden, $sortable);
             $this->items = $data;
             return $total_items;
-        } else {
-            echo 'No products found in the response.';
-        }
+        } 
     }
 
     // Import Product In wooCommerce
@@ -187,14 +191,13 @@ class MerchiProductImportListtable extends \WP_List_Table
         update_option('jeetgeetgyayahargya', $product_id_to_import);
         error_log('Importing product to WooCommerce: ' . $product_id_to_import);
         $sku = $product_id_to_import;
-        $key = $this->apiKey;
         $existing_product_id = wc_get_product_id_by_sku($sku);
         if (!$existing_product_id) {
             $curl = curl_init();
             curl_setopt_array(
                 $curl,
                 array(
-                    CURLOPT_URL => "https://api.staging.merchi.co/v6/products/$sku/?apiKey=$key&limit=1&offset=0&inDomain=5&session_token=5VrrvZy6hAx6KsVqsOZUyz4aG9cz8MLHmwxfAp-EuWhD60AomCg-Y-0dqxM08BbH5wAGzu-hOxZ3NdpTjzmXCQ&embed={%22featureImage%22%3A{}%2C%22images%22%3A{}}&skip_rights=y",
+                    CURLOPT_URL => "$this->api_url/$sku/?apiKey=$this->apiKey&limit=1&offset=0&inDomain=$this->domain_id&session_token=$this->session_token&embed={%22featureImage%22%3A{}%2C%22images%22%3A{}}&skip_rights=y",
                     CURLOPT_RETURNTRANSFER => true,
                     CURLOPT_ENCODING => '',
                     CURLOPT_MAXREDIRS => 10,
