@@ -1112,15 +1112,18 @@ function send_id_for_add_cart(){
 						}
 					}
 				}
-				if(isset($cartItem['objExtras'])){
-					foreach( $cartItem['objExtras'] as $objExtras ){
-						foreach( $objExtras as $varKey=>$variationGroup ){
-							$quantity = $quantity + intval($variationGroup['quantity']);
-						}
-					}
-				}else{
-					$quantity = $cartItem['quantity'];
-				}
+				// if(isset($cartItem['objExtras'])){
+				// 	foreach( $cartItem['objExtras'] as $objExtras ){
+				// 		foreach( $objExtras as $varKey=>$variationGroup ){
+				// 			$quantity = $quantity + intval($variationGroup['quantity']);
+				// 		}
+				// 	}
+				// }else{
+				// 	$quantity = $cartItem['quantity'];
+				// }
+				
+				$quantity = $cartItem['quantity'];
+				
 				$cart_item_key = WC()->cart->find_product_in_cart( WC()->cart->generate_cart_id( $product_id, 0, array(), $cart_item_data ) );
 				$currentCartItem = array();
 				if( $cart_item_key && array_key_exists($cart_item_key, $productsAdded) ) {
