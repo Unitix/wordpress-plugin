@@ -48,7 +48,7 @@ function fetchProducts() {
   const searchIcon = jQuery(".search-icon");
   cstloader.show();
   searchIcon.hide();
-  const limit = 1000;
+  const limit = 25;
   const apiUrl = scriptData.merchi_url;
   const apiKey = scriptData.merchi_secret;
   const domainId = scriptData.merchi_domain;
@@ -72,20 +72,18 @@ function fetchProducts() {
       apiKey: apiKey,
       domainId: domainId,
       wooProductId: wooProductId,
-      offset: offset,
+      limit,
+      offset,
+      q: encodeURIComponent(searchTerm),
     },
     beforeSend: function () {
       loadingData = true;
     },
     success: function (response) {
       if (response.success && response.data.products.length > 0) {
+        const { products } = response.data;
         const dropdownContent = jQuery("#search_results");
-
-        const foundProds = searchProductsByTerm(
-          response.data.products,
-          searchTerm
-        );
-        foundProds.forEach((product) => {
+        products.forEach((product) => {
           const productName = product.name;
           const div = jQuery("<div>");
           div.text(productName);
