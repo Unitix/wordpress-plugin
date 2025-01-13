@@ -175,7 +175,6 @@ async function patchRecieverAddress(cart, address, step) {
 function initializeStripe() {
   var billing_values = frontendajax.billing_values;
   if (!frontendajax.stripeSecret) {
-    //console.log("stripeSecret is not set");
     return false;
   }
   const clientSecret = frontendajax.stripeSecret;
@@ -213,7 +212,7 @@ async function handleSubmit(e) {
   const { error, paymentIntent } = await stripe.confirmPayment({
     elements,
     confirmParams: {
-      // Make sure to change this to your payment completion page
+      // TODO Make sure to change this to your payment completion page
       return_url: "https://staging.unitix.com.au/checkout/?confirm=yes",
       receipt_email: billing_values ? billing_values.billing_email : "",
       payment_method_data: {
