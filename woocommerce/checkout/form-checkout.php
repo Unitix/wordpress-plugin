@@ -235,83 +235,207 @@ if( 1 == $current_step ){
 	<?php endif; ?>
 </form>
 <script>
-function getShippingGroup() {
-            // Find the "MerchiCart" cookie    
-            const name = '<?php echo 'cart-'.MERCHI_DOMAIN; ?>';
-            const cookies = document.cookie.split(';');
-            let cartValue = null;
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.startsWith(name + '=')) {
-                    cartValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-            //get shipping details 
-            if (cartValue) {
-                const values = cartValue.split(',');
-                const cartid = values[0];
-                const carttoken = values[1];
-                var requestOptions = {
-                    method: 'GET',
-                    redirect: 'follow'
-                };
-				const MERCHI = MERCHI_INIT.MERCHI_SDK;
-				const ccart = new MERCHI.Cart();
-				ccart.id(cartid);
-				ccart.token(carttoken);
-				var embedd = '{"cartItems":{"product":{"domain":{"company":{"defaultTaxType":{},"taxTypes":{}}},"featureImage":{},"groupVariationFields":{"options":{"linkedFile":{}}},"images":{},"independentVariationFields":{"options":{"linkedFile":{}}},"taxType":{}},"taxType":{},"variations":{"selectedOptions":{},"variationField":{"options":{"linkedFile":{},"variationCostDiscountGroup":{},"variationUnitCostDiscountGroup":{}},"variationCostDiscountGroup":{},"variationUnitCostDiscountGroup":{}},"variationFiles":{}},"variationsGroups":{"variations":{"selectedOptions":{},"variationField":{"options":{"linkedFile":{},"variationCostDiscountGroup":{},"variationUnitCostDiscountGroup":{}},"variationCostDiscountGroup":{},"variationUnitCostDiscountGroup":{}},"variationFiles":{}}}},"client":{"emailAddresses":{},"profilePicture":{}},"clientCompany":{},"domain":{"company":{"defaultTaxType":{},"isStripeAccountEnabled":{},"taxTypes":{}}},"invoice":{},"receiverAddress":{},"shipmentGroups":{"cartItems":{"product":{}},"quotes":{"shipmentMethod":{"originAddress":{},"taxType":{}}},"selectedQuote":{"shipmentMethod":{"originAddress":{},"taxType":{}}}}}';
-				embedd = JSON.parse(embedd);
-				var merchi_api_url = '<?php echo MERCHI_URL; ?>';
-                fetch(`${merchi_api_url}v6/generate-cart-shipment-quotes/${cartid}/?cart_token=${carttoken}`,
-                        requestOptions)
-                    .then(response => response.text())
-                    .then(result => {
-                       // console.log("from get =>", result);
-                       
-                        const parsedResult = JSON.parse(result); // Parse the JSON string
-                        var subTotal = parsedResult.cartItemsTotalCost;
-                        var shipping = parsedResult.shipmentTotalCost;
-                        var totalCost = parsedResult.totalCost;
-                        const shipmentList = document.getElementById('shipmentList'); // Get the <ul> element
-                        parsedResult.shipmentGroups.map((shipmentGroup, index) => {
-                            var shipmentGroupid = shipmentGroup.id;
-                           // console.log('shipmentGroup id =>', shipmentGroupid);
-                            shipmentGroup.quotes.map((quote, quoteIndex) => {
-                                const shipmentMethodName = quote.shipmentMethod.name;
-                                const transportCompanyName = quote.shipmentMethod
-                                    .transportCompanyName;
-                                const totalCost = quote.totalCost;
-                                const quoteid = quote.id;
-                               // console.log('quoteid id =>', quoteid);
-                                const listItem = document.createElement('li');
-								ccart.get((data) => {
-									var cartEnt = data;
-									
-									const qEnt = cartEnt.shipmentGroups()[index].quotes()[quoteIndex];
-									var qEntStr = encodeURIComponent(JSON.stringify(qEnt));
-									var quoteStr = encodeURIComponent(JSON.stringify(quote));
-									var chckd = '';
-									if( 0 == quoteIndex ){
-										chckd = 'checked=true';
-									}
-									listItem.className = 'cursor-pointer list-group-item';
-									listItem.innerHTML = `<div class="shipment-option"><div class="shipment-info"><p>${shipmentMethodName}</p><small>${transportCompanyName}</small><div><small class="shipment-price">AUD $${totalCost.toFixed(2)}</small></div></div><div><input type="radio" name="shipmentGroup" id="shipmentGroup_${quote.id}" data-quote-id="${quote.id}" data-shipment-group-id="${shipmentGroupid}" class="radio-class" data-index="${index}" data-quoteIndex="${quoteIndex}" ${chckd} onclick="updateShipmentMethod(${index}, ${quoteIndex})"></div></div>`;
-									if( 0 == quoteIndex ){
-										updateShipmentMethod(index, quoteIndex);
-									}
-									shipmentList.appendChild(listItem);
-								},(error) => console.log(JSON.stringify(error)), embedd);
-                            });
-                        });
-                    })
-                    .catch(error => console.log('error', error));
+	/**
+	 * Asynchronous function to retrieve and display shipment group details.
+	 *
+	 * It fetches shipment quotes for a cart from the Merchi API and displays
+	 * available shipment methods and their details on the page.
+	 */
+	async function getShippingGroup() {
+		// Initialize Merchi SDK
+		const MERCHI = MERCHI_INIT.MERCHI_SDK;
+		const merchi_api_url = '<php echo MERCHI_URL; ?>';
+
+		// Define an empty cart structure
+		const cartEmbed = {
+			"cartItems": {
+				"product": {
+					"domain": {
+						"company": {
+							"defaultTaxType": {},
+							"taxTypes": {}
+						}
+					},
+					"featureImage": {},
+					"groupVariationFields": {
+						"options": {
+							"linkedFile": {}
+						}
+					},
+					"images": {},
+					"independentVariationFields": {
+						"options": {
+							"linkedFile": {}
+						}
+					},
+					"taxType": {}
+				},
+				"taxType": {},
+				"variations": {
+					"selectedOptions": {},
+					"variationField": {
+						"options": {
+							"linkedFile": {},
+							"variationCostDiscountGroup": {},
+							"variationUnitCostDiscountGroup": {}
+						},
+						"variationCostDiscountGroup": {},
+						"variationUnitCostDiscountGroup": {}
+					},
+					"variationFiles": {}
+				},
+				"variationsGroups": {
+					"variations": {
+						"selectedOptions": {},
+						"variationField": {
+							"options": {
+								"linkedFile": {},
+								"variationCostDiscountGroup": {},
+								"variationUnitCostDiscountGroup": {}
+							},
+							"variationCostDiscountGroup": {},
+							"variationUnitCostDiscountGroup": {}
+						},
+						"variationFiles": {}
+					}
+				}
+			},
+			"client": {
+				"emailAddresses": {},
+				"profilePicture": {}
+			},
+			"clientCompany": {},
+			"domain": {
+				"company": {
+					"defaultTaxType": {},
+					"isStripeAccountEnabled": {},
+					"taxTypes": {}
+				}
+			},
+			"invoice": {},
+			"receiverAddress": {},
+			"shipmentGroups": {
+				"cartItems": {
+					"product": {}
+				},
+				"quotes": {
+					"shipmentMethod": {
+						"originAddress": {},
+						"taxType": {}
+					}
+				},
+				"selectedQuote": {
+					"shipmentMethod": {
+						"originAddress": {},
+						"taxType": {}
+					}
+				}
+			}
+		};
+
+		// Construct the expected cookie name
+		const name = '<php echo 'cart-' + MERCHI_DOMAIN; ?>';
+		const cookies = document.cookie.split(';');
+		let cartValue = null;
+
+		// Locate the "MerchiCart" cookie and retrieve its value
+		for (let i = 0; i < cookies.length; i++) {
+			const cookie = cookies[i].trim();
+			if (cookie.startsWith(name + '=')) {
+				cartValue = decodeURIComponent(cookie.substring(name.length + 1));
+				break;
+			}
+		}
+
+		// If the cart cookie is found, proceed to retrieve shipping data
+		if (cartValue) {
+			const merchiCart = new MERCHI.Cart();
+			const values = cartValue.split(',');
+			const cartid = values[0];
+			const merchiCartToken = values[1];
+			const requestOptions = { method: 'GET', redirect: 'follow' };
+
+			// Set the cart ID and token for the MerchiCart instance
+			merchiCart.id(cartid);
+			merchiCart.token(merchiCartToken);
+
+			try {
+				// Fetch shipment quotes from the Merchi API
+				const response = await fetch(
+					`${merchi_api_url}v6/generate-cart-shipment-quotes/${cartid}/?cart_token=${merchiCartToken}`,
+					requestOptions
+				);
+				const parsedResult = await response.json(); // Parse the JSON string
+
+				// Extract subtotal, shipping cost, and total cost
+				const subTotal = parsedResult.cartItemsTotalCost;
+				const shipping = parsedResult.shipmentTotalCost;
+				const totalCost = parsedResult.totalCost;
+
+				// Get the <ul> element to display shipment options
+				const shipmentList = document.getElementById('shipmentList');
+
+				// Iterate over shipment groups and display each shipment option
+				parsedResult.shipmentGroups.forEach((shipmentGroup, index) => {
+					const shipmentGroupId = shipmentGroup.id;
 					
-            }
-        }
-		<?php if($is_registered){ ?>
-			getShippingGroup();
-		<?php } ?>
+					shipmentGroup.quotes.forEach((quote, quoteIndex) => {
+						const shipmentMethodName = quote.shipmentMethod.name;
+						const transportCompanyName = quote.shipmentMethod.transportCompanyName;
+						const totalCost = quote.totalCost;
+						const quoteId = quote.id;
+						
+						const listItem = document.createElement('li');
+						
+						// Retrieve cart data and display shipment option
+						merchiCart.get(
+							(data) => {
+								const cartEnt = data;
+								const qEnt = cartEnt.shipmentGroups()[index].quotes()[quoteIndex];
+								const qEntStr = encodeURIComponent(JSON.stringify(qEnt));
+								const quoteStr = encodeURIComponent(JSON.stringify(quote));
+								let checked = '';
+								if (quoteIndex === 0) checked = 'checked=true';
+
+								listItem.className = 'cursor-pointer list-group-item';
+								listItem.innerHTML = `
+									<div class="shipment-option">
+										<div class="shipment-info">
+											<p>${shipmentMethodName}</p>
+											<small>${transportCompanyName}</small>
+										</div>
+										<div>
+											<small class="shipment-price">AUD $${totalCost.toFixed(2)}</small>
+										</div>
+									</div>
+									<div>
+										<input type="radio" name="shipmentGroup" id="shipmentGroup_${quoteId}"
+											data-quote-id="${quoteId}"
+											data-shipment-group-id="${shipmentGroupId}"
+											class="radio-class"
+											data-index="${index}"
+											data-quoteIndex="${quoteIndex}"
+											${checked}
+											onclick="updateShipmentMethod(${index}, ${quoteIndex})">
+									</div>
+								`;
+
+								if (quoteIndex === 0) updateShipmentMethod(index, quoteIndex);
+								shipmentList.appendChild(listItem);
+							},
+							(error) => console.log(JSON.stringify(error)),
+							cartEmbed
+						);
+					});
+				});
+			} catch (error) {
+				console.log('Error fetching shipping data:', error);
+			}
+		}
+	}
+	<?php if($is_registered){ ?>
+		getShippingGroup();
+	<?php } ?>
 </script>
 <?php
 
