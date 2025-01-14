@@ -2,7 +2,6 @@ const stripe = Stripe(scriptData.merchi_stripe_api_key);
 let elements;
 const MERCHI = MERCHI_INIT.MERCHI_SDK;
 const site_url = scriptData.site_url
-//  console.log(site_url+'/cart');
 
 const cartShipmentQuote = {
   shipmentMethod: { originAddress: {}, taxType: {} },
@@ -204,8 +203,18 @@ function initializeStripe() {
 }
 async function handleSubmit(e) {
   e.preventDefault();
-  var billing_values = frontendajax.billing_values;
   setLoading(true);
+  const {
+    billing_email = "",
+    billing_first_name = "",
+    billing_phone = "",
+    billing_address_1 = "",
+    billing_address_2 = "",
+    billing_city = "",
+    billing_country = "",
+    billing_postcode = "",
+    billing_state = "",
+  } = frontendajax.billing_values;
   const clientSecret = frontendajax.stripeSecret;
   elems = stripe.elements({ clientSecret });
 
@@ -214,19 +223,19 @@ async function handleSubmit(e) {
     confirmParams: {
       // TODO Make sure to change this to your payment completion page
       return_url: "https://staging.unitix.com.au/checkout/?confirm=yes",
-      receipt_email: billing_values ? billing_values.billing_email : "",
+      receipt_email: billing_email,
       payment_method_data: {
         billing_details: {
-          email: billing_values ? billing_values.billing_email : "",
-          name: billing_values ? billing_values.billing_first_name : "",
-          phone: billing_values ? billing_values.billing_phone : "",
+          email: billing_email,
+          name: billing_first_name,
+          phone: billing_phone,
           address: {
-            line1: billing_values ? billing_values.billing_address_1 : "",
-            line2: billing_values ? billing_values.billing_address_2 : "",
-            city: billing_values ? billing_values.billing_city : "",
-            country: billing_values ? billing_values.billing_country : "",
-            postal_code: billing_values ? billing_values.billing_postcode : "",
-            state: billing_values ? billing_values.billing_state : "",
+            line1: billing_address_1,
+            line2: billing_address_2,
+            city: billing_city,
+            country: billing_country,
+            postal_code: billing_postcode,
+            state: billing_state,
           },
         },
       },
@@ -674,11 +683,10 @@ jQuery(document).ready(function ($) {
   var ccode = false;
   $(document.body).on("updated_checkout", function (data) {
     var ajax_url = frontendajax.ajaxurl,
-      country_code = $("#billing_country").val();
-    var ajax_data = {
-      action: "append_country_prefix_in_billing_phone",
-      country_code: $("#billing_country").val(),
-    };
+        ajax_data = {
+          action: "append_country_prefix_in_billing_phone",
+          country_code: $("#billing_country").val(),
+        };
     $.post(ajax_url, ajax_data, function (response) {
       ccode = response;
       $("#billing_phone").val(response);
@@ -694,32 +702,10 @@ jQuery(document).ready(function ($) {
         }, 1);
       });
     });
-  });
-
-  async function patchWooCart(cartPayload) {
-    await jQuery.ajax({
-      method: "POST",
-      url: frontendajax.ajaxurl,
-      data: {
-        action: "send_id_for_add_cart",
-        item: cartPayload,
-      },
-      success: function (response) {
-        window.location.href = site_url + '/cart/';
-      },
-      error: function (error) {
-        throw "Something went wrong, Please try again later";
-      },
-    });
-  }
-
- 
-
-
+  }); 
 
   document.addEventListener("click", function (event) {
     var target = event.target;
-	console.log('cst_tar', target.innerText);
     const $button = jQuery('.product-button-add-to-cart');
     // the observer is used to watch the cart button for a state change on the
     // disabled attr. We need this because if we mutate the DOM element while
@@ -899,16 +885,6 @@ jQuery(document).ready(function ($) {
       }
     }
   });
-
-
-
-
-
-
-
-
-
-
 
   jQuery(document).on("click", ".remove.remove-product", function (e) {
     e.preventDefault();
