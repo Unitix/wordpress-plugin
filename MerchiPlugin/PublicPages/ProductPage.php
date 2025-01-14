@@ -24,16 +24,8 @@ class ProductPage extends BaseController {
 		if ($product->get_sku() !== '') {
 			$id        = $product->get_sku();
 			$container = 'product-' . strval( $product->get_id() );
-            $redirectUrl = esc_attr( get_option( 'merchi_redirect_url' ) );
+      $redirectUrl = esc_attr( get_option( 'merchi_redirect_url' ) );
 			$redirectUrlQuote = esc_attr( get_option( 'merchi_redirect_url_quote' ) );
-			
-			// wp_enqueue_script( 'show_merchi_product', $this->plugin_url . 'assets/show_product.js' );
-			// $script_data = [
-			// 	'mountPointId' => $container,
-			// 	'productId'    => $id,
-            //                     'redirectAfterSuccessUrl' => $redirectUrl
-			// ];
-			// wp_localize_script( 'show_merchi_product', 'merchiShowProductScriptOptions', $script_data );
 
 			if( get_option( 'merchi_staging_mode' ) == 'yes' ) {
 
