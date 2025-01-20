@@ -68,8 +68,8 @@ class AdminCallbacks extends BaseController {
 
 	public function merchiAdminSection() {
 		echo 'Update your Merchi settings';
-		$current_currency = get_option('woocommerce_currency');
-		echo $current_currency;
+		//$current_currency = get_option('woocommerce_currency');
+		//echo $current_currency;
 	}
 
 
@@ -135,5 +135,9 @@ class AdminCallbacks extends BaseController {
         echo '</select>';
 	}
 
+	public function merchiSetSessionToken() {
+		$value = esc_attr( get_option( 'merchi_api_session_token' ) );
+		echo '<input type="text" class="regular-text" name="merchi_api_session_token" value="' . $value . '" placeholder="">';
+	}
 	// phpcs:enable
 }
