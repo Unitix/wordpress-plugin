@@ -4,7 +4,7 @@
  * Plugin URI:        https://merchi.co
  * Description:       Fetch your products from Merchi. This plugin requires Woocommerce.
  * Version:           1.4.4
- * Author:            Charlie Campton
+ * Author:            Merchi
  * License:           GPL v2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  *

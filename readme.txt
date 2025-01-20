@@ -1,5 +1,5 @@
 === Merchi ===
-Contributors: charlower, dbcmerchi
+Contributors: Merchi
 Tags: merchi, merchandise
 Requires at least: 5.1
 Tested up to: 5.7
