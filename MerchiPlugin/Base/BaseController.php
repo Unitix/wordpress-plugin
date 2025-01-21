@@ -6,9 +6,9 @@
 namespace MerchiPlugin\Base;
 
 class BaseController {
-
 	public $plugin_path;
-
+	public $plugin_url;
+	public $plugin;
 
 	public function __construct() {
 		$this->plugin_path = plugin_dir_path( dirname( __FILE__, 2 ) );
