@@ -1112,15 +1112,6 @@ function send_id_for_add_cart(){
 						}
 					}
 				}
-				// if(isset($cartItem['objExtras'])){
-				// 	foreach( $cartItem['objExtras'] as $objExtras ){
-				// 		foreach( $objExtras as $varKey=>$variationGroup ){
-				// 			$quantity = $quantity + intval($variationGroup['quantity']);
-				// 		}
-				// 	}
-				// }else{
-				// 	$quantity = $cartItem['quantity'];
-				// }
 				
 				$quantity = $cartItem['quantity'];
 				
@@ -1312,6 +1303,10 @@ function cst_init_gateway_class() {
  		/**
  		 * Class constructor, more about it in Step 3
  		 */
+
+		public $testmode;
+		public $private_key;
+		public $publishable_key;
  		public function __construct() {
 			
 			$this->id = 'merchi'; // payment gateway plugin ID
