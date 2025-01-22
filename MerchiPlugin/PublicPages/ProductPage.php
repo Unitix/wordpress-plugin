@@ -21,7 +21,7 @@ class ProductPage extends BaseController {
 	public function inject_merchi_product() {
 		global $product;
 		// SKU used as Merchi ID. We are checking to see if Merchi ID exists. If so fetch Merchi product.
-		if (!$product->get_meta('product_id')) {
+		if ($product->get_meta('product_id') !== '') {
 
 			$sync_keys = array(
 				'redirect_after_success_url' => 'redirectAfterSuccessUrl',
@@ -112,3 +112,4 @@ class ProductPage extends BaseController {
 
 
 }
+
