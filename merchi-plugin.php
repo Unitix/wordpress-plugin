@@ -282,15 +282,6 @@ function cst_is_postcode( $postcode, $country ) {
 	return $valid;
 }
 
-
-// function cst_is_phone( $phone ) {
-
-// 	// $phone = preg_replace('/[^0-9]/', '', $phone);
-//     // $phone= substr_replace($phone, ' ', 5, 0);
-//     // return $phone;   /^\+?\d{2,3}(\s?[\(\)\-]?\d{3,5}[\(\)\-]?\s?)?\d{6,}$/
-// 	 return (bool) preg_match( "/^\\+?[1-9][0-9]{7,14}$/", $phone );
-	 
-// }
 function cst_is_phone($phone, $country) {
 	//$phone = preg_replace("/[^0-9+]/", "", $phone);
 	$patterns = [
@@ -730,8 +721,11 @@ function render_custom_product_meta_box()
 ?>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
 <div>
-    <?php if (!$newproduct_id) { ?> <h3 style="margin-left: 5px;  cursor: pointer;">To See Merchi Fields Please Enter
-        Product Title Fist And Publish</h3> <?php } ?>
+    <?php if (!$newproduct_id) { ?>
+			  <h3 style="margin-left: 5px;  cursor: pointer;">
+				    To See Merchi Fields Please Enter Product Title Fist And Publish
+				</h3>
+		<?php } ?>
     <?php if ($newproduct_id) { ?>
     <input type="hidden" id="hidden_product_id" name="hidden_product_id" value="<?php echo esc_attr($product_id); ?>">
     <input type="hidden" id="hidden_product_name" name="hidden_product_name"
@@ -1538,7 +1532,7 @@ add_action('wp_ajax_nopriv_prodct_title_attach', 'prodct_title_attach');
 function prodct_title_attach() {
     $product_title = sanitize_text_field($_POST['product_title']);
     $product_id = sanitize_text_field($_POST['postId']);
-	$product_sku = sanitize_text_field($_POST['product_id']); 
+	  $product_sku = sanitize_text_field($_POST['product_id']); 
     error_log('Product Title: ' . $product_title);
     error_log('Product ID: ' . $product_id);
 
@@ -1732,8 +1726,8 @@ function save_product_meta_callback() {
 
     // Update WooCommerce product meta
     update_post_meta($product_id, 'product_id', $selected_id);
-	update_post_meta($product_id, 'product_name', $selected_name);
-	update_post_meta($product_id, '_regular_price',  $selected_price);
+	  update_post_meta($product_id, 'product_name', $selected_name);
+	  update_post_meta($product_id, '_regular_price',  $selected_price);
 
     wp_send_json_success(['message' => 'Product meta saved successfully']);
     wp_die();
