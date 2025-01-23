@@ -9,7 +9,7 @@ const customValueField = document.getElementById("custom_value_field");
 const hiddenProductIdField = document.getElementById("hidden_product_id");
 const hiddenProductNameField = document.getElementById("hidden_product_name");
 const hiddenProductNameprice = document.getElementById("hidden_regular_price");
-const searchIcon = document.querySelector(".search-icon");
+const $fetchProductLoadingElement = document.querySelector(".search-icon");
 const searchResults = document.getElementById("search_results");
 function handleInput() {
   clearTimeout(jQuery.data(this, "timer"));
@@ -44,10 +44,10 @@ function searchProductsByTerm(products, searchTerm) {
 }
 
 function fetchProducts() {
-  const cstloader = jQuery(".cst-loader");
-  const searchIcon = jQuery(".search-icon");
-  cstloader.show();
-  searchIcon.hide();
+  const $searchProductsLoaderIcon = jQuery(".cst-loader");
+  const $fetchProductLoadingElement = jQuery(".search-icon");
+  $searchProductsLoaderIcon.show();
+  $fetchProductLoadingElement.hide();
   const limit = 25;
   const apiUrl = scriptData.merchi_url;
   const apiKey = scriptData.merchi_secret;
@@ -79,21 +79,22 @@ function fetchProducts() {
     beforeSend: function () {
       loadingData = true;
     },
-    success: function (response) {
+    success: (response) => {
       if (response.success && response.data.products.length > 0) {
         const { products } = response.data;
         const dropdownContent = jQuery("#search_results");
-        products.forEach((product) => {
-          const productName = product.name;
+        products.forEach((item) => {
+          const { product } = item;
+          const { bestPrice, id, name } = product;
           const div = jQuery("<div>");
-          div.text(productName);
+          div.text(name);
           div.addClass("search-result");
           div.on("click", function () {
-            jQuery("#custom_value_field").val(productName);
-            hiddenProductIdField.value = product.id;
-            hiddenProductNameField.value = productName;
-            hiddenProductNameprice.value = product.bestPrice;
-            selectedValueDisplay.textContent = productName;
+            jQuery("#custom_value_field").val(name);
+            hiddenProductIdField.value = id;
+            hiddenProductNameField.value = name;
+            hiddenProductNameprice.value = bestPrice;
+            selectedValueDisplay.textContent = name;
             selectedValueDisplay.style.display = "inline-block";
             customValueField.style.display = "inline-block";
             dropdownContent.hide();
@@ -103,9 +104,9 @@ function fetchProducts() {
               data: {
                 action: "save_product_meta",
                 wooProductId: wooProductId,
-                selectedId: product.id,
-                selectedName: productName,
-                selectedPrice: product.bestPrice,
+                selectedId: id,
+                selectedName: name,
+                selectedPrice: bestPrice,
               },
               success: function (response) {
                 if (response.success) {
@@ -124,20 +125,28 @@ function fetchProducts() {
           });
           dropdownContent.append(div);
         });
-        cstloader.hide();
-        searchIcon.show();
+        $searchProductsLoaderIcon.hide();
+        $fetchProductLoadingElement.hide();
         dropdownContent.show();
 
         offset += limit;
       } else {
         hasMoreProducts = false; // Set flag to false if no more products
+        loadingData = false;
+        $fetchProductLoadingElement.hide();
+        $searchProductsLoaderIcon.hide();
       }
     },
-    complete: function () {
+    complete: () => {
       loadingData = false;
+      $fetchProductLoadingElement.hide();
+      $searchProductsLoaderIcon.hide();
     },
-    error: function (error) {
+    error: (error) => {
       console.error("Error fetching products:", error);
+      loadingData = false;
+      $fetchProductLoadingElement.hide();
+      $searchProductsLoaderIcon.hide();
     },
   });
 }
@@ -227,7 +236,7 @@ function spinner() {
           elements[i].style.display = "block";
         }
       } else {
-        //   console.log("Failed to update meta.");
+        console.log("Failed to update meta.");
       }
     },
     error: function (error) {

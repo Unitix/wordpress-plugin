@@ -20,32 +20,36 @@ class ProductPage extends BaseController {
 
 	public function inject_merchi_product() {
 		global $product;
-		// SKU used as Merchi ID. We are checking to see if Merchi ID exists. If so fetch Merchi product.
-		if ($product->get_sku() !== '') {
 
-		$sync_keys = array(
-			'redirect_after_success_url' => 'redirectAfterSuccessUrl',
-			'redirect_after_quote_success_url' => 'redirectAfterQuoteSuccessUrl',
-			'redirect_with_value' => 'redirectWithValue',
-			'hide_info' => 'hideInfo',
-			'hide_preview' => 'hidePreview',
-			'hide_price' => 'hidePrice',
-			'hide_title' => 'hideTitle',
-			'hide_calculated_price' => 'hideCalculatedPrice',
-			'include_bootstrap' => 'includeBootstrap',
-			'not_include_default_css' => 'notIncludeDefaultCss',
-			'invoice_redirect' => 'invoiceRedirect',
-			'load_theme' => 'loadTheme',
-			'mount_point_id' => 'mountPointId',
-			'single_column' => 'singleColumn',
-			'quote_requested_redirect' => 'quoteRequestedRedirect',
-			'google_api_public_key' => 'googleApiPublicKey',
-			'allow_add_to_cart' => 'allowAddToCart',
-			'hide_drafting' => 'hideDrafting',
+		// Display the product title
+    woocommerce_template_single_title();
+
+		// SKU used as Merchi ID. We are checking to see if Merchi ID exists. If so fetch Merchi product.
+		if ($product->get_meta('product_id') !== '') {
+
+			$sync_keys = array(
+				'redirect_after_success_url' => 'redirectAfterSuccessUrl',
+				'redirect_after_quote_success_url' => 'redirectAfterQuoteSuccessUrl',
+				'redirect_with_value' => 'redirectWithValue',
+				'hide_info' => 'hideInfo',
+				'hide_preview' => 'hidePreview',
+				'hide_price' => 'hidePrice',
+				'hide_title' => 'hideTitle',
+				'hide_calculated_price' => 'hideCalculatedPrice',
+				'include_bootstrap' => 'includeBootstrap',
+				'not_include_default_css' => 'notIncludeDefaultCss',
+				'invoice_redirect' => 'invoiceRedirect',
+				'load_theme' => 'loadTheme',
+				'mount_point_id' => 'mountPointId',
+				'single_column' => 'singleColumn',
+				'quote_requested_redirect' => 'quoteRequestedRedirect',
+				'google_api_public_key' => 'googleApiPublicKey',
+				'allow_add_to_cart' => 'allowAddToCart',
+				'hide_drafting' => 'hideDrafting',
 			);
 			
 			$atts = array(
-				'id' => $product->get_meta('merchi_id'),
+				'id' => $product->get_meta('product_id'),
 				'redirect_after_success_url' => $product->get_meta('redirectAfterSuccessUrl'),
 				'redirect_after_quote_success_url' => $product->get_meta('redirectAfterQuoteSuccessUrl'),
 				'redirect_with_value' => $product->get_meta('redirectWithValue'),
@@ -85,8 +89,8 @@ class ProductPage extends BaseController {
 					$src .='&'.$sync_keys[$key]."=".$atr;
 			}
 				
-			$content = '<script type="text/javascript" data-name="product-embed" src="'.$src.'"></script>';
-      echo $content;
+			$content = '<div class="merchi-product-form-container"><script type="text/javascript" data-name="product-embed" src="'.$src.'"></script></div>';
+			echo $content;
 		} else {
 			echo 'Merchi product not found.';
 		}
@@ -109,7 +113,4 @@ class ProductPage extends BaseController {
 		remove_action( 'woocommerce_single_variation', 'woocommerce_single_variation', 10 );
 		remove_action( 'woocommerce_single_variation', 'woocommerce_single_variation_add_to_cart_button', 20 );
 	}
-
-
 }
-
