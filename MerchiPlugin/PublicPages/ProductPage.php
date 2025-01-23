@@ -20,6 +20,10 @@ class ProductPage extends BaseController {
 
 	public function inject_merchi_product() {
 		global $product;
+
+		// Display the product title
+    woocommerce_template_single_title();
+
 		// SKU used as Merchi ID. We are checking to see if Merchi ID exists. If so fetch Merchi product.
 		if ($product->get_meta('product_id') !== '') {
 
@@ -85,7 +89,7 @@ class ProductPage extends BaseController {
 					$src .='&'.$sync_keys[$key]."=".$atr;
 			}
 				
-			$content = '<script type="text/javascript" data-name="product-embed" src="'.$src.'"></script>';
+			$content = '<div class="merchi-product-form-container"><script type="text/javascript" data-name="product-embed" src="'.$src.'"></script></div>';
 			echo $content;
 		} else {
 			echo 'Merchi product not found.';
@@ -109,7 +113,4 @@ class ProductPage extends BaseController {
 		remove_action( 'woocommerce_single_variation', 'woocommerce_single_variation', 10 );
 		remove_action( 'woocommerce_single_variation', 'woocommerce_single_variation_add_to_cart_button', 20 );
 	}
-
-
 }
-
