@@ -1,3 +1,8 @@
+/* Helpers */
+.hide {
+  display: none !important;
+}
+
 #custom_value_field {
   width: 100%;
   padding: 8px 30px 8px 8px;
