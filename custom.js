@@ -110,7 +110,21 @@ function fetchProducts() {
               },
               success: function (response) {
                 if (response.success) {
-                  console.log("Product meta saved successfully");
+                  jQuery.ajax({
+                      url: frontendajax.ajaxurl,
+                      type: "POST",
+                      data: {
+                          action: "fetch_merchi_product",
+                          wooProductId: wooProductId
+                      },
+                      success: function (response) {
+                          if (response.success) {
+                              console.log("Variations created successfully:", response.message);
+                          } else {
+                              console.error("Error:", response.message);
+                          }
+                      }
+                  });
                 } else {
                   console.error(
                     "Failed to save product meta:",

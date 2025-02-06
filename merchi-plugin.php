@@ -1733,3 +1733,127 @@ function save_product_meta_callback() {
     wp_die();
 }
 
+add_action('wp_ajax_fetch_merchi_product', 'fetch_merchi_product_callback');
+function fetch_merchi_product_callback() {
+    $woo_product_id = intval($_POST['wooProductId']);
+    $merchi_product_id = get_post_meta($woo_product_id, 'product_id', true);
+    
+    if (!$merchi_product_id) {
+        wp_send_json_error(['message' => 'Merchi Product ID not found for WooCommerce Product ID: ' . $woo_product_id]);
+    }
+
+    $api_url = MERCHI_URL . "v6/products/$merchi_product_id/?apiKey=" . MERCHI_API_SECRET . "&inDomain=" . MERCHI_DOMAIN . "&embed={\"independentVariationFields\":{\"options\":{}},\"images\":{}}&skip_rights=y";
+
+    $response = wp_remote_get($api_url);
+    $data = json_decode(wp_remote_retrieve_body($response), true);
+
+    create_variations_for_product($woo_product_id, $data);
+    
+    wp_send_json_success(['message' => 'Variations created for WooCommerce Product ID: ' . $woo_product_id]);
+}
+
+function create_variations_for_product($woo_product_id, $merchi_product_data) {
+	$product = wc_get_product($woo_product_id);
+
+	$attributes_to_add = [];
+
+	$merchi_product = $merchi_product_data['product'];
+
+	if (!empty($merchi_product['independentVariationFields'])) {
+			foreach ($merchi_product['independentVariationFields'] as $variation_field) {
+
+					if (!empty($variation_field['options']) && is_array($variation_field['options'])) {
+							$variation_name = sanitize_title($variation_field['name']);
+							$variation_label = sanitize_text_field($variation_field['name']);
+							$variation_options = [];
+
+							foreach ($variation_field['options'] as $option) {
+									if (!empty($option['value']) && !empty($option['include'])) {
+											$variation_options[] = sanitize_text_field($option['value']);
+									}
+							}
+
+							if (!empty($variation_options)) {
+									$attributes_to_add[$variation_name] = [
+											'name'         => $variation_label,
+											'value'        => implode('|', $variation_options),
+											'position'     => 0,
+											'is_visible'   => 1,
+											'is_variation' => 1,
+											'is_taxonomy'  => 0
+									];
+							}
+					}
+			}
+	}
+
+	update_post_meta($woo_product_id, '_product_attributes', $attributes_to_add);
+
+	create_variation_combinations($woo_product_id, $attributes_to_add);
+}
+
+function create_variation_combinations($woo_product_id, $attributes) {
+	$product = wc_get_product($woo_product_id);
+
+	$variations = [];
+	foreach ($attributes as $attribute_name => $attribute_data) {
+			$values = explode('|', $attribute_data['value']);
+			$variations[] = $values;
+	}
+
+	$variation_combinations = generate_combinations($variations);
+
+	foreach ($variation_combinations as $variation_values) {
+			$variation_id = wc_get_product_variation_id($woo_product_id, $variation_values);
+
+			if (!$variation_id) {
+					$variation = new WC_Product_Variation();
+					$variation->set_parent_id($woo_product_id);
+					$variation->set_attributes(array_combine(array_keys($attributes), $variation_values));
+					$variation->set_regular_price(0);
+					$variation->set_stock_status('instock');
+					$variation_id = $variation->save();
+			}
+	}
+}
+
+function generate_combinations($arrays, $i = 0) {
+	if (!isset($arrays[$i])) {
+			return [[]];
+	}
+
+	$combinations = [];
+	foreach ($arrays[$i] as $value) {
+			foreach (generate_combinations($arrays, $i + 1) as $combination) {
+					array_unshift($combination, $value);
+					$combinations[] = $combination;
+			}
+	}
+	return $combinations;
+}
+
+function wc_get_product_variation_id($product_id, $attributes) {
+	$args = [
+			'post_type'   => 'product_variation',
+			'post_parent' => $product_id,
+			'numberposts' => -1,
+			'fields'      => 'ids'
+	];
+
+	$variations = get_posts($args);
+
+	foreach ($variations as $variation_id) {
+			$match = true;
+			foreach ($attributes as $key => $value) {
+					if (get_post_meta($variation_id, 'attribute_' . sanitize_title($key), true) !== $value) {
+							$match = false;
+							break;
+					}
+			}
+			if ($match) {
+					return $variation_id;
+			}
+	}
+	return false;
+}
+
