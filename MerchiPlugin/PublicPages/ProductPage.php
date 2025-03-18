@@ -12,10 +12,45 @@ class ProductPage extends BaseController {
 
 	public function register() {
 		// Inject Merchi product into product page.
-		add_filter( 'woocommerce_single_product_summary', [ $this, 'inject_merchi_product' ], 98 );
+		//add_filter( 'woocommerce_single_product_summary', [ $this, 'inject_merchi_product' ], 98 );
 		// Remove product content based on category
+		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_product_attributes_dropdowns' ] );
 		add_action( 'wp', [ $this, 'remove_product_content' ] );
 	}
+
+	public function custom_product_attributes_dropdowns() {
+    global $product;
+
+    $product_id = $product->get_id();
+    $attributes = get_post_meta($product_id, '_product_attributes', true);
+
+    if (empty($attributes) || !is_array($attributes)) {
+        return;
+    }
+
+    echo '<div id="custom-variation-options">';
+
+    foreach ($attributes as $taxonomy => $attribute) {
+        if ($attribute['is_taxonomy']) {
+            $terms = get_terms(array('taxonomy' => $taxonomy, 'hide_empty' => false));
+
+            if (!empty($terms)) {
+                echo '<label for="' . esc_attr($taxonomy) . '">' . wc_attribute_label($taxonomy) . ':</label>';
+                echo '<select class="custom-variation-select" name="' . esc_attr($taxonomy) . '" id="' . esc_attr($taxonomy) . '">';
+
+                foreach ($terms as $index => $term) {
+                    echo '<option value="' . esc_attr($term->slug) . '"' . ($index === 0 ? ' selected' : '') . '>' . esc_html($term->name) . '</option>';
+                }
+
+                echo '</select>';
+            }
+        }
+    }
+
+    echo '</div>';
+
+    echo '<p id="custom-price-display">Price: $<span id="custom-price">10</span></p>';
+}
 
 
 	public function inject_merchi_product() {
@@ -99,14 +134,14 @@ class ProductPage extends BaseController {
 
 	public function remove_product_content() {
 		remove_action( 'woocommerce_after_single_product_summary', 'woocommerce_output_related_products', 20 );
-		remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_title', 5 );
+		//remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_title', 5 );
 		remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_rating', 10 );
 		remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_price', 10 );
-		remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_excerpt', 20 );
+		//remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_excerpt', 20 );
 		remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_meta', 40 );
 		remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_sharing', 50 );
-		remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_add_to_cart', 30 );
-		remove_action( 'woocommerce_simple_add_to_cart', 'woocommerce_simple_add_to_cart', 30 );
+		//remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_add_to_cart', 30 );
+		//remove_action( 'woocommerce_simple_add_to_cart', 'woocommerce_simple_add_to_cart', 30 );
 		remove_action( 'woocommerce_grouped_add_to_cart', 'woocommerce_grouped_add_to_cart', 30 );
 		remove_action( 'woocommerce_variable_add_to_cart', 'woocommerce_variable_add_to_cart', 30 );
 		remove_action( 'woocommerce_external_add_to_cart', 'woocommerce_external_add_to_cart', 30 );

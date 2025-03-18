@@ -1755,16 +1755,23 @@ function fetch_merchi_product_callback() {
 function create_variations_for_product($woo_product_id, $merchi_product_data) {
 	$product = wc_get_product($woo_product_id);
 
-	$attributes_to_add = [];
+	if (!$product) {
+			return;
+	}
 
+	$attributes_to_add = [];
 	$merchi_product = $merchi_product_data['product'];
 
 	if (!empty($merchi_product['independentVariationFields'])) {
 			foreach ($merchi_product['independentVariationFields'] as $variation_field) {
-
+				var_dump($merchi_product);
 					if (!empty($variation_field['options']) && is_array($variation_field['options'])) {
-							$variation_name = sanitize_title($variation_field['name']);
-							$variation_label = sanitize_text_field($variation_field['name']);
+							$raw_attribute_name = sanitize_text_field($variation_field['name']);
+
+							// ✅ Dynamically shorten attribute slug to fit within WooCommerce’s 28-character limit
+							$variation_name = generate_short_slug($raw_attribute_name);
+							$variation_label = sanitize_text_field($raw_attribute_name); // Human-friendly label
+
 							$variation_options = [];
 
 							foreach ($variation_field['options'] as $option) {
@@ -1774,23 +1781,116 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 							}
 
 							if (!empty($variation_options)) {
-									$attributes_to_add[$variation_name] = [
-											'name'         => $variation_label,
-											'value'        => implode('|', $variation_options),
-											'position'     => 0,
+									$taxonomy = 'pa_' . $variation_name; // WooCommerce global attribute taxonomy format
+
+									// Create global attribute if not exists
+									if (!taxonomy_exists($taxonomy)) {
+											create_global_attribute($variation_name, $variation_label);
+									}
+
+									// Ensure all values exist as terms
+									foreach ($variation_options as $option_value) {
+											if (!term_exists($option_value, $taxonomy)) {
+													wp_insert_term($option_value, $taxonomy);
+											}
+									}
+
+									// Assign attribute to the product
+									$attributes_to_add[$taxonomy] = [
+											'name'         => wc_attribute_taxonomy_name($variation_name),
 											'is_visible'   => 1,
 											'is_variation' => 1,
-											'is_taxonomy'  => 0
+											'is_taxonomy'  => 1
 									];
+
+									// Assign terms (attribute values) to the product
+									wp_set_object_terms($woo_product_id, $variation_options, $taxonomy);
 							}
 					}
 			}
 	}
 
+	// Save attributes correctly so they appear in WooCommerce product editor
 	update_post_meta($woo_product_id, '_product_attributes', $attributes_to_add);
 
-	create_variation_combinations($woo_product_id, $attributes_to_add);
+	// Ensure product type is variable (important for variations)
+	//wp_set_object_terms($woo_product_id, 'variable', 'product_type');
 }
+
+/**
+* Create a global WooCommerce attribute if it doesn't exist
+*/
+function create_global_attribute($attribute_name, $attribute_label) {
+	global $wpdb;
+
+	$attribute_name = generate_short_slug($attribute_name);
+	$attribute_label = sanitize_text_field($attribute_label);
+
+	// Check if attribute exists
+	$exists = $wpdb->get_var($wpdb->prepare(
+			"SELECT attribute_id FROM {$wpdb->prefix}woocommerce_attribute_taxonomies WHERE attribute_name = %s",
+			$attribute_name
+	));
+
+	if (!$exists) {
+			// Insert into WC attribute table
+			$wpdb->insert(
+					"{$wpdb->prefix}woocommerce_attribute_taxonomies",
+					[
+							'attribute_name' => $attribute_name,
+							'attribute_label' => $attribute_label,
+							'attribute_type' => 'select',
+							'attribute_orderby' => 'menu_order',
+							'attribute_public' => 0
+					],
+					['%s', '%s', '%s', '%s', '%d']
+			);
+
+			// Flush cache to update attributes list
+			delete_transient('wc_attribute_taxonomies');
+
+			// Register taxonomy for new attribute
+			register_taxonomy(
+					'pa_' . $attribute_name,
+					'product',
+					[
+							'hierarchical' => false,
+							'show_ui' => false,
+							'query_var' => true,
+							'rewrite' => false,
+					]
+			);
+	}
+}
+
+/**
+* Generate a valid, unique, and shortened slug for WooCommerce attributes
+*/
+function generate_short_slug($attribute_name) {
+	// Convert to lowercase and replace spaces with underscores
+	$slug = sanitize_title($attribute_name);
+	$slug = str_replace('-', '_', $slug);
+
+	// WooCommerce attribute slugs have a max length of 28 characters
+	if (strlen($slug) > 28) {
+			// Shorten it while keeping readability
+			$words = explode('_', $slug);
+			$short_slug = '';
+
+			foreach ($words as $word) {
+					if (strlen($short_slug . '_' . $word) <= 28) {
+							$short_slug .= (empty($short_slug) ? '' : '_') . $word;
+					} else {
+							break;
+					}
+			}
+
+			$slug = $short_slug;
+	}
+	
+	return $slug;
+}
+
 
 function create_variation_combinations($woo_product_id, $attributes) {
 	$product = wc_get_product($woo_product_id);

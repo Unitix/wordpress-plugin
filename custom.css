@@ -274,3 +274,65 @@ input[type="checkbox"] {
 #mini-cart .remove-product {
   display: none !important;
 }
+
+/* -------------------------------
+ Custom product attributes styling
+ ------------------------------- */
+
+ #custom-variation-options {
+  margin-top: 20px;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #f9f9f9;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Labels for attributes */
+#custom-variation-options label {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+/* Dropdown styling */
+.custom-variation-select {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: white;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease-in-out;
+}
+
+/* Add hover and focus effect */
+.custom-variation-select:hover, 
+.custom-variation-select:focus {
+  border-color: #0073aa;
+  outline: none;
+}
+
+/* Price display */
+#custom-price-display {
+  margin-top: 15px;
+  font-size: 20px;
+  font-weight: bold;
+  color: #222;
+  text-align: center;
+  background: #e6f7ff;
+  padding: 12px;
+  border-radius: 6px;
+  display: inline-block;
+  width: 100%;
+}
+
+/* Make price value standout */
+#custom-price {
+  color: #0073aa;
+  font-size: 24px;
+}
