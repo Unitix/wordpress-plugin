@@ -16,6 +16,27 @@ class ProductPage extends BaseController {
 		// Remove product content based on category
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_product_attributes_dropdowns' ] );
 		add_action( 'wp', [ $this, 'remove_product_content' ] );
+		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_merchi_scripts' ] );
+	}
+
+	public function enqueue_merchi_scripts() {
+		if (is_product()) {
+			wp_enqueue_script(
+				'merchi-product-form',
+				plugin_dir_url(dirname(dirname(__FILE__))) . 'assets/merchi-product-form.js',
+				array('jquery'),
+				'1.0.0',
+				true
+			);
+
+			// Add Merchi configuration data
+			wp_localize_script('merchi-product-form', 'merchiConfig', array(
+				'apiKey' => get_option('merchi_api_key'),
+				'domainId' => get_option('merchi_domain_id'),
+				'apiUrl' => get_option('merchi_staging_mode') === 'yes' ? 'https://staging.merchi.co/' : 'https://merchi.co/',
+				'productId' => get_post_meta(get_the_ID(), 'product_id', true)
+			));
+		}
 	}
 
 	public function custom_product_attributes_dropdowns() {
@@ -28,7 +49,7 @@ class ProductPage extends BaseController {
         return;
     }
 
-    echo '<div id="custom-variation-options">';
+    echo '<div id="custom-variation-options" class="merchi-product-form">';
 
     foreach ($attributes as $taxonomy => $attribute) {
         if ($attribute['is_taxonomy']) {
@@ -49,7 +70,8 @@ class ProductPage extends BaseController {
 
     echo '</div>';
 
-    echo '<p id="custom-price-display">Price: $<span id="custom-price">10</span></p>';
+    echo '<p id="custom-price-display">Price: $<span id="merchi-product-price">10</span></p>';
+    echo '<p id="merchi-price-error" style="color: red; display: none;"></p>';
 }
 
 
