@@ -1764,7 +1764,7 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 
 	if (!empty($merchi_product['independentVariationFields'])) {
 			foreach ($merchi_product['independentVariationFields'] as $variation_field) {
-				var_dump($merchi_product);
+				
 					if (!empty($variation_field['options']) && is_array($variation_field['options'])) {
 							$raw_attribute_name = sanitize_text_field($variation_field['name']);
 
