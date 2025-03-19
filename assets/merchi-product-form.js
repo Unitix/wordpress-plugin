@@ -3,26 +3,74 @@ jQuery(document).ready(function($) {
     const merchiProductId = $('#merchi-product-id').val();
     const merchiApiUrl = $('#merchi-api-url').val();
 
+    // Function to set nested object value
+    function setNestedValue(obj, path, value) {
+        const keys = path.split('.');
+        let current = obj;
+        
+        for (let i = 0; i < keys.length - 1; i++) {
+            const key = keys[i];
+            // Handle array notation in keys (e.g., variations[1])
+            const arrayMatch = key.match(/(\w+)\[(\d+)\]/);
+            if (arrayMatch) {
+                const arrayKey = arrayMatch[1];
+                const arrayIndex = parseInt(arrayMatch[2]);
+                if (!current[arrayKey]) {
+                    current[arrayKey] = [];
+                }
+                if (!current[arrayKey][arrayIndex]) {
+                    current[arrayKey][arrayIndex] = {};
+                }
+                current = current[arrayKey][arrayIndex];
+            } else {
+                if (!current[key]) {
+                    current[key] = {};
+                }
+                current = current[key];
+            }
+        }
+        
+        const lastKey = keys[keys.length - 1];
+        const arrayMatch = lastKey.match(/(\w+)\[(\d+)\]/);
+        if (arrayMatch) {
+            const arrayKey = arrayMatch[1];
+            const arrayIndex = parseInt(arrayMatch[2]);
+            if (!current[arrayKey]) {
+                current[arrayKey] = [];
+            }
+            current[arrayKey][arrayIndex] = value;
+        } else {
+            current[lastKey] = value;
+        }
+    }
+
     // Function to serialize form data
     function serializeFormData() {
         const formData = {};
+        
         $('.merchi-product-form select, .merchi-product-form input[type="checkbox"], .merchi-product-form input[type="radio"]').each(function() {
             const field = $(this);
             const name = field.attr('name');
+            const variationFieldId = field.attr('data-variation-field-id');
             
-            if (name) {
+            if (name && variationFieldId) {
+                let value;
                 if (field.is('select')) {
-                    formData[name] = field.val();
+                    value = field.val();
                 } else if (field.is('input[type="checkbox"]')) {
                     // For checkboxes, only include if checked
                     if (field.is(':checked')) {
-                        formData[name] = field.val();
+                        value = field.val();
                     }
                 } else if (field.is('input[type="radio"]')) {
                     // For radio buttons, only include if checked
                     if (field.is(':checked')) {
-                        formData[name] = field.val();
+                        value = field.val();
                     }
+                }
+
+                if (value !== undefined) {
+                    setNestedValue(formData, variationFieldId, value);
                 }
             }
         });

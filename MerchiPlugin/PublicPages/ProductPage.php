@@ -44,6 +44,8 @@ class ProductPage extends BaseController {
 
     $product_id = $product->get_id();
     $attributes = get_post_meta($product_id, '_product_attributes', true);
+    $independent_variation_fields = get_post_meta($product_id, '_merchi_independent_variation_fields', true);
+    $group_variation_fields = get_post_meta($product_id, '_merchi_group_variation_fields', true);
 
     if (empty($attributes) || !is_array($attributes)) {
         return;
@@ -56,8 +58,33 @@ class ProductPage extends BaseController {
             $terms = get_terms(array('taxonomy' => $taxonomy, 'hide_empty' => false));
 
             if (!empty($terms)) {
+                // Find the corresponding variation field ID
+                $variation_field_id = '';
+                if (!empty($independent_variation_fields)) {
+                    foreach ($independent_variation_fields as $field) {
+                        if ($field->name === $taxonomy) {
+                            $variation_field_id = $field->id;
+                            break;
+                        }
+                    }
+                }
+                
+                if (empty($variation_field_id) && !empty($group_variation_fields)) {
+                    foreach ($group_variation_fields as $group) {
+                        foreach ($group->fields as $field) {
+                            if ($field->name === $taxonomy) {
+                                $variation_field_id = $field->id;
+                                break 2;
+                            }
+                        }
+                    }
+                }
+
                 echo '<label for="' . esc_attr($taxonomy) . '">' . wc_attribute_label($taxonomy) . ':</label>';
-                echo '<select class="custom-variation-select" name="' . esc_attr($taxonomy) . '" id="' . esc_attr($taxonomy) . '">';
+                echo '<select class="custom-variation-select" 
+                    name="' . esc_attr($taxonomy) . '" 
+                    id="' . esc_attr($taxonomy) . '"
+                    data-variation-field-id="' . esc_attr($variation_field_id) . '">';
 
                 foreach ($terms as $index => $term) {
                     echo '<option value="' . esc_attr($term->slug) . '"' . ($index === 0 ? ' selected' : '') . '>' . esc_html($term->name) . '</option>';

@@ -190,7 +190,6 @@ class Merchi_Products_List_Table extends WP_List_Table
     private function createProduct($productData)
     {
         if (!isset($productData->product)) {
-            // Handle the case where the 'product' property is missing
             error_log('Error: Product data format is incorrect');
             return false;
         }
@@ -198,13 +197,17 @@ class Merchi_Products_List_Table extends WP_List_Table
         $product_name = isset($product->name) ? $product->name : '';
         $product_sku = isset($product->id) ? $product->id : '';
         $product_price = isset($product->unitPrice) ? $product->unitPrice : '';
-        // $images = isset($product->unitPrice) ? $product->unitPrice : '';
-        // $product_name = $productData->product->name;
-        // $product_sku = $productData->product->id;
-        // $product_price = $productData->product->unitPrice;
         $images = $productData->product->images;
         $product_thumbnail_url = null;
         $key = 'merchi_product_id_' . $product_sku;
+
+        // Save variation field IDs
+        if (isset($productData->product->independentVariationFields)) {
+            update_post_meta($new_product_id, '_merchi_independent_variation_fields', $productData->product->independentVariationFields);
+        }
+        if (isset($productData->product->groupVariationFields)) {
+            update_post_meta($new_product_id, '_merchi_group_variation_fields', $productData->product->groupVariationFields);
+        }
 
         if (!empty($productData->product->featureImage)) {
             $featureImage = $productData->product->featureImage;
