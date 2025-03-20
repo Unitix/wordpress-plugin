@@ -624,11 +624,14 @@ function country_prefix_in_billing_phone() {
     die();
 }
 
-function enqueue_admin_customfiles()
+function enqueue_admin_customfiles($hook)
 {
 	wp_enqueue_style('custom-admin-style', plugin_dir_url(__FILE__) . 'custom.css');
 	wp_enqueue_style('cst-jquery-ui-style', 'https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css');
 	wp_enqueue_script('cst-jquery-ui', 'https://code.jquery.com/ui/1.12.1/jquery-ui.js', array('jquery'), null, true);
+	if ('edit-tags.php' == $hook || 'term.php' == $hook) {
+		wp_enqueue_media();
+	}
 	wp_enqueue_script('custom-admin-script', plugin_dir_url(__FILE__) . 'custom.js', array('cst-jquery-ui'), null, true);
 	wp_localize_script('custom-admin-script', 'frontendajax', array('ajaxurl' => admin_url('admin-ajax.php')));
 	wp_enqueue_script('custom-merchi-script', MERCHI_BASE_URL.'/static/js/dist/merchi-init.js', array(), null, true);
@@ -1742,14 +1745,72 @@ function fetch_merchi_product_callback() {
         wp_send_json_error(['message' => 'Merchi Product ID not found for WooCommerce Product ID: ' . $woo_product_id]);
     }
 
-    $api_url = MERCHI_URL . "v6/products/$merchi_product_id/?apiKey=" . MERCHI_API_SECRET . "&inDomain=" . MERCHI_DOMAIN . "&embed={\"independentVariationFields\":{\"options\":{}},\"images\":{}}&skip_rights=y";
+    $api_url_base = MERCHI_URL . "v6/products/$merchi_product_id/?apiKey=" . MERCHI_API_SECRET . "&inDomain=" . MERCHI_DOMAIN . "&skip_rights=y";
 
-    $response = wp_remote_get($api_url);
-    $data = json_decode(wp_remote_retrieve_body($response), true);
+    $optionsEmbed = [
+			'buyCost' => new stdClass(),
+			'buyUnitCost' => new stdClass(),
+			'inventoryGroup' => new stdClass(),
+			'linkedInventoryGroup' => new stdClass(),
+			'options' => [
+					'buyCost' => new stdClass(),
+					'buyUnitCost' => new stdClass(),
+					'linkedFile' => new stdClass(),
+					'variationCostDiscountGroup' => new stdClass(),
+					'variationUnitCostDiscountGroup' => new stdClass()
+			],
+			'variationCostDiscountGroup' => new stdClass(),
+			'variationUnitCostDiscountGroup' => new stdClass()
+	];
+	
+	$initEmbed = [
+			'buyUnitPrice' => new stdClass(),
+			'domain' => [
+					'company' => [
+							'addresses' => new stdClass(),
+							'isBlocked' => new stdClass(),
+							'isStripeAccountEnabled' => new stdClass(),
+							'taxTypes' => new stdClass()
+					],
+					'logo' => new stdClass(),
+					'favicon' => new stdClass()
+			],
+			'categories' => [
+					'image' => new stdClass(),
+					'subcategories' => [
+							'image' => new stdClass(),
+							'subcategories' => [
+									'image' => new stdClass(),
+									'subcategories' => [
+											'image' => new stdClass(),
+											'subcategories' => new stdClass()
+									]
+							]
+					]
+			],
+			'featureImage' => new stdClass(),
+			'groupBuyStatus' => new stdClass(),
+			'groupVariationFields' => $optionsEmbed,
+			'images' => new stdClass(),
+			'independentVariationFields' => $optionsEmbed,
+			'productionFiles' => new stdClass(),
+			'publicFiles' => new stdClass(),
+			'taxType' => new stdClass()
+	];
+	
+	// Encode the PHP array to JSON and URL encode it
+	$embed_json = json_encode($initEmbed);
+	$embed_encoded = urlencode($embed_json);
+	
+	// Construct the complete API URL with the extended embed parameter
+	$api_url = $api_url_base . "&embed=" . $embed_encoded;
+		
+	$response = wp_remote_get($api_url);
+	$data = json_decode(wp_remote_retrieve_body($response), true);
 
-    create_variations_for_product($woo_product_id, $data);
-    
-    wp_send_json_success(['message' => 'Variations created for WooCommerce Product ID: ' . $woo_product_id]);
+	create_variations_for_product($woo_product_id, $data);
+	
+	wp_send_json_success(['message' => 'Variations created for WooCommerce Product ID: ' . $woo_product_id]);
 }
 
 function create_variations_for_product($woo_product_id, $merchi_product_data) {
@@ -1767,34 +1828,46 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 				
 					if (!empty($variation_field['options']) && is_array($variation_field['options'])) {
 							$raw_attribute_name = sanitize_text_field($variation_field['name']);
-
-							// ✅ Dynamically shorten attribute slug to fit within WooCommerce’s 28-character limit
 							$variation_name = generate_short_slug($raw_attribute_name);
-							$variation_label = sanitize_text_field($raw_attribute_name); // Human-friendly label
+							$variation_label = sanitize_text_field($raw_attribute_name);
 
 							$variation_options = [];
 
+							$taxonomy = 'pa_' . $variation_name;
+							if (!taxonomy_exists($taxonomy)) {
+									create_global_attribute($variation_name, $variation_label);
+							}
+
 							foreach ($variation_field['options'] as $option) {
 									if (!empty($option['value']) && !empty($option['include'])) {
-											$variation_options[] = sanitize_text_field($option['value']);
+											$option_value = sanitize_text_field($option['value']);
+											$image_url = !empty($option['linkedFile']['viewUrl']) ? esc_url($option['linkedFile']['viewUrl']) : '';
+
+											$term = term_exists($option_value, $taxonomy);
+											if (!$term) {
+													$term_info = wp_insert_term($option_value, $taxonomy);
+													if (!is_wp_error($term_info) && isset($term_info['term_id'])) {
+															$term_id = $term_info['term_id'];
+													}
+											} else {
+													$term_id = $term['term_id'];
+											}
+
+											if ($image_url && $term_id) {
+												var_dump($image_url);
+												var_dump($term_id);
+												$attachment_id = download_and_attach_image($image_url);
+												var_dump($attachment_id);
+												if ($attachment_id) {
+														update_term_meta($term_id, 'taxonomy_image', $attachment_id);
+												}
+											}
+
+											$variation_options[] = $option_value;
 									}
 							}
 
 							if (!empty($variation_options)) {
-									$taxonomy = 'pa_' . $variation_name; // WooCommerce global attribute taxonomy format
-
-									// Create global attribute if not exists
-									if (!taxonomy_exists($taxonomy)) {
-											create_global_attribute($variation_name, $variation_label);
-									}
-
-									// Ensure all values exist as terms
-									foreach ($variation_options as $option_value) {
-											if (!term_exists($option_value, $taxonomy)) {
-													wp_insert_term($option_value, $taxonomy);
-											}
-									}
-
 									// Assign attribute to the product
 									$attributes_to_add[$taxonomy] = [
 											'name'         => wc_attribute_taxonomy_name($variation_name),
@@ -1813,9 +1886,61 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 	// Save attributes correctly so they appear in WooCommerce product editor
 	update_post_meta($woo_product_id, '_product_attributes', $attributes_to_add);
 
-	// Ensure product type is variable (important for variations)
-	//wp_set_object_terms($woo_product_id, 'variable', 'product_type');
 }
+
+function download_and_attach_image($image_url) {
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	require_once ABSPATH . 'wp-admin/includes/media.php';
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+
+	$upload_dir = wp_upload_dir();
+
+	$response = wp_remote_head($image_url);
+	if (is_wp_error($response)) {
+			return false;
+	}
+
+	$content_type = wp_remote_retrieve_header($response, 'content-type');
+
+	$extension = '';
+	if (strpos($content_type, 'image/jpeg') !== false) {
+			$extension = '.jpg';
+	} elseif (strpos($content_type, 'image/png') !== false) {
+			$extension = '.png';
+	} elseif (strpos($content_type, 'image/gif') !== false) {
+			$extension = '.gif';
+	} elseif (strpos($content_type, 'image/webp') !== false) {
+			$extension = '.webp';
+	}
+
+	$filename = sanitize_file_name(uniqid('merchi_image_') . $extension);
+	$file_path = $upload_dir['path'] . '/' . $filename;
+
+	$existing_attachment_id = attachment_url_to_postid($upload_dir['url'] . '/' . $filename);
+	if ($existing_attachment_id) {
+			return $existing_attachment_id;
+	}
+
+	$tmp = download_url($image_url);
+	if (is_wp_error($tmp)) {
+			return false;
+	}
+
+	$file_array = [
+			'name'     => $filename,
+			'tmp_name' => $tmp,
+	];
+
+	$attachment_id = media_handle_sideload($file_array, 0);
+	if (is_wp_error($attachment_id)) {
+			@unlink($tmp);
+			return false;
+	}
+
+	return $attachment_id;
+}
+
+
 
 /**
 * Create a global WooCommerce attribute if it doesn't exist
@@ -1826,14 +1951,12 @@ function create_global_attribute($attribute_name, $attribute_label) {
 	$attribute_name = generate_short_slug($attribute_name);
 	$attribute_label = sanitize_text_field($attribute_label);
 
-	// Check if attribute exists
 	$exists = $wpdb->get_var($wpdb->prepare(
 			"SELECT attribute_id FROM {$wpdb->prefix}woocommerce_attribute_taxonomies WHERE attribute_name = %s",
 			$attribute_name
 	));
 
 	if (!$exists) {
-			// Insert into WC attribute table
 			$wpdb->insert(
 					"{$wpdb->prefix}woocommerce_attribute_taxonomies",
 					[
@@ -1846,10 +1969,8 @@ function create_global_attribute($attribute_name, $attribute_label) {
 					['%s', '%s', '%s', '%s', '%d']
 			);
 
-			// Flush cache to update attributes list
 			delete_transient('wc_attribute_taxonomies');
 
-			// Register taxonomy for new attribute
 			register_taxonomy(
 					'pa_' . $attribute_name,
 					'product',
@@ -1890,6 +2011,103 @@ function generate_short_slug($attribute_name) {
 	
 	return $slug;
 }
+
+// Add image upload field when adding a new term
+function add_taxonomy_image_field($taxonomy) {
+	?>
+	<div class="form-field term-group">
+			<label for="taxonomy_image"><?php esc_html_e('Term Image', 'woocommerce'); ?></label>
+			<div class="taxonomy-image-wrapper">
+					<img id="taxonomy-image-preview" src="" style="max-width:100px;height:auto;display:none;" />
+			</div>
+			<input type="hidden" id="taxonomy_image" name="taxonomy_image" value="" />
+			<button class="upload_image_button button"><?php esc_html_e('Upload Image', 'woocommerce'); ?></button>
+			<button class="remove_image_button button" style="display:none;"><?php esc_html_e('Remove Image', 'woocommerce'); ?></button>
+			<p class="description"><?php esc_html_e('Upload an image for this taxonomy term.', 'woocommerce'); ?></p>
+	</div>
+	<?php
+}
+add_action('admin_init', function () {
+	$taxonomies = get_taxonomies([], 'names');
+	foreach ($taxonomies as $taxonomy) {
+			add_action("{$taxonomy}_add_form_fields", 'add_taxonomy_image_field');
+	}
+});
+
+// Add image upload field when editing an existing term
+function edit_taxonomy_image_field($term) {
+	$image_id = get_term_meta($term->term_id, 'taxonomy_image', true);
+	$image_url = $image_id ? wp_get_attachment_url($image_id) : '';
+	?>
+	<tr class="form-field term-group-wrap">
+			<th scope="row"><label for="taxonomy_image"><?php esc_html_e('Term Image', 'woocommerce'); ?></label></th>
+			<td>
+					<div class="taxonomy-image-wrapper">
+							<?php if ($image_url): ?>
+									<img id="taxonomy-image-preview" src="<?php echo esc_url($image_url); ?>" style="max-width:100px;height:auto;" />
+							<?php else: ?>
+									<img id="taxonomy-image-preview" src="" style="max-width:100px;height:auto;display:none;" />
+							<?php endif; ?>
+					</div>
+					<input type="hidden" id="taxonomy_image" name="taxonomy_image" value="<?php echo esc_attr($image_id); ?>" />
+					<button class="upload_image_button button"><?php esc_html_e('Upload Image', 'woocommerce'); ?></button>
+					<button class="remove_image_button button" <?php echo $image_id ? '' : 'style="display:none;"'; ?>><?php esc_html_e('Remove Image', 'woocommerce'); ?></button>
+			</td>
+	</tr>
+	<?php
+}
+add_action('admin_init', function () {
+	$taxonomies = get_taxonomies([], 'names');
+	foreach ($taxonomies as $taxonomy) {
+			add_action("{$taxonomy}_edit_form_fields", 'edit_taxonomy_image_field');
+	}
+});
+
+// Save term image meta field
+function save_taxonomy_image($term_id) {
+	if (isset($_POST['taxonomy_image'])) {
+			update_term_meta($term_id, 'taxonomy_image', intval($_POST['taxonomy_image']));
+	}
+}
+add_action('admin_init', function () {
+	$taxonomies = get_taxonomies([], 'names');
+	foreach ($taxonomies as $taxonomy) {
+			add_action("created_{$taxonomy}", 'save_taxonomy_image');
+			add_action("edited_{$taxonomy}", 'save_taxonomy_image');
+	}
+});
+
+// Add a new column to the term table
+function add_taxonomy_image_column($columns) {
+	$columns['taxonomy_image'] = __('Image', 'woocommerce');
+	return $columns;
+}
+
+// Display the term image in the new column
+function display_taxonomy_image_column($content, $column_name, $term_id) {
+	if ($column_name === 'taxonomy_image') {
+			$image_id = get_term_meta($term_id, 'taxonomy_image', true);
+			$image_url = $image_id ? wp_get_attachment_url($image_id) : '';
+
+			if ($image_url) {
+					$content = '<img src="' . esc_url($image_url) . '" style="width:50px; height:auto;"/>';
+			} else {
+					$content = __('No Image', 'woocommerce');
+			}
+	}
+	return $content;
+}
+
+// Apply the column modifications to all taxonomies
+add_action('admin_init', function () {
+	$taxonomies = get_taxonomies([], 'names');
+	foreach ($taxonomies as $taxonomy) {
+			add_filter("manage_edit-{$taxonomy}_columns", 'add_taxonomy_image_column');
+			add_filter("manage_{$taxonomy}_custom_column", 'display_taxonomy_image_column', 10, 3);
+	}
+});
+
+
 
 
 function create_variation_combinations($woo_product_id, $attributes) {

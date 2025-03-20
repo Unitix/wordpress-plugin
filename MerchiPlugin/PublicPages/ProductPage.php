@@ -11,14 +11,11 @@ class ProductPage extends BaseController {
 
 
 	public function register() {
-		// Inject Merchi product into product page.
-		//add_filter( 'woocommerce_single_product_summary', [ $this, 'inject_merchi_product' ], 98 );
-		// Remove product content based on category
-		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_product_attributes_dropdowns' ] );
+		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_attribute_smart_checkboxes' ] );
 		add_action( 'wp', [ $this, 'remove_product_content' ] );
 	}
 
-	public function custom_product_attributes_dropdowns() {
+	public function custom_display_attribute_smart_checkboxes() {
     global $product;
 
     $product_id = $product->get_id();
@@ -31,106 +28,35 @@ class ProductPage extends BaseController {
     echo '<div id="custom-variation-options">';
 
     foreach ($attributes as $taxonomy => $attribute) {
-        if ($attribute['is_taxonomy']) {
-            $terms = get_terms(array('taxonomy' => $taxonomy, 'hide_empty' => false));
+			if ($attribute['is_taxonomy']) {
+					$terms = get_terms(array('taxonomy' => $taxonomy, 'hide_empty' => false));
 
-            if (!empty($terms)) {
-                echo '<label for="' . esc_attr($taxonomy) . '">' . wc_attribute_label($taxonomy) . ':</label>';
-                echo '<select class="custom-variation-select" name="' . esc_attr($taxonomy) . '" id="' . esc_attr($taxonomy) . '">';
+					if (!empty($terms)) {
+							echo '<h4>' . wc_attribute_label($taxonomy) . '</h4>';
+							echo '<div class="custom-attribute-options" data-attribute="' . esc_attr($taxonomy) . '">';
 
-                foreach ($terms as $index => $term) {
-                    echo '<option value="' . esc_attr($term->slug) . '"' . ($index === 0 ? ' selected' : '') . '>' . esc_html($term->name) . '</option>';
-                }
+							foreach ($terms as $index => $term) {
+									$image_id = get_term_meta($term->term_id, 'taxonomy_image', true);
+									$image_url = $image_id ? wp_get_attachment_url($image_id) : '';
+									$is_checked = $index === 0 ? 'checked' : ''; // Auto-select the first option
 
-                echo '</select>';
-            }
-        }
+									echo '<label class="custom-attribute-option">';
+									echo '<input type="radio" name="' . esc_attr($taxonomy) . '" value="' . esc_attr($term->slug) . '" ' . $is_checked . ' />';
+									if ($image_url) {
+											echo '<img src="' . esc_url($image_url) . '" class="attribute-image">';
+									}
+									echo '<span class="custom-checkmark"></span>';
+									echo '<span class="option-label">' . esc_html($term->name) . '</span>';
+									echo '</label>';
+							}
+
+							echo '</div>';
+					}
+			}
     }
 
     echo '</div>';
-
-    echo '<p id="custom-price-display">Price: $<span id="custom-price">10</span></p>';
-}
-
-
-	public function inject_merchi_product() {
-		global $product;
-
-		// Display the product title
-    woocommerce_template_single_title();
-
-		// SKU used as Merchi ID. We are checking to see if Merchi ID exists. If so fetch Merchi product.
-		if ($product->get_meta('product_id') !== '') {
-
-			$sync_keys = array(
-				'redirect_after_success_url' => 'redirectAfterSuccessUrl',
-				'redirect_after_quote_success_url' => 'redirectAfterQuoteSuccessUrl',
-				'redirect_with_value' => 'redirectWithValue',
-				'hide_info' => 'hideInfo',
-				'hide_preview' => 'hidePreview',
-				'hide_price' => 'hidePrice',
-				'hide_title' => 'hideTitle',
-				'hide_calculated_price' => 'hideCalculatedPrice',
-				'include_bootstrap' => 'includeBootstrap',
-				'not_include_default_css' => 'notIncludeDefaultCss',
-				'invoice_redirect' => 'invoiceRedirect',
-				'load_theme' => 'loadTheme',
-				'mount_point_id' => 'mountPointId',
-				'single_column' => 'singleColumn',
-				'quote_requested_redirect' => 'quoteRequestedRedirect',
-				'google_api_public_key' => 'googleApiPublicKey',
-				'allow_add_to_cart' => 'allowAddToCart',
-				'hide_drafting' => 'hideDrafting',
-			);
-			
-			$atts = array(
-				'id' => $product->get_meta('product_id'),
-				'redirect_after_success_url' => $product->get_meta('redirectAfterSuccessUrl'),
-				'redirect_after_quote_success_url' => $product->get_meta('redirectAfterQuoteSuccessUrl'),
-				'redirect_with_value' => $product->get_meta('redirectWithValue'),
-				'hide_info' => $product->get_meta('hideInfo'),
-				'hide_preview' => $product->get_meta('hidePreview'),
-				'hide_price' =>  $product->get_meta('hidePrice'),
-				'hide_title' => $product->get_meta('hideTitle'),
-				'hide_calculated_price' => $product->get_meta('hideCalculatedPrice'),
-				'include_bootstrap' => $product->get_meta('includeBootstrap'),
-				'not_include_default_css' => $product->get_meta('notIncludeDefaultCss'),
-				'invoice_redirect' => $product->get_meta('invoiceRedirect'),
-				'load_theme' => $product->get_meta('loadTheme'),
-				'mount_point_id' => $product->get_meta('mountPointId'),
-				'single_column' => $product->get_meta('singleColumn'),
-				'quote_requested_redirect' => $product->get_meta('quoteRequestedRedirect'),
-				'google_api_public_key' => $product->get_meta('googleApiPublicKey'),
-				'allow_add_to_cart' => $product->get_meta('allowAddToCart'),
-				'hide_drafting' => $product->get_meta('hideDrafting')
-			);
-
-			if( get_option( 'merchi_staging_mode' ) == 'yes' ) {
-
-				$url = 'https://staging.merchi.co';
-			}
-			else {
-				
-				$url = 'https://merchi.co';
-			}
-
-			$src = $url . '/static/product_embed/js/product.embed.js?product=' . $atts['id'];
-
-			foreach( $atts as $key => $atr ){
-					if("id" == $key ) { continue;
-					}
-					if("" == $atr || !$atr ) { continue;
-					}
-					$src .='&'.$sync_keys[$key]."=".$atr;
-			}
-				
-			$content = '<div class="merchi-product-form-container"><script type="text/javascript" data-name="product-embed" src="'.$src.'"></script></div>';
-			echo $content;
-		} else {
-			echo 'Merchi product not found.';
-		}
 	}
-
 
 	public function remove_product_content() {
 		remove_action( 'woocommerce_after_single_product_summary', 'woocommerce_output_related_products', 20 );
