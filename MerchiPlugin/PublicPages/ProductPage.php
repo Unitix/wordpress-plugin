@@ -11,10 +11,7 @@ class ProductPage extends BaseController {
 
 
 	public function register() {
-		// Inject Merchi product into product page.
-		//add_filter( 'woocommerce_single_product_summary', [ $this, 'inject_merchi_product' ], 98 );
-		// Remove product content based on category
-		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_product_attributes_dropdowns' ] );
+		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_attribute_smart_checkboxes' ] );
 		add_action( 'wp', [ $this, 'remove_product_content' ] );
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_merchi_scripts' ] );
 	}
@@ -39,7 +36,7 @@ class ProductPage extends BaseController {
 		}
 	}
 
-	public function custom_product_attributes_dropdowns() {
+	public function custom_display_attribute_smart_checkboxes() {
     global $product;
 
     $product_id = $product->get_id();
@@ -54,9 +51,10 @@ class ProductPage extends BaseController {
     echo '<div id="custom-variation-options" class="merchi-product-form">';
 
     foreach ($attributes as $taxonomy => $attribute) {
-        if ($attribute['is_taxonomy']) {
-            $terms = get_terms(array('taxonomy' => $taxonomy, 'hide_empty' => false));
+			if ($attribute['is_taxonomy']) {
+					$terms = get_terms(array('taxonomy' => $taxonomy, 'hide_empty' => false));
 
+<<<<<<< HEAD
             if (!empty($terms)) {
                 // Find the corresponding variation field ID
                 $variation_field_id = '';
@@ -85,17 +83,34 @@ class ProductPage extends BaseController {
                     name="' . esc_attr($taxonomy) . '" 
                     id="' . esc_attr($taxonomy) . '"
                     data-variation-field-id="' . esc_attr($variation_field_id) . '">';
+=======
+					if (!empty($terms)) {
+							echo '<h4>' . wc_attribute_label($taxonomy) . '</h4>';
+							echo '<div class="custom-attribute-options" data-attribute="' . esc_attr($taxonomy) . '">';
+>>>>>>> 0699940c52f98f53ce6715f29ab66288cb0386ce
 
-                foreach ($terms as $index => $term) {
-                    echo '<option value="' . esc_attr($term->slug) . '"' . ($index === 0 ? ' selected' : '') . '>' . esc_html($term->name) . '</option>';
-                }
+							foreach ($terms as $index => $term) {
+									$image_id = get_term_meta($term->term_id, 'taxonomy_image', true);
+									$image_url = $image_id ? wp_get_attachment_url($image_id) : '';
+									$is_checked = $index === 0 ? 'checked' : ''; // Auto-select the first option
 
-                echo '</select>';
-            }
-        }
+									echo '<label class="custom-attribute-option">';
+									echo '<input type="radio" name="' . esc_attr($taxonomy) . '" value="' . esc_attr($term->slug) . '" ' . $is_checked . ' />';
+									if ($image_url) {
+											echo '<img src="' . esc_url($image_url) . '" class="attribute-image">';
+									}
+									echo '<span class="custom-checkmark"></span>';
+									echo '<span class="option-label">' . esc_html($term->name) . '</span>';
+									echo '</label>';
+							}
+
+							echo '</div>';
+					}
+			}
     }
 
     echo '</div>';
+<<<<<<< HEAD
 
     echo '<p id="custom-price-display">Price: $<span id="merchi-product-price">10</span></p>';
     echo '<p id="merchi-price-error" style="color: red; display: none;"></p>';
@@ -178,8 +193,9 @@ class ProductPage extends BaseController {
 		} else {
 			echo 'Merchi product not found.';
 		}
+=======
+>>>>>>> 0699940c52f98f53ce6715f29ab66288cb0386ce
 	}
-
 
 	public function remove_product_content() {
 		remove_action( 'woocommerce_after_single_product_summary', 'woocommerce_output_related_products', 20 );

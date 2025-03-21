@@ -606,6 +606,16 @@ function getButtonByText(buttons, text) {
 }
 
 jQuery(document).ready(function ($) {
+
+  jQuery('.custom-attribute-option').click(function () {
+    var parent = jQuery(this).closest('.custom-attribute-options');
+    parent.find('input').prop('checked', false); // Uncheck all
+    parent.find('.custom-checkmark').hide(); // Hide all checkmarks
+
+    jQuery(this).find('input').prop('checked', true); // Check the clicked input
+    jQuery(this).find('.custom-checkmark').show(); // Show checkmark
+});
+
   if (1 == getQueryStringParameter("step")) {
     jQuery("#billing_email").trigger("blur");
   }

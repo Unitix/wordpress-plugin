@@ -279,44 +279,6 @@ input[type="checkbox"] {
  Custom product attributes styling
  ------------------------------- */
 
- #custom-variation-options {
-  margin-top: 20px;
-  padding: 15px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background: #f9f9f9;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* Labels for attributes */
-#custom-variation-options label {
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 5px;
-}
-
-/* Dropdown styling */
-.custom-variation-select {
-  width: 100%;
-  padding: 10px;
-  font-size: 16px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  background: white;
-  appearance: none;
-  cursor: pointer;
-  transition: border-color 0.2s ease-in-out;
-}
-
-/* Add hover and focus effect */
-.custom-variation-select:hover, 
-.custom-variation-select:focus {
-  border-color: #0073aa;
-  outline: none;
-}
-
 /* Price display */
 #custom-price-display {
   margin-top: 15px;
@@ -335,4 +297,57 @@ input[type="checkbox"] {
 #custom-price {
   color: #0073aa;
   font-size: 24px;
+}
+
+
+.custom-attribute-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.custom-attribute-option {
+  position: relative;
+  cursor: pointer;
+  display: inline-block;
+  text-align: center;
+}
+
+.custom-attribute-option input {
+  display: none; /* Hide the checkbox */
+}
+
+.custom-attribute-option img {
+  width: 100px;
+  height: 100px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  transition: all 0.3s ease-in-out;
+}
+
+.custom-attribute-option .option-label {
+  display: block;
+  font-size: 14px;
+  margin-top: 5px;
+  color: #333;
+}
+
+/* ✅ Checkmark styling */
+.custom-checkmark {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 24px;
+  height: 24px;
+  background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Checkmark_green.svg/1024px-Checkmark_green.svg.png') no-repeat center center / contain;
+  display: none;
+}
+
+/* 🎯 Highlight selected option */
+.custom-attribute-option input:checked + img {
+  border: 3px solid #0073aa;
+}
+
+.custom-attribute-option input:checked ~ .custom-checkmark {
+  display: block;
 }
