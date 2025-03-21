@@ -1815,77 +1815,147 @@ function fetch_merchi_product_callback() {
 
 function create_variations_for_product($woo_product_id, $merchi_product_data) {
 	$product = wc_get_product($woo_product_id);
-
-	if (!$product) {
-			return;
-	}
+	if (!$product) return;
 
 	$attributes_to_add = [];
+	$product_meta_inputs = [];
 	$merchi_product = $merchi_product_data['product'];
 
+	$merchi_ordered_fields = [];
+
+	$grouped_field_template = [];
+
+if (!empty($merchi_product['groupVariationFields'])) {
+    foreach ($merchi_product['groupVariationFields'] as $group_field) {
+        $field_type = intval($group_field['fieldType']);
+        $field_name = sanitize_text_field($group_field['name']);
+        $slug = generate_short_slug($field_name);
+        $options = $group_field['options'] ?? [];
+
+        if (!empty($options) && is_array($options)) {
+            $taxonomy = 'pa_' . $slug;
+            if (!taxonomy_exists($taxonomy)) {
+                create_global_attribute($slug, $field_name);
+            }
+
+            $variation_options = [];
+            foreach ($options as $option) {
+                if (!empty($option['include']) && !empty($option['value'])) {
+                    $option_value = sanitize_text_field($option['value']);
+                    wp_insert_term($option_value, $taxonomy);
+                    $variation_options[] = $option_value;
+                }
+            }
+
+            wp_set_object_terms($woo_product_id, $variation_options, $taxonomy);
+
+            $grouped_field_template[] = [
+                'type'      => 'attribute',
+                'taxonomy'  => $taxonomy,
+                'slug'      => $slug,
+                'label'     => $field_name,
+                'fieldType' => $field_type,
+                'required'  => !empty($group_field['required']),
+            ];
+        } else {
+            $grouped_field_template[] = [
+                'type'         => 'meta',
+                'slug'         => $slug,
+                'label'        => $field_name,
+                'fieldType'    => $field_type,
+                'placeholder'  => esc_attr($group_field['placeholder'] ?? ''),
+                'instructions' => esc_html($group_field['instructions'] ?? ''),
+                'required'     => !empty($group_field['required']),
+            ];
+        }
+    }
+}
+
+
 	if (!empty($merchi_product['independentVariationFields'])) {
-			foreach ($merchi_product['independentVariationFields'] as $variation_field) {
-				
-					if (!empty($variation_field['options']) && is_array($variation_field['options'])) {
-							$raw_attribute_name = sanitize_text_field($variation_field['name']);
-							$variation_name = generate_short_slug($raw_attribute_name);
-							$variation_label = sanitize_text_field($raw_attribute_name);
-
-							$variation_options = [];
-
-							$taxonomy = 'pa_' . $variation_name;
-							if (!taxonomy_exists($taxonomy)) {
-									create_global_attribute($variation_name, $variation_label);
-							}
-
-							foreach ($variation_field['options'] as $option) {
-									if (!empty($option['value']) && !empty($option['include'])) {
-											$option_value = sanitize_text_field($option['value']);
-											$image_url = !empty($option['linkedFile']['viewUrl']) ? esc_url($option['linkedFile']['viewUrl']) : '';
-
-											$term = term_exists($option_value, $taxonomy);
-											if (!$term) {
-													$term_info = wp_insert_term($option_value, $taxonomy);
-													if (!is_wp_error($term_info) && isset($term_info['term_id'])) {
-															$term_id = $term_info['term_id'];
-													}
-											} else {
-													$term_id = $term['term_id'];
+		foreach ($merchi_product['independentVariationFields'] as $variation_field) {
+			$field_type = $variation_field['fieldType'];
+			$field_name = sanitize_text_field($variation_field['name']);
+			$slug = generate_short_slug($field_name);
+			$taxonomy = 'pa_' . $slug;
+			$options = $variation_field['options'] ?? [];
+	
+			$is_option_field = in_array($field_type, [2, 6, 7, 9, 11]);
+	
+			if ($is_option_field && !empty($options)) {
+					if (!taxonomy_exists($taxonomy)) {
+							create_global_attribute($slug, $field_name);
+					}
+	
+					$variation_options = [];
+	
+					foreach ($options as $option) {
+							if (!empty($option['include']) && !empty($option['value'])) {
+									$option_value = sanitize_text_field($option['value']);
+									$image_url = !empty($option['linkedFile']['viewUrl']) ? esc_url($option['linkedFile']['viewUrl']) : '';
+	
+									$term = term_exists($option_value, $taxonomy);
+									if (!$term) {
+											$term_info = wp_insert_term($option_value, $taxonomy);
+											if (!is_wp_error($term_info) && isset($term_info['term_id'])) {
+													$term_id = $term_info['term_id'];
 											}
-
-											if ($image_url && $term_id) {
-												var_dump($image_url);
-												var_dump($term_id);
-												$attachment_id = download_and_attach_image($image_url);
-												var_dump($attachment_id);
-												if ($attachment_id) {
-														update_term_meta($term_id, 'taxonomy_image', $attachment_id);
-												}
-											}
-
-											$variation_options[] = $option_value;
+									} else {
+											$term_id = $term['term_id'];
 									}
-							}
-
-							if (!empty($variation_options)) {
-									// Assign attribute to the product
-									$attributes_to_add[$taxonomy] = [
-											'name'         => wc_attribute_taxonomy_name($variation_name),
-											'is_visible'   => 1,
-											'is_variation' => 1,
-											'is_taxonomy'  => 1
-									];
-
-									// Assign terms (attribute values) to the product
-									wp_set_object_terms($woo_product_id, $variation_options, $taxonomy);
+	
+									if (!empty($image_url) && !empty($term_id)) {
+											$attachment_id = download_and_attach_image($image_url);
+											if ($attachment_id) {
+													update_term_meta($term_id, 'taxonomy_image', $attachment_id);
+											}
+									}
+	
+									$variation_options[] = $option_value;
 							}
 					}
+	
+					if (!empty($variation_options)) {
+							wp_set_object_terms($woo_product_id, $variation_options, $taxonomy);
+	
+							$attributes_to_add[$taxonomy] = [
+									'name'         => wc_attribute_taxonomy_name($slug),
+									'is_visible'   => 1,
+									'is_variation' => 0,
+									'is_taxonomy'  => 1
+							];
+					}
+	
+					$merchi_ordered_fields[] = [
+							'type'       => 'attribute',
+							'taxonomy'   => $taxonomy,
+							'slug'       => $slug,
+							'label'      => $field_name,
+							'fieldType'  => $field_type,
+							'required'   => !empty($variation_field['required']),
+							'multipleSelect' => !empty($variation_field['multipleSelect']),
+					];
+			} else {
+					$meta_field = [
+							'type'          => 'meta',
+							'slug'          => $slug,
+							'label'         => $field_name,
+							'fieldType'     => $field_type,
+							'placeholder'   => $variation_field['placeholder'] ?? '',
+							'instructions'  => $variation_field['instructions'] ?? '',
+							'required'      => !empty($variation_field['required']),
+					];
+	
+					$product_meta_inputs[] = $meta_field;
+					$merchi_ordered_fields[] = $meta_field;
 			}
+		}
 	}
 
-	// Save attributes correctly so they appear in WooCommerce product editor
 	update_post_meta($woo_product_id, '_product_attributes', $attributes_to_add);
-
+	update_post_meta($woo_product_id, '_custom_product_fields', $product_meta_inputs);
+	update_post_meta($woo_product_id, '_merchi_ordered_fields', $merchi_ordered_fields);
+	update_post_meta($woo_product_id, '_group_variation_field_template', $grouped_field_template);
 }
 
 function download_and_attach_image($image_url) {

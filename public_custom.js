@@ -607,6 +607,52 @@ function getButtonByText(buttons, text) {
 
 jQuery(document).ready(function ($) {
 
+    var groupIndex = 1;
+
+    $("#add-group-button").click(function() {
+        groupIndex++;
+        var newGroup = $(".group-field-set").first().clone();
+        newGroup.attr("data-group-index", groupIndex);
+        newGroup.find(".group-number").text(groupIndex);
+
+        newGroup.find("input, select, textarea").each(function() {
+            var name = $(this).attr("name");
+            if (name) {
+                name = name.replace("group_fields[1]", "group_fields[" + groupIndex + "]");
+                $(this).attr("name", name);
+            }
+        });
+        newGroup.find(".delete-group-button").show();
+        $("#grouped-fields-container").append(newGroup);
+    });
+
+    $(document).on("click", ".delete-group-button", function() {
+        $(this).closest(".group-field-set").remove();
+        updateGroupNumbers();
+    });
+
+    function updateGroupNumbers() {
+        $(".group-field-set").each(function(index) {
+            var newIndex = index + 1;
+            $(this).attr("data-group-index", newIndex);
+            $(this).find(".group-number").text(newIndex);
+            $(this).find("input, select, textarea").each(function() {
+                var name = $(this).attr("name");
+                if (name) {
+                    name = name.replace(/group_fields\[\d+\]/, "group_fields[" + newIndex + "]");
+                    $(this).attr("name", name);
+                }
+            });
+        });
+
+        if ($(".group-field-set").length === 1) {
+            $(".group-field-set .delete-group-button").hide();
+        } else {
+            $(".group-field-set .delete-group-button").show();
+        }
+    }
+
+
   jQuery('.custom-attribute-option').click(function () {
     var parent = jQuery(this).closest('.custom-attribute-options');
     parent.find('input').prop('checked', false); // Uncheck all
