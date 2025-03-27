@@ -1795,7 +1795,8 @@ function fetch_merchi_product_callback() {
 			'independentVariationFields' => $optionsEmbed,
 			'productionFiles' => new stdClass(),
 			'publicFiles' => new stdClass(),
-			'taxType' => new stdClass()
+			'taxType' => new stdClass(),
+			'defaultJob' => new stdClass()
 	];
 	
 	// Encode the PHP array to JSON and URL encode it
@@ -1828,6 +1829,7 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 if (!empty($merchi_product['groupVariationFields'])) {
     foreach ($merchi_product['groupVariationFields'] as $group_field) {
         $field_type = intval($group_field['fieldType']);
+        $field_id = intval($group_field['id']);
         $field_name = sanitize_text_field($group_field['name']);
         $slug = generate_short_slug($field_name);
         $options = $group_field['options'] ?? [];
@@ -1855,6 +1857,7 @@ if (!empty($merchi_product['groupVariationFields'])) {
                 'slug'      => $slug,
                 'label'     => $field_name,
                 'fieldType' => $field_type,
+                'fieldID'   => $field_id,
                 'required'  => !empty($group_field['required']),
             ];
         } else {
@@ -1863,6 +1866,7 @@ if (!empty($merchi_product['groupVariationFields'])) {
                 'slug'         => $slug,
                 'label'        => $field_name,
                 'fieldType'    => $field_type,
+								'fieldID'      => $field_id,
                 'placeholder'  => esc_attr($group_field['placeholder'] ?? ''),
                 'instructions' => esc_html($group_field['instructions'] ?? ''),
                 'required'     => !empty($group_field['required']),
@@ -1875,6 +1879,7 @@ if (!empty($merchi_product['groupVariationFields'])) {
 	if (!empty($merchi_product['independentVariationFields'])) {
 		foreach ($merchi_product['independentVariationFields'] as $variation_field) {
 			$field_type = $variation_field['fieldType'];
+			$field_id = $variation_field['id'];
 			$field_name = sanitize_text_field($variation_field['name']);
 			$slug = generate_short_slug($field_name);
 			$taxonomy = 'pa_' . $slug;
@@ -1932,6 +1937,7 @@ if (!empty($merchi_product['groupVariationFields'])) {
 							'slug'       => $slug,
 							'label'      => $field_name,
 							'fieldType'  => $field_type,
+							'fieldID'    => $field_id,
 							'required'   => !empty($variation_field['required']),
 							'multipleSelect' => !empty($variation_field['multipleSelect']),
 					];
@@ -1941,6 +1947,7 @@ if (!empty($merchi_product['groupVariationFields'])) {
 							'slug'          => $slug,
 							'label'         => $field_name,
 							'fieldType'     => $field_type,
+							'fieldID'       => $field_id,
 							'placeholder'   => $variation_field['placeholder'] ?? '',
 							'instructions'  => $variation_field['instructions'] ?? '',
 							'required'      => !empty($variation_field['required']),
@@ -1956,6 +1963,14 @@ if (!empty($merchi_product['groupVariationFields'])) {
 	update_post_meta($woo_product_id, '_custom_product_fields', $product_meta_inputs);
 	update_post_meta($woo_product_id, '_merchi_ordered_fields', $merchi_ordered_fields);
 	update_post_meta($woo_product_id, '_group_variation_field_template', $grouped_field_template);
+
+	$default_price = floatval($merchi_product['defaultJob']['totalCost']);
+
+	$product = wc_get_product($woo_product_id);
+	$product->set_regular_price($default_price);
+	$product->save();
+
+	update_post_meta($woo_product_id, '_merchi_default_price', $default_price);
 }
 
 function download_and_attach_image($image_url) {

@@ -14,6 +14,27 @@ class ProductPage extends BaseController {
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_grouped_attributes' ], 10 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_independent_attributes' ], 20 );
 		add_action( 'wp', [ $this, 'remove_product_content' ] );
+		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_merchi_scripts' ] );
+	}
+
+	public function enqueue_merchi_scripts() {
+		if (is_product()) {
+			wp_enqueue_script(
+				'merchi-product-form',
+				plugin_dir_url(dirname(dirname(__FILE__))) . 'assets/merchi-product-form.js',
+				array('jquery'),
+				'1.0.0',
+				true
+			);
+
+			// Add Merchi configuration data
+			wp_localize_script('merchi-product-form', 'merchiConfig', array(
+				'apiKey' => get_option('merchi_api_key'),
+				'domainId' => get_option('merchi_domain_id'),
+				'apiUrl' => get_option('merchi_staging_mode') === 'yes' ? 'https://staging.merchi.co/' : 'https://merchi.co/',
+				'productId' => get_post_meta(get_the_ID(), 'product_id', true)
+			));
+		}
 	}
 
 	public function custom_display_independent_attributes() {
@@ -24,7 +45,7 @@ class ProductPage extends BaseController {
 
     if (empty($fields) || !is_array($fields)) return;
 
-    echo '<div id="custom-variation-options">';
+    echo '<div id="custom-variation-options merchi-product-form">';
 
     foreach ($fields as $field) {
         $type = $field['type'];
@@ -32,6 +53,7 @@ class ProductPage extends BaseController {
         $slug = esc_attr($field['slug']);
         $required = !empty($field['required']) ? 'required' : '';
         $fieldType = intval($field['fieldType']);
+        $fieldID = intval($field['fieldID']);
 
         echo '<div class="custom-field">';
         echo "<label for='{$slug}'>{$label}</label>";
@@ -58,7 +80,7 @@ class ProductPage extends BaseController {
 													$image_url = $image_id ? wp_get_attachment_url($image_id) : '';
 			
 													echo '<label class="custom-attribute-option">';
-													echo '<input type="checkbox" name="' . esc_attr($field['taxonomy']) . '[]" value="' . esc_attr($term->slug) . '" />';
+													echo '<input type="checkbox" name="' . esc_attr($field['taxonomy']) . '[]" value="' . esc_attr($term->slug) . '" data-variation-field-id="'.esc_attr($fieldID).'"/>';
 													if ($image_url) {
 															echo '<img src="' . esc_url($image_url) . '" class="attribute-image">';
 													}
@@ -66,7 +88,7 @@ class ProductPage extends BaseController {
 													echo '</label>';
 											}
 									} else {
-											echo '<select multiple name="' . esc_attr($field['taxonomy']) . '[]" class="custom-select-multi">';
+											echo '<select multiple name="' . esc_attr($field['taxonomy']) . '[]" class="custom-select-multi" data-variation-field-id="'.esc_attr($fieldID).'">';
 											foreach ($terms as $term) {
 													echo '<option value="' . esc_attr($term->slug) . '">' . esc_html($term->name) . '</option>';
 											}
@@ -79,7 +101,7 @@ class ProductPage extends BaseController {
 											$is_checked = $index === 0 ? 'checked' : '';
 			
 											echo '<label class="custom-attribute-option">';
-											echo '<input type="radio" name="' . esc_attr($field['taxonomy']) . '" value="' . esc_attr($term->slug) . '" ' . $is_checked . ' />';
+											echo '<input type="radio" name="' . esc_attr($field['taxonomy']) . '" data-variation-field-id="'.esc_attr($fieldID).'" value="' . esc_attr($term->slug) . '" ' . $is_checked . ' />';
 											if ($image_url) {
 													echo '<img src="' . esc_url($image_url) . '" class="attribute-image">';
 											}
@@ -93,15 +115,15 @@ class ProductPage extends BaseController {
 			} elseif ($type === 'meta') {
             $placeholder = esc_attr($field['placeholder'] ?? '');
             $instructions = esc_html($field['instructions'] ?? '');
-
+						$field_id = esc_attr($fieldID);
             switch ($fieldType) {
-                case 1: echo "<input type='text' id='{$slug}' name='custom_fields[{$slug}]' placeholder='{$placeholder}' {$required} />"; break;
-                case 3: echo "<input type='file' id='{$slug}' name='custom_fields[{$slug}]' {$required} />"; break;
-                case 4: echo "<textarea id='{$slug}' name='custom_fields[{$slug}]' placeholder='{$placeholder}' {$required}></textarea>"; break;
-                case 5: echo "<input type='number' id='{$slug}' name='custom_fields[{$slug}]' placeholder='{$placeholder}' {$required} />"; break;
-                case 10: echo "<input type='color' id='{$slug}' name='custom_fields[{$slug}]' {$required} />"; break;
+                case 1: echo "<input type='text' id='{$slug}' name='custom_fields[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field-id='{$field_id}'/>"; break;
+                case 3: echo "<label class='custom-upload-wrapper'><div class='upload-icon'>📎</div><div class='upload-instruction'>Drop file here or click to browse</div><div class='upload-types'>.jpeg, .jpg, .gif, .png, .pdf</div><input type='file' id='{$slug}' name='custom_fields[{$slug}]' {$required} data-variation-field-id='{$field_id}' accept='.jpeg,.jpg,.gif,.png,.pdf'/></label>"; break;
+                case 4: echo "<textarea id='{$slug}' name='custom_fields[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field-id='{$field_id}'></textarea>"; break;
+                case 5: echo "<input type='number' id='{$slug}' name='custom_fields[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field-id='{$field_id}'/>"; break;
+                case 10: echo "<input type='color' id='{$slug}' name='custom_fields[{$slug}]' {$required} data-variation-field-id='{$field_id}'/>"; break;
                 case 8: echo "<p class='field-instructions'>{$instructions}</p>"; break;
-                default: echo "<input type='text' id='{$slug}' name='custom_fields[{$slug}]' placeholder='{$placeholder}' {$required} />"; break;
+                default: echo "<input type='text' id='{$slug}' name='custom_fields[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field-id='{$field_id}'/>"; break;
             }
         }
 
@@ -119,7 +141,7 @@ class ProductPage extends BaseController {
 
     if (empty($group_fields_template)) return;
 
-    echo '<div id="grouped-fields-container">';
+    echo '<div id="grouped-fields-container merchi-product-form">';
     echo '<h3>Grouped Options</h3>';
 
     echo '<div class="group-field-set" data-group-index="1">';
@@ -147,13 +169,14 @@ private function render_attribute_field($field, $name_prefix) {
 
 	$slug = esc_attr($field['slug']);
 	$label = esc_html($field['label']);
+	$field_id = esc_html($field['fieldID']);
 	$is_multiple = !empty($field['multipleSelect']);
 
 	$html = '<div class="custom-field">';
 	$html .= "<label for='{$slug}'>{$label}</label>";
 
 	if ($is_multiple) {
-			$html .= '<select multiple name="' . $name_prefix . '[' . $slug . '][]">';
+			$html .= '<select multiple name="' . $name_prefix . '[' . $slug . '][]" data-variation-field-id="'.esc_attr($field_id).'">';
 			foreach ($terms as $term) {
 					$html .= '<option value="' . esc_attr($term->slug) . '">' . esc_html($term->name) . '</option>';
 			}
@@ -162,7 +185,7 @@ private function render_attribute_field($field, $name_prefix) {
 			foreach ($terms as $index => $term) {
 					$is_checked = $index === 0 ? 'checked' : '';
 					$html .= '<label class="custom-attribute-option">';
-					$html .= '<input type="radio" name="' . $name_prefix . '[' . $slug . ']" value="' . esc_attr($term->slug) . '" ' . $is_checked . ' />';
+					$html .= '<input type="radio" name="' . $name_prefix . '[' . $slug . ']" value="' . esc_attr($term->slug) . '" ' . $is_checked . ' data-variation-field-id="'.esc_attr($field_id).'"/>';
 					$html .= '<span class="option-label">' . esc_html($term->name) . '</span>';
 					$html .= '</label>';
 			}
@@ -176,6 +199,7 @@ private function render_meta_field($field, $name_prefix) {
 	$slug = esc_attr($field['slug']);
 	$label = esc_html($field['label']);
 	$fieldType = intval($field['fieldType']);
+	$field_id = esc_html($field['fieldID']);
 	$placeholder = esc_attr($field['placeholder'] ?? '');
 	$instructions = esc_html($field['instructions'] ?? '');
 	$required = !empty($field['required']) ? 'required' : '';
@@ -184,13 +208,13 @@ private function render_meta_field($field, $name_prefix) {
 	$html .= "<label for='{$slug}'>{$label}</label>";
 
 	switch ($fieldType) {
-			case 1: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} />"; break;
-			case 3: $html .= "<input type='file' name='{$name_prefix}[{$slug}]' {$required} />"; break;
-			case 4: $html .= "<textarea name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required}></textarea>"; break;
-			case 5: $html .= "<input type='number' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} />"; break;
-			case 10: $html .= "<input type='color' name='{$name_prefix}[{$slug}]' {$required} />"; break;
+			case 1: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' data-variation-field-id='{$field_id}' placeholder='{$placeholder}' {$required} />"; break;
+			case 3: $html .= "<label class='custom-upload-wrapper'><div class='upload-icon'>📎</div><div class='upload-instruction'>Drop file here or click to browse</div><div class='upload-types'>.jpeg, .jpg, .gif, .png, .pdf</div><input type='file' name='{$name_prefix}[{$slug}]' {$required} data-variation-field-id='{$field_id}' accept='.jpeg,.jpg,.gif,.png,.pdf'/></label>"; break;
+			case 4: $html .= "<textarea name='{$name_prefix}[{$slug}]' data-variation-field-id='{$field_id}' placeholder='{$placeholder}' {$required}></textarea>"; break;
+			case 5: $html .= "<input type='number' name='{$name_prefix}[{$slug}]' data-variation-field-id='{$field_id}' placeholder='{$placeholder}' {$required} />"; break;
+			case 10: $html .= "<input type='color' name='{$name_prefix}[{$slug}]' data-variation-field-id='{$field_id}' {$required} />"; break;
 			case 8: $html .= "<p class='field-instructions'>{$instructions}</p>"; break;
-			default: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} />"; break;
+			default: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' data-variation-field-id='{$field_id}' {$required} />"; break;
 	}
 
 	$html .= '</div>';

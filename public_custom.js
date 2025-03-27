@@ -609,7 +609,7 @@ jQuery(document).ready(function ($) {
 
     var groupIndex = 1;
 
-    $("#add-group-button").click(function() {
+    $("#add-group-button").on('click', function() {
         groupIndex++;
         var newGroup = $(".group-field-set").first().clone();
         newGroup.attr("data-group-index", groupIndex);
@@ -658,7 +658,7 @@ jQuery(document).ready(function ($) {
     parent.find('input').prop('checked', false); // Uncheck all
     parent.find('.custom-checkmark').hide(); // Hide all checkmarks
 
-    jQuery(this).find('input').prop('checked', true); // Check the clicked input
+    jQuery(this).find('input').prop('checked', true).trigger('change'); // Check the clicked input
     jQuery(this).find('.custom-checkmark').show(); // Show checkmark
 });
 

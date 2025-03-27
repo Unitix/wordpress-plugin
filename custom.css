@@ -295,8 +295,18 @@ input[type="checkbox"] {
 
 /* Make price value standout */
 #custom-price {
-  color: #0073aa;
+  color: #0753d7;
   font-size: 24px;
+}
+
+button#add-group-button, button.delete-group-button {
+  padding: 11px 20px;
+  margin: 10px 0;
+  background-color: #0753d7;
+  appearance: none;
+  border: none;
+  color: #fff;
+  border-radius: 6px;
 }
 
 
@@ -304,6 +314,18 @@ input[type="checkbox"] {
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
+  flex-direction: row;
+  align-content: flex-start;
+  align-items: flex-start;
+}
+
+label.custom-attribute-option {
+  padding: 10px 9px;
+  border: 1px dashed #ddd;
+}
+
+.wp-block-woocommerce-add-to-cart-form form.cart {
+  display: block !important;
 }
 
 .custom-attribute-option {
@@ -311,6 +333,11 @@ input[type="checkbox"] {
   cursor: pointer;
   display: inline-block;
   text-align: center;
+}
+
+.custom-attribute-option:has(input[type="radio"]:checked) {
+  border-color: #007cba;
+  background-color: #f0f8ff;
 }
 
 .custom-attribute-option input {

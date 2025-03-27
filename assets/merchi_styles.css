@@ -674,3 +674,62 @@ ul.cst-breadcrumb > li.cst-breadcrumb-li i.cst-delimiter {
   transition: opacity 0.3s;
   vertical-align: middle;
 }
+
+/* product single page fields */
+.custom-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.custom-field label {
+  font-size: 17px;
+  display: block;
+}
+
+.custom-field input[type="text"] {
+  padding: 12px 10px;
+}
+.custom-field input[type="color"] {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: none;
+}
+
+.custom-field input[type="file"] {
+  display: none;
+}
+
+.custom-upload-wrapper {
+  border: 2px dashed #ccc;
+  border-radius: 4px;
+  padding: 15px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  background: #fafafa;
+  transition: border-color 0.3s;
+}
+
+.custom-upload-wrapper:hover {
+  border-color: #888;
+}
+
+.custom-upload-wrapper .upload-icon {
+  font-size: 32px;
+  margin-bottom: 10px;
+  color: #666;
+}
+
+.custom-upload-wrapper .upload-instruction {
+  font-size: 14px;
+  color: #444;
+  font-weight: 500;
+}
+
+.custom-upload-wrapper .upload-types {
+  font-size: 12px;
+  color: #888;
+}
