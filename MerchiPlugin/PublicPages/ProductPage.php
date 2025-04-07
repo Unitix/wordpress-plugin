@@ -31,7 +31,7 @@ class ProductPage extends BaseController {
 			wp_localize_script('merchi-product-form', 'merchiConfig', array(
 				'apiKey' => get_option('merchi_api_key'),
 				'domainId' => get_option('merchi_domain_id'),
-				'apiUrl' => get_option('merchi_staging_mode') === 'yes' ? 'https://staging.merchi.co/' : 'https://merchi.co/',
+				'apiUrl' => get_option('merchi_staging_mode') === 'yes' ? 'https://api.staging.merchi.co/' : 'https://api.merchi.co/',
 				'productId' => get_post_meta(get_the_ID(), 'product_id', true)
 			));
 		}
@@ -78,9 +78,10 @@ class ProductPage extends BaseController {
 											foreach ($terms as $term) {
 													$image_id = get_term_meta($term->term_id, 'taxonomy_image', true);
 													$image_url = $image_id ? wp_get_attachment_url($image_id) : '';
+													$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
 			
 													echo '<label class="custom-attribute-option">';
-													echo '<input type="checkbox" name="' . esc_attr($field['taxonomy']) . '[]" value="' . esc_attr($term->slug) . '" data-variation-field-id="'.esc_attr($fieldID).'"/>';
+													echo '<input type="checkbox" name="' . esc_attr($field['taxonomy']) . '[]" value="' . esc_attr($term->slug) . '" data-variation-field-id="'.esc_attr($fieldID).'" data-variation-field-value="' . esc_attr($variation_option_id) . '"/>';
 													if ($image_url) {
 															echo '<img src="' . esc_url($image_url) . '" class="attribute-image">';
 													}
@@ -90,7 +91,8 @@ class ProductPage extends BaseController {
 									} else {
 											echo '<select multiple name="' . esc_attr($field['taxonomy']) . '[]" class="custom-select-multi" data-variation-field-id="'.esc_attr($fieldID).'">';
 											foreach ($terms as $term) {
-													echo '<option value="' . esc_attr($term->slug) . '">' . esc_html($term->name) . '</option>';
+												$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
+													echo '<option value="' . esc_attr($term->slug) . '" data-variation-field-value="' . esc_attr($variation_option_id) . '">' . esc_html($term->name) . '</option>';
 											}
 											echo '</select>';
 									}
@@ -99,9 +101,9 @@ class ProductPage extends BaseController {
 											$image_id = get_term_meta($term->term_id, 'taxonomy_image', true);
 											$image_url = $image_id ? wp_get_attachment_url($image_id) : '';
 											$is_checked = $index === 0 ? 'checked' : '';
-			
+											$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
 											echo '<label class="custom-attribute-option">';
-											echo '<input type="radio" name="' . esc_attr($field['taxonomy']) . '" data-variation-field-id="'.esc_attr($fieldID).'" value="' . esc_attr($term->slug) . '" ' . $is_checked . ' />';
+											echo '<input type="radio" name="' . esc_attr($field['taxonomy']) . '" data-variation-field-id="'.esc_attr($fieldID).'" value="' . esc_attr($term->slug) . '" ' . $is_checked . ' data-variation-field-value="' . esc_attr($variation_option_id) . '"/>';
 											if ($image_url) {
 													echo '<img src="' . esc_url($image_url) . '" class="attribute-image">';
 											}
@@ -184,8 +186,9 @@ private function render_attribute_field($field, $name_prefix) {
 	} else {
 			foreach ($terms as $index => $term) {
 					$is_checked = $index === 0 ? 'checked' : '';
+					$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
 					$html .= '<label class="custom-attribute-option">';
-					$html .= '<input type="radio" name="' . $name_prefix . '[' . $slug . ']" value="' . esc_attr($term->slug) . '" ' . $is_checked . ' data-variation-field-id="'.esc_attr($field_id).'"/>';
+					$html .= '<input type="radio" name="' . $name_prefix . '[' . $slug . ']" value="' . esc_attr($term->slug) . '" ' . $is_checked . ' data-variation-field-id="'.esc_attr($field_id).'" data-variation-field-value="' . esc_attr($variation_option_id) . '"/>';
 					$html .= '<span class="option-label">' . esc_html($term->name) . '</span>';
 					$html .= '</label>';
 			}

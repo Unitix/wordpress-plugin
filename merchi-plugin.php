@@ -1826,6 +1826,7 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 
 	$grouped_field_template = [];
 
+
 if (!empty($merchi_product['groupVariationFields'])) {
     foreach ($merchi_product['groupVariationFields'] as $group_field) {
         $field_type = intval($group_field['fieldType']);
@@ -1844,8 +1845,17 @@ if (!empty($merchi_product['groupVariationFields'])) {
             foreach ($options as $option) {
                 if (!empty($option['include']) && !empty($option['value'])) {
                     $option_value = sanitize_text_field($option['value']);
-                    wp_insert_term($option_value, $taxonomy);
-                    $variation_options[] = $option_value;
+                    $inserted_g_term = wp_insert_term($option_value, $taxonomy);
+										if (!is_wp_error($inserted_g_term)) {
+												$term_id = $inserted_g_term['term_id'];
+												$variation_options[] = $option_value;
+												
+												// Save the 'id' into term meta
+												if (!empty($option['id'])) {
+													update_term_meta($term_id, 'variation_option_id', sanitize_text_field($option['id']));
+														// 'true' to avoid duplicate meta keys
+												}
+										}
                 }
             }
 
@@ -1914,6 +1924,10 @@ if (!empty($merchi_product['groupVariationFields'])) {
 											if ($attachment_id) {
 													update_term_meta($term_id, 'taxonomy_image', $attachment_id);
 											}
+									}
+
+									if (!empty($option['id'])) {
+										update_term_meta($term_id, 'variation_option_id', sanitize_text_field($option['id']));
 									}
 	
 									$variation_options[] = $option_value;

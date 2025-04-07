@@ -3,6 +3,8 @@ jQuery(document).ready(function($) {
   const merchiProductId = merchiConfig.productId;
   const merchiApiUrl = merchiConfig.apiUrl;
 
+  
+
   // Function to set nested object value
   function setNestedValue(obj, path, value) {
       const keys = path.split('.');
@@ -46,48 +48,76 @@ jQuery(document).ready(function($) {
 
   // Function to serialize form data
   function serializeFormData() {
-      const formData = {};
+    const data = {};
+  
+    // Get quantity from input
+    const quantity = $('input[name="quantity"]').val();
+    if (quantity) {
+      data['quantity'] = quantity;
+    }
+  
+    // Static product ID
+    data['product-0-id'] = 47308;
+    data['product-count'] = 1;
+  
+    let variationIndex = 0;
+  
+    // Loop over each .custom-attribute-option and extract valid fields
+    $('.custom-attribute-option').each(function() {
+      const container = $(this);
+      const field = container.find('select, input[type="checkbox"], input[type="radio"]');
+      const variationFieldId = field.attr('data-variation-field-id');
+  
+      if (!variationFieldId) return;
+  
+      let fieldValue;
+  
+      if (field.is('select')) {
+        // Get selected option's data-variation-field-value
+        const selectedOption = field.find('option:selected');
+        fieldValue = selectedOption.data('variation-field-value');
+      } else if (field.is('input[type="checkbox"]') || field.is('input[type="radio"]')) {
+        if (field.is(':checked')) {
+          fieldValue = field.data('variation-field-value');
+        }
+      }
+  
+      // Only add if value is present
+      if (fieldValue !== undefined) {
+        data[`variations-${variationIndex}-value`] = fieldValue;
+        data[`variations-${variationIndex}-variationField-0-id`] = variationFieldId;
+        variationIndex++; // Increment only if valid entry added
+      }
+    });
+  
+    // Convert to FormData
+    const formData = new FormData();
+    for (const key in data) {
+      formData.append(key, data[key]);
+    }
+  
+    return formData;
+  }  
+  
 
-      $('.custom-attribute-option select, .custom-attribute-option input[type="checkbox"], .custom-attribute-option input[type="radio"]').each(function() {
-          const field = $(this);
-          const name = field.attr('name');
-          const variationFieldId = field.attr('data-variation-field-id');
-
-          if (name && variationFieldId) {
-              let value;
-              if (field.is('select')) {
-                  value = field.val();
-              } else if (field.is('input[type="checkbox"]')) {
-                  // For checkboxes, only include if checked
-                  if (field.is(':checked')) {
-                      value = field.val();
-                  }
-              } else if (field.is('input[type="radio"]')) {
-                  // For radio buttons, only include if checked
-                  if (field.is(':checked')) {
-                      value = field.val();
-                  }
-              }
-
-              if (value !== undefined) {
-                  setNestedValue(formData, variationFieldId, value);
-              }
-          }
-      });
-      return formData;
+  function createFormDataFromFlatObject(data) {
+    const formData = new FormData();
+    for (const key in data) {
+      if (data.hasOwnProperty(key)) {
+        formData.append(key, data[key]);
+      }
+    }
+    return formData;
   }
 
   // Function to update price via Merchi API
   function updatePrice(formData) {
       $.ajax({
-          url: merchiApiUrl + 'v6/products/' + merchiProductId + '/specialised-order-estimate/',
+          url: merchiApiUrl + 'v6/specialised-order-estimate/?skip_rights=y&product_id='+ merchiProductId,
           method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-          },
-          data: JSON.stringify({
-              formData: formData
-          }),
+          data: formData,
+          processData: false,
+          contentType: false, // Important: Let browser set multipart/form-data headers
           success: function(response) {
             console.log('Merchi Response', response);
               if (response && response.price) {
