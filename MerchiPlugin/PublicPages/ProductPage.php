@@ -165,37 +165,51 @@ class ProductPage extends BaseController {
 
 
 private function render_attribute_field($field, $name_prefix) {
-	$terms = get_terms(['taxonomy' => $field['taxonomy'], 'hide_empty' => false]);
+    $terms = get_terms(['taxonomy' => $field['taxonomy'], 'hide_empty' => false]);
 
-	if (empty($terms)) return '';
+    if (empty($terms)) return '';
 
-	$slug = esc_attr($field['slug']);
-	$label = esc_html($field['label']);
-	$field_id = esc_html($field['fieldID']);
-	$is_multiple = !empty($field['multipleSelect']);
+    $slug = esc_attr($field['slug']);
+    $label = esc_html($field['label']);
+    $field_id = esc_html($field['fieldID']);
+    $is_multiple = !empty($field['multipleSelect']);
+    $field_type = intval($field['fieldType']);
 
-	$html = '<div class="custom-field">';
-	$html .= "<label for='{$slug}'>{$label}</label>";
+    $html = '<div class="custom-field">';
+    $html .= "<label for='{$slug}'>{$label}</label>";
 
-	if ($is_multiple) {
-			$html .= '<select multiple name="' . $name_prefix . '[' . $slug . '][]" data-variation-field-id="'.esc_attr($field_id).'">';
-			foreach ($terms as $term) {
-					$html .= '<option value="' . esc_attr($term->slug) . '">' . esc_html($term->name) . '</option>';
-			}
-			$html .= '</select>';
-	} else {
-			foreach ($terms as $index => $term) {
-					$is_checked = $index === 0 ? 'checked' : '';
-					$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
-					$html .= '<label class="custom-attribute-option">';
-					$html .= '<input type="radio" name="' . $name_prefix . '[' . $slug . ']" value="' . esc_attr($term->slug) . '" ' . $is_checked . ' data-variation-field-id="'.esc_attr($field_id).'" data-variation-field-value="' . esc_attr($variation_option_id) . '"/>';
-					$html .= '<span class="option-label">' . esc_html($term->name) . '</span>';
-					$html .= '</label>';
-			}
-	}
+    // Use dropdown only for SELECT field type (2)
+    if ($field_type === 2) {
+        if ($is_multiple) {
+            $html .= '<select multiple name="' . $name_prefix . '[' . $slug . '][]" data-variation-field-id="'.esc_attr($field_id).'">';
+            foreach ($terms as $term) {
+                $variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
+                $html .= '<option value="' . esc_attr($term->slug) . '" data-variation-field-value="' . esc_attr($variation_option_id) . '">' . esc_html($term->name) . '</option>';
+            }
+            $html .= '</select>';
+        } else {
+            $html .= '<select name="' . $name_prefix . '[' . $slug . ']" data-variation-field-id="'.esc_attr($field_id).'">';
+            foreach ($terms as $index => $term) {
+                $variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
+                $is_selected = $index === 0 ? 'selected' : '';
+                $html .= '<option value="' . esc_attr($term->slug) . '" ' . $is_selected . ' data-variation-field-value="' . esc_attr($variation_option_id) . '">' . esc_html($term->name) . '</option>';
+            }
+            $html .= '</select>';
+        }
+    } else {
+        // Use radio buttons for all other field types
+        foreach ($terms as $index => $term) {
+            $is_checked = $index === 0 ? 'checked' : '';
+            $variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
+            $html .= '<label class="custom-attribute-option">';
+            $html .= '<input type="radio" name="' . $name_prefix . '[' . $slug . ']" value="' . esc_attr($term->slug) . '" ' . $is_checked . ' data-variation-field-id="'.esc_attr($field_id).'" data-variation-field-value="' . esc_attr($variation_option_id) . '"/>';
+            $html .= '<span class="option-label">' . esc_html($term->name) . '</span>';
+            $html .= '</label>';
+        }
+    }
 
-	$html .= '</div>';
-	return $html;
+    $html .= '</div>';
+    return $html;
 }
 
 private function render_meta_field($field, $name_prefix) {
