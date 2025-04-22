@@ -1845,17 +1845,27 @@ if (!empty($merchi_product['groupVariationFields'])) {
             foreach ($options as $option) {
                 if (!empty($option['include']) && !empty($option['value'])) {
                     $option_value = sanitize_text_field($option['value']);
-                    $inserted_g_term = wp_insert_term($option_value, $taxonomy);
-										if (!is_wp_error($inserted_g_term)) {
-												$term_id = $inserted_g_term['term_id'];
-												$variation_options[] = $option_value;
-												
-												// Save the 'id' into term meta
-												if (!empty($option['id'])) {
-													update_term_meta($term_id, 'variation_option_id', sanitize_text_field($option['id']));
-														// 'true' to avoid duplicate meta keys
-												}
-										}
+                    $image_url = !empty($option['linkedFile']['viewUrl']) ? esc_url($option['linkedFile']['viewUrl']) : '';
+
+                    $term = term_exists($option_value, $taxonomy);
+                    if (!$term) {
+                        $term_info = wp_insert_term($option_value, $taxonomy);
+                        if (!is_wp_error($term_info) && isset($term_info['term_id'])) {
+                            $term_id = $term_info['term_id'];
+                        }
+                    } else {
+                        $term_id = $term['term_id'];
+                    }
+
+                    if (!empty($image_url) && !empty($term_id)) {
+                        update_term_meta($term_id, 'linkedFile.viewUrl', $image_url);
+                    }
+
+                    if (!empty($option['id'])) {
+                        update_term_meta($term_id, 'variation_option_id', sanitize_text_field($option['id']));
+                    }
+
+                    $variation_options[] = $option_value;
                 }
             }
 
@@ -1988,55 +1998,73 @@ if (!empty($merchi_product['groupVariationFields'])) {
 }
 
 function download_and_attach_image($image_url) {
-	require_once ABSPATH . 'wp-admin/includes/file.php';
-	require_once ABSPATH . 'wp-admin/includes/media.php';
-	require_once ABSPATH . 'wp-admin/includes/image.php';
+    require_once ABSPATH . 'wp-admin/includes/file.php';
+    require_once ABSPATH . 'wp-admin/includes/media.php';
+    require_once ABSPATH . 'wp-admin/includes/image.php';
 
-	$upload_dir = wp_upload_dir();
+    // Debug log
+    error_log('Attempting to download and attach image from URL: ' . $image_url);
 
-	$response = wp_remote_head($image_url);
-	if (is_wp_error($response)) {
-			return false;
-	}
+    $upload_dir = wp_upload_dir();
+    if (is_wp_error($upload_dir)) {
+        error_log('Error getting upload directory: ' . $upload_dir->get_error_message());
+        return false;
+    }
 
-	$content_type = wp_remote_retrieve_header($response, 'content-type');
+    $response = wp_remote_head($image_url);
+    if (is_wp_error($response)) {
+        error_log('Error checking image URL: ' . $response->get_error_message());
+        return false;
+    }
 
-	$extension = '';
-	if (strpos($content_type, 'image/jpeg') !== false) {
-			$extension = '.jpg';
-	} elseif (strpos($content_type, 'image/png') !== false) {
-			$extension = '.png';
-	} elseif (strpos($content_type, 'image/gif') !== false) {
-			$extension = '.gif';
-	} elseif (strpos($content_type, 'image/webp') !== false) {
-			$extension = '.webp';
-	}
+    $content_type = wp_remote_retrieve_header($response, 'content-type');
+    error_log('Image content type: ' . $content_type);
 
-	$filename = sanitize_file_name(uniqid('merchi_image_') . $extension);
-	$file_path = $upload_dir['path'] . '/' . $filename;
+    $extension = '';
+    if (strpos($content_type, 'image/jpeg') !== false) {
+        $extension = '.jpg';
+    } elseif (strpos($content_type, 'image/png') !== false) {
+        $extension = '.png';
+    } elseif (strpos($content_type, 'image/gif') !== false) {
+        $extension = '.gif';
+    } elseif (strpos($content_type, 'image/webp') !== false) {
+        $extension = '.webp';
+    }
 
-	$existing_attachment_id = attachment_url_to_postid($upload_dir['url'] . '/' . $filename);
-	if ($existing_attachment_id) {
-			return $existing_attachment_id;
-	}
+    if (empty($extension)) {
+        error_log('Unsupported image type: ' . $content_type);
+        return false;
+    }
 
-	$tmp = download_url($image_url);
-	if (is_wp_error($tmp)) {
-			return false;
-	}
+    $filename = sanitize_file_name(uniqid('merchi_image_') . $extension);
+    $file_path = $upload_dir['path'] . '/' . $filename;
 
-	$file_array = [
-			'name'     => $filename,
-			'tmp_name' => $tmp,
-	];
+    $existing_attachment_id = attachment_url_to_postid($upload_dir['url'] . '/' . $filename);
+    if ($existing_attachment_id) {
+        error_log('Found existing attachment ID: ' . $existing_attachment_id);
+        return $existing_attachment_id;
+    }
 
-	$attachment_id = media_handle_sideload($file_array, 0);
-	if (is_wp_error($attachment_id)) {
-			@unlink($tmp);
-			return false;
-	}
+    $tmp = download_url($image_url);
+    if (is_wp_error($tmp)) {
+        error_log('Error downloading image: ' . $tmp->get_error_message());
+        return false;
+    }
 
-	return $attachment_id;
+    $file_array = [
+        'name'     => $filename,
+        'tmp_name' => $tmp,
+    ];
+
+    $attachment_id = media_handle_sideload($file_array, 0);
+    if (is_wp_error($attachment_id)) {
+        @unlink($tmp);
+        error_log('Error creating attachment: ' . $attachment_id->get_error_message());
+        return false;
+    }
+
+    error_log('Successfully created attachment with ID: ' . $attachment_id);
+    return $attachment_id;
 }
 
 

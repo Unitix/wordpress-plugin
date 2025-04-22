@@ -45,7 +45,7 @@ class ProductPage extends BaseController {
 
     if (empty($fields) || !is_array($fields)) return;
 
-    echo '<div id="custom-variation-options merchi-product-form">';
+    echo '<div id="custom-variation-options" class="merchi-product-form">';
 
     foreach ($fields as $field) {
         $type = $field['type'];
@@ -63,38 +63,32 @@ class ProductPage extends BaseController {
 					if ($terms) {
 							$has_images = false;
 							foreach ($terms as $term) {
-									if (get_term_meta($term->term_id, 'taxonomy_image', true)) {
+									$image_id = get_term_meta($term->term_id, 'taxonomy_image', true);
+									if ($image_id) {
 											$has_images = true;
 											break;
 									}
 							}
 			
 							$is_multiple = !empty($field['multipleSelect']);
-			
 							echo '<div class="custom-attribute-options" data-attribute="' . esc_attr($field['taxonomy']) . '">';
 			
 							if ($is_multiple) {
-									if ($has_images) {
-											foreach ($terms as $term) {
-													$image_id = get_term_meta($term->term_id, 'taxonomy_image', true);
-													$image_url = $image_id ? wp_get_attachment_url($image_id) : '';
-													$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
+									foreach ($terms as $term) {
+											$image_id = get_term_meta($term->term_id, 'taxonomy_image', true);
+											$image_url = $image_id ? wp_get_attachment_url($image_id) : '';
+											$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
 			
-													echo '<label class="custom-attribute-option">';
-													echo '<input type="checkbox" name="' . esc_attr($field['taxonomy']) . '[]" value="' . esc_attr($term->slug) . '" data-variation-field-id="'.esc_attr($fieldID).'" data-variation-field-value="' . esc_attr($variation_option_id) . '"/>';
-													if ($image_url) {
-															echo '<img src="' . esc_url($image_url) . '" class="attribute-image">';
-													}
-													echo '<span class="option-label">' . esc_html($term->name) . '</span>';
-													echo '</label>';
+											// Debug log
+											error_log('Term: ' . $term->name . ', Image ID: ' . $image_id . ', Image URL: ' . $image_url);
+			
+											echo '<label class="custom-attribute-option">';
+											echo '<input type="checkbox" name="' . esc_attr($field['taxonomy']) . '[]" value="' . esc_attr($term->slug) . '" data-variation-field-id="'.esc_attr($fieldID).'" data-variation-field-value="' . esc_attr($variation_option_id) . '"/>';
+											if ($image_url) {
+													echo '<img src="' . esc_url($image_url) . '" class="attribute-image" alt="' . esc_attr($term->name) . '">';
 											}
-									} else {
-											echo '<select multiple name="' . esc_attr($field['taxonomy']) . '[]" class="custom-select-multi" data-variation-field-id="'.esc_attr($fieldID).'">';
-											foreach ($terms as $term) {
-												$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
-													echo '<option value="' . esc_attr($term->slug) . '" data-variation-field-value="' . esc_attr($variation_option_id) . '">' . esc_html($term->name) . '</option>';
-											}
-											echo '</select>';
+											echo '<span class="option-label">' . esc_html($term->name) . '</span>';
+											echo '</label>';
 									}
 							} else {
 									foreach ($terms as $index => $term) {
@@ -102,10 +96,14 @@ class ProductPage extends BaseController {
 											$image_url = $image_id ? wp_get_attachment_url($image_id) : '';
 											$is_checked = $index === 0 ? 'checked' : '';
 											$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
+			
+											// Debug log
+											error_log('Term: ' . $term->name . ', Image ID: ' . $image_id . ', Image URL: ' . $image_url);
+			
 											echo '<label class="custom-attribute-option">';
 											echo '<input type="radio" name="' . esc_attr($field['taxonomy']) . '" data-variation-field-id="'.esc_attr($fieldID).'" value="' . esc_attr($term->slug) . '" ' . $is_checked . ' data-variation-field-value="' . esc_attr($variation_option_id) . '"/>';
 											if ($image_url) {
-													echo '<img src="' . esc_url($image_url) . '" class="attribute-image">';
+													echo '<img src="' . esc_url($image_url) . '" class="attribute-image" alt="' . esc_attr($term->name) . '">';
 											}
 											echo '<span class="option-label">' . esc_html($term->name) . '</span>';
 											echo '</label>';
@@ -143,7 +141,7 @@ class ProductPage extends BaseController {
 
     if (empty($group_fields_template)) return;
 
-    echo '<div id="grouped-fields-container merchi-product-form">';
+    echo '<div id="grouped-fields-container" class="merchi-product-form">';
     echo '<h3>Grouped Options</h3>';
 
     echo '<div class="group-field-set" data-group-index="1">';
@@ -196,16 +194,82 @@ private function render_attribute_field($field, $name_prefix) {
             }
             $html .= '</select>';
         }
-    } else {
-        // Use radio buttons for all other field types
-        foreach ($terms as $index => $term) {
-            $is_checked = $index === 0 ? 'checked' : '';
+    } else if ($field_type === 6) { // CHECKBOX type
+        $html .= '<div class="checkbox-options-container">';
+        foreach ($terms as $term) {
             $variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
-            $html .= '<label class="custom-attribute-option">';
+            $html .= '<div class="checkbox-option">';
+            $html .= '<label class="checkbox-label">';
+            $html .= '<input type="checkbox" name="' . $name_prefix . '[' . $slug . '][]" value="' . esc_attr($term->slug) . '" data-variation-field-id="'.esc_attr($field_id).'" data-variation-field-value="' . esc_attr($variation_option_id) . '"/>';
+            $html .= '<span class="option-label">' . esc_html($term->name) . '</span>';
+            $html .= '</label>';
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+    } else if ($field_type === 7) { // RADIO type
+        $html .= '<div class="radio-options-container">';
+        foreach ($terms as $index => $term) {
+            $variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
+            $is_checked = $index === 0 ? 'checked' : '';
+            $html .= '<div class="radio-option">';
+            $html .= '<label class="radio-label">';
             $html .= '<input type="radio" name="' . $name_prefix . '[' . $slug . ']" value="' . esc_attr($term->slug) . '" ' . $is_checked . ' data-variation-field-id="'.esc_attr($field_id).'" data-variation-field-value="' . esc_attr($variation_option_id) . '"/>';
             $html .= '<span class="option-label">' . esc_html($term->name) . '</span>';
             $html .= '</label>';
+            $html .= '</div>';
         }
+        $html .= '</div>';
+    } else if ($field_type === 9) { // IMAGE_SELECT type
+        $html .= '<div class="image-select-options-container">';
+        foreach ($terms as $index => $term) {
+            $variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
+            
+            // Debug: Get all meta data for this term
+            $all_meta = get_term_meta($term->term_id);
+            error_log('Term Debug - Name: ' . $term->name . ', ID: ' . $term->term_id);
+            error_log('All meta for term: ' . print_r($all_meta, true));
+            
+            // Try different meta key formats
+            $image_url = get_term_meta($term->term_id, 'linkedFile.viewUrl', true);
+            if (!$image_url) {
+                $image_url = get_term_meta($term->term_id, 'linkedFile_viewUrl', true);
+            }
+            if (!$image_url) {
+                $image_url = get_term_meta($term->term_id, 'linkedFileViewUrl', true);
+            }
+            
+            error_log('Final image URL: ' . ($image_url ? $image_url : 'not found'));
+            
+            $html .= '<div class="image-select-option">';
+            $html .= '<label class="image-select-label">';
+            $html .= '<input type="checkbox" name="' . $name_prefix . '[' . $slug . '][]" value="' . esc_attr($term->slug) . '" data-variation-field-id="'.esc_attr($field_id).'" data-variation-field-value="' . esc_attr($variation_option_id) . '"/>';
+            if ($image_url) {
+                $html .= '<div class="image-container">';
+                $html .= '<img src="' . esc_url($image_url) . '" alt="' . esc_attr($term->name) . '">';
+                $html .= '<div class="image-select-checkmark"></div>';
+                $html .= '</div>';
+            }
+            $html .= '<span class="image-title">' . esc_html($term->name) . '</span>';
+            $html .= '</label>';
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+    } else if ($field_type === 11) { // COLOUR_SELECT type
+        $html .= '<div class="color-options-grid">';
+        foreach ($terms as $index => $term) {
+            $is_checked = $index === 0 ? 'checked' : '';
+            $variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
+            $color_value = strtolower($term->name);
+            $html .= '<label class="color-option">';
+            $html .= '<input type="radio" name="' . $name_prefix . '[' . $slug . ']" value="' . esc_attr($term->slug) . '" ' . $is_checked . ' data-variation-field-id="'.esc_attr($field_id).'" data-variation-field-value="' . esc_attr($variation_option_id) . '"/>';
+            $html .= '<div class="color-option-inner">';
+            $html .= '<span class="color-indicator" style="background-color: ' . esc_attr($color_value) . ';"></span>';
+            $html .= '<span class="checkmark">✓</span>';
+            $html .= '</div>';
+            $html .= '<span class="color-name">' . esc_html($term->name) . '</span>';
+            $html .= '</label>';
+        }
+        $html .= '</div>';
     }
 
     $html .= '</div>';

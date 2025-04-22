@@ -158,4 +158,68 @@ jQuery(document).ready(function($) {
       const formData = serializeFormData();
       debouncedUpdatePrice(formData);
   });
+
+  $("#add-group-button").on('click', function() {
+    // Get the current number of groups and add 1 for the new group
+    var newGroupIndex = $(".group-field-set").length + 1;
+    var newGroup = $(".group-field-set").first().clone();
+    newGroup.attr("data-group-index", newGroupIndex);
+    newGroup.find(".group-number").text(newGroupIndex);
+
+    // Update input names with new group index
+    newGroup.find("input, select, textarea").each(function() {
+      var name = $(this).attr("name");
+      if (name) {
+        name = name.replace(/group_fields\[\d+\]/, "group_fields[" + newGroupIndex + "]");
+        $(this).attr("name", name);
+      }
+      // Clear any selected values
+      if ($(this).is(':radio') || $(this).is(':checkbox')) {
+        $(this).prop('checked', false);
+      } else {
+        $(this).val('');
+      }
+    });
+
+    // Show delete button for the new group
+    newGroup.find(".delete-group-button").show();
+    
+    // Append the new group before the add button
+    $("#grouped-fields-container").append(newGroup);
+    
+    // Show delete buttons if there's more than one group
+    if ($(".group-field-set").length > 1) {
+      $(".delete-group-button").show();
+    }
+  });
+
+  // Handle delete button click using event delegation
+  $(document).on("click", ".delete-group-button", function() {
+    $(this).closest(".group-field-set").remove();
+    updateGroupNumbers();
+  });
+
+  function updateGroupNumbers() {
+    $(".group-field-set").each(function(index) {
+      var newIndex = index + 1;
+      $(this).attr("data-group-index", newIndex);
+      $(this).find(".group-number").text(newIndex);
+      
+      // Update input names
+      $(this).find("input, select, textarea").each(function() {
+        var name = $(this).attr("name");
+        if (name) {
+          name = name.replace(/group_fields\[\d+\]/, "group_fields[" + newIndex + "]");
+          $(this).attr("name", name);
+        }
+      });
+    });
+
+    // Hide delete button if only one group remains
+    if ($(".group-field-set").length === 1) {
+      $(".delete-group-button").hide();
+    } else {
+      $(".delete-group-button").show();
+    }
+  }
 });

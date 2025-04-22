@@ -329,34 +329,46 @@ label.custom-attribute-option {
 }
 
 .custom-attribute-option {
-  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 10px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
   cursor: pointer;
-  display: inline-block;
-  text-align: center;
+  transition: all 0.3s ease;
 }
 
-.custom-attribute-option:has(input[type="radio"]:checked) {
+.custom-attribute-option:hover {
   border-color: #007cba;
-  background-color: #f0f8ff;
-}
-
-.custom-attribute-option input {
-  display: none; /* Hide the checkbox */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .custom-attribute-option img {
   width: 100px;
   height: 100px;
-  border-radius: 8px;
-  border: 2px solid transparent;
-  transition: all 0.3s ease-in-out;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.custom-attribute-option input[type="radio"],
+.custom-attribute-option input[type="checkbox"] {
+  display: none;
+}
+
+.custom-attribute-option input[type="radio"]:checked + img,
+.custom-attribute-option input[type="checkbox"]:checked + img {
+  border: 2px solid #007cba;
+  box-shadow: 0 0 0 2px #007cba;
 }
 
 .custom-attribute-option .option-label {
-  display: block;
   font-size: 14px;
-  margin-top: 5px;
   color: #333;
+  margin-top: 4px;
+  text-align: center;
 }
 
 /* ✅ Checkmark styling */
@@ -377,4 +389,83 @@ label.custom-attribute-option {
 
 .custom-attribute-option input:checked ~ .custom-checkmark {
   display: block;
+}
+
+/* Color Selector Styles */
+.color-options-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 5px;
+    margin-top: 5px;
+    max-width: 465px;
+}
+
+.color-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    margin-bottom: 5px;
+    width: 45px; /* Fixed width for the entire option */
+    margin: 0 auto; /* Center the option in its grid cell */
+}
+
+.color-option input[type="radio"] {
+    display: none;
+}
+
+.color-option-inner {
+    position: relative;
+    width: 35px;
+    height: 35px;
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: center;
+}
+
+.color-indicator {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid #ddd;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.color-name {
+    font-size: 11px;
+    color: #666;
+    width: 45px; /* Match parent width */
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0;
+}
+
+.checkmark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 14px;
+    text-shadow: 0 0 2px rgba(0,0,0,0.5);
+    pointer-events: none;
+    opacity: 0; /* Hide by default */
+    transition: opacity 0.2s ease; /* Smooth transition */
+}
+
+.color-option input[type="radio"]:checked + .color-option-inner .checkmark {
+    opacity: 1; /* Show when selected */
+}
+
+.color-option input[type="radio"]:checked + .color-option-inner .color-indicator {
+    border-color: #000;
+}
+
+@media (max-width: 768px) {
+    .color-options-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
 }
