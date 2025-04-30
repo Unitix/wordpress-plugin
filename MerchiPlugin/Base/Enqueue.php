@@ -25,17 +25,32 @@ class Enqueue extends BaseController {
 		else {
 			$merchi_init = 'https://merchi.co/static/js/dist/merchi-init.js';
 		}
+		// Enqueue Merchi initialization script
 		wp_enqueue_script(
 			'merchi_init',
 			$merchi_init,
-			$ver = null
+			['jquery'],
+			null,
+			true
 		);
+		
+		// Enqueue our SDK wrapper
 		wp_enqueue_script(
 			'merchi_sdk',
 			$this->plugin_url . 'assets/merchi_sdk.js',
-			[ 'merchi_init' ]
+			['merchi_init'],
+			null,
+			true
 		);
-
+		
+		// Enqueue our product form script
+		wp_enqueue_script(
+			'merchi_product_form',
+			$this->plugin_url . 'assets/merchi-product-form.js',
+			['jquery', 'merchi_sdk'],
+			null,
+			true
+		);
 	}
 
 

@@ -653,14 +653,14 @@ jQuery(document).ready(function ($) {
     }
 
 
-  jQuery('.custom-attribute-option').click(function () {
+  jQuery('.custom-attribute-option').on('click', function () {
     var parent = jQuery(this).closest('.custom-attribute-options');
     parent.find('input').prop('checked', false); // Uncheck all
     parent.find('.custom-checkmark').hide(); // Hide all checkmarks
 
     jQuery(this).find('input').prop('checked', true).trigger('change'); // Check the clicked input
     jQuery(this).find('.custom-checkmark').show(); // Show checkmark
-});
+  });
 
   if (1 == getQueryStringParameter("step")) {
     jQuery("#billing_email").trigger("blur");
@@ -780,9 +780,20 @@ jQuery(document).ready(function ($) {
         }
       }
     });
-    if (target?.classList?.contains("product-button-add-to-cart")){
-      // Start observing the target node
-      observer.observe(target, { attributes: true });
+
+    if (target?.classList?.contains("product-button-add-to-cart")) {
+      // Ensure target is a valid DOM node before observing
+      if (target instanceof Element) {
+        try {
+          observer.observe(target, { attributes: true });
+        } catch (error) {
+          console.warn('Failed to observe target element:', error);
+          return;
+        }
+      } else {
+        console.warn('Target element is not a valid DOM node');
+        return;
+      }
       try {
         setTimeout(function () {
           // Check if the current page is a single product page
