@@ -10,10 +10,10 @@ function initializeWhenReady() {
     return;
   }
 
-jQuery(document).ready(function($) {
+  jQuery(document).ready(function($) {
     // Debug mode configuration
     const debugMode = window.merchiConfig && window.merchiConfig.debugMode || false;
-    
+      
     // Logging helper
     const log = {
       debug: function(...args) {
@@ -24,11 +24,10 @@ jQuery(document).ready(function($) {
       }
     };
 
-  // Get the Merchi product ID from the page
-  const merchiProductId = merchiConfig.productId;
-  const merchiApiUrl = merchiConfig.apiUrl;
-  let productJson = null;
-  let defaultJobJson = null;
+    // Get the Merchi product ID from the page
+    const merchiProductId = merchiConfig.productId;
+    let productJson = null;
+    let defaultJobJson = null;
 
     // Function to fetch product details
     function fetchProductDetails() {
@@ -39,28 +38,38 @@ jQuery(document).ready(function($) {
           (product) => {
             productJson = window.MERCHI_SDK.toJson(product);
             // Ensure we have a valid defaultJob structure
-            defaultJobJson = {
-              domain_id: merchiConfig.domainId,
-              product_id: merchiProductId,
-              variations: [],
-              variations_groups: []
-            };
+            defaultJobJson = productJson.defaultJob;
+
             resolve(productJson);
           },
           (error) => {
             const fallbackData = { 
               id: parseInt(merchiProductId),
               defaultJob: {
-                domain_id: merchiConfig.domainId,
-                product_id: merchiProductId,
+                domaini: {id: merchiConfig.domainId},
+                product: {id: merchiProductId},
                 variations: [],
-                variations_groups: []
+                variationsGroups: []
               }
             };
             productJson = fallbackData;
             defaultJobJson = fallbackData.defaultJob;
             resolve(fallbackData);
-          }
+          },
+          {
+            component: {},
+            defaultJob: {},
+            domain: {
+              activeTheme: {mainCss: {}},
+              logo: {}
+            },
+            draftTemplates: {file: {}},
+            groupBuyStatus: {},
+            groupVariationFields: {options: {linkedFile: {}}},
+            images: {},
+            independentVariationFields: {options: {linkedFile: {}}},
+            publicFiles: {},
+          },
         );
       });
     }
@@ -71,7 +80,7 @@ jQuery(document).ready(function($) {
     let lastCalculationTime = 0;
     const DEBOUNCE_DELAY = 300; // 300ms debounce
     const MIN_CALCULATION_INTERVAL = 500; // Minimum 500ms between calculations
-    
+      
     // Function to debounce price calculations with rate limiting
     function debouncedCalculatePrice() {
       const now = Date.now();
@@ -104,8 +113,8 @@ jQuery(document).ready(function($) {
 
         // Get product_id from various possible sources
         const productId = defaultJobJson.product_id ||
-                         (formData.job && formData.job.product && formData.job.product.id) ||
-                         merchiProductId;
+                          (formData.job && formData.job.product && formData.job.product.id) ||
+                          merchiProductId;
 
         if (!domainId || !productId) {
           throw new Error('Missing required domain or product ID');
@@ -224,6 +233,7 @@ jQuery(document).ready(function($) {
       $('.price-amount').text('$' + totalPrice.toFixed(2));
 
       // Create job entity for API call (but don't use its price)
+      console.log(formData, 'what is this james?');
       const jobEntity = createJobFromForm(formData);
       if (!jobEntity) {
         return;
@@ -380,8 +390,8 @@ jQuery(document).ready(function($) {
       const groupIndex = $input.data('group-index');
       const unitPrice = parseFloat($input.data('unit-price'));
       $input.closest('.custom-field')
-            .find('label')
-            .text('Group (' + groupIndex + ') quantity ($' + unitPrice.toFixed(2) + ' unit price)');
+        .find('label')
+        .text('Group (' + groupIndex + ') quantity ($' + unitPrice.toFixed(2) + ' unit price)');
     }
 
     // Function to gather form data with proper group handling
@@ -416,9 +426,9 @@ jQuery(document).ready(function($) {
           const variationFieldId = $input.data('variation-field-id');
           const fieldType = parseInt($input.data('field-type'));
           const variationFieldData = $input.data('variation-field');
-  
+
           if (!variationFieldId) return;
-  
+
           // Get the value based on input type
           let value = null;
           if ($input.is('select')) {
