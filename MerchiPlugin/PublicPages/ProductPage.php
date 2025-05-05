@@ -74,7 +74,9 @@ class ProductPage extends BaseController {
 			wp_localize_script('merchi-product-form', 'merchiConfig', array(
 				'domainId' => $merchi_domain,
 				'apiUrl' => $merchi_url,
-				'productId' => get_post_meta(get_the_ID(), 'product_id', true)
+				'productId' => get_post_meta(get_the_ID(), 'product_id', true),
+				'stagingMode' => $staging_mode === 'yes',
+				'apiKey' => $merchi_secret
 			));
 
 			// Verify configuration
@@ -87,6 +89,31 @@ class ProductPage extends BaseController {
 			if (empty(get_post_meta(get_the_ID(), 'product_id', true))) {
 				error_log('Warning: Merchi Product ID is empty');
 			}
+
+			// Add SDK initialization script
+			$sdk_init_script = sprintf(
+				'<script>
+					document.addEventListener("DOMContentLoaded", function() {
+						// Only initialize if SDK is not already initialized
+						if (typeof merchi !== "undefined" && !merchi.isInitialized) {
+							const sdkConfig = {
+								backendUri: "%s",
+								hasSessionToken: false,
+								hasRequiredMethods: true
+							};
+							
+							// Initialize SDK
+							merchi.init(sdkConfig);
+						}
+					});
+				</script>',
+				esc_js($merchi_url)
+			);
+
+			// Add the SDK initialization script
+			add_action('wp_footer', function() use ($sdk_init_script) {
+				echo $sdk_init_script;
+			});
 		}
 	}
 
@@ -486,21 +513,124 @@ private function render_attribute_field($field, $name_prefix) {
 		$merchi_secret = $staging_mode === 'yes' ? get_option('staging_merchi_api_secret') : get_option('merchi_api_secret');
 		$merchi_domain = $staging_mode === 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
 
-		// Debug logging
-		error_log('Merchi proxy request received:');
-		error_log('Request body: ' . print_r($body, true));
-		error_log('Merchi config - URL: ' . $merchi_url . ', Domain: ' . $merchi_domain);
-
 		// Get product ID from request body or query params
 		$product_id = $body['product_id'] ?? $request->get_param('product_id');
 		if (!$product_id) {
 			return new WP_Error('missing_product_id', 'Product ID is required', array('status' => 400));
 		}
 
-		// Construct Merchi API URL
-		$merchi_api_url = $merchi_url . 'v6/specialised-order-estimate/?skip_rights=y&product_id=' . $product_id;
-		
-		error_log('Calling Merchi API: ' . $merchi_api_url);
+		// Add SDK logging script
+		$sdk_log_script = sprintf(
+			'<script>
+				// Log SDK initialization
+				console.log("Setting backendUri to:", "%s");
+				
+				const sdkConfig = {
+					backendUri: "%s",
+					hasSessionToken: false,
+					hasRequiredMethods: true
+				};
+				
+				console.log("Merchi SDK initialized with config:", sdkConfig);
+				
+				// Log API request details
+				console.group("Merchi API Request");
+				console.log("Product ID:", "%s");
+				console.log("Domain ID:", "%s");
+				console.log("Staging Mode:", %s);
+				console.groupEnd();
+			</script>',
+			esc_js($merchi_url),
+			esc_js($merchi_url),
+			esc_js($product_id),
+			esc_js($merchi_domain),
+			$staging_mode === 'yes' ? 'true' : 'false'
+		);
+
+		// First, get the product details using the SDK approach
+		$product_api_url = $merchi_url . 'v6/products/' . $product_id . '/?skip_rights=y';
+		$product_response = wp_remote_get($product_api_url, array(
+			'headers' => array(
+				'Content-Type' => 'application/json',
+				'Authorization' => 'ApiKey ' . $merchi_secret,
+				'X-Domain-Id' => $merchi_domain,
+				'Accept' => 'application/json'
+			),
+			'timeout' => 30,
+			'sslverify' => !$staging_mode
+		));
+
+		if (is_wp_error($product_response)) {
+			return new WP_Error('product_fetch_error', $product_response->get_error_message(), array('status' => 500));
+		}
+
+		$product_data = json_decode(wp_remote_retrieve_body($product_response), true);
+		if (!isset($product_data['product'])) {
+			return new WP_Error('no_product_data', 'No product data found in response', array('status' => 500));
+		}
+
+		// Prepare the request body using the SDK's defaultJob structure
+		$request_body = array(
+			'job' => array(
+				'domain' => array('id' => $merchi_domain),
+				'product' => array(
+					'id' => $product_id,
+					'groupVariationFields' => $product_data['product']['groupVariationFields'] ?? [],
+					'independentVariationFields' => $product_data['product']['independentVariationFields'] ?? []
+				),
+				'variations' => array(),
+				'variationsGroups' => array(),
+				'jobType' => 1,
+				'currency' => 'AUD',
+				'costPerUnit' => $product_data['product']['unitPrice'] ?? 0,
+				'limitedStock' => true,
+				'inventoriesStatus' => 3,
+				'inventoryCount' => 0,
+				'inventorySufficient' => false,
+				'items' => array(),
+				'needsGroupBuy' => false,
+				'needsInventory' => false,
+				'needsSupplyChainRequest' => false
+			)
+		);
+
+		// Merge with any existing body data
+		if (isset($body['job'])) {
+			$request_body['job'] = array_merge($request_body['job'], $body['job']);
+		}
+
+		// Define embed parameters matching the SDK structure
+		$embed = array(
+			'component' => new stdClass(),
+			'defaultJob' => new stdClass(),
+			'domain' => array(
+				'activeTheme' => array('mainCss' => new stdClass()),
+				'logo' => new stdClass()
+			),
+			'draftTemplates' => array('file' => new stdClass()),
+			'groupBuyStatus' => new stdClass(),
+			'groupVariationFields' => array(
+				'options' => array(
+					'linkedFile' => new stdClass()
+				)
+			),
+			'images' => new stdClass(),
+			'independentVariationFields' => array(
+				'options' => array(
+					'linkedFile' => new stdClass()
+				)
+			),
+			'publicFiles' => new stdClass(),
+			'variations' => array(),
+			'variationsGroups' => array()
+		);
+
+		// Encode embed parameters
+		$embed_json = json_encode($embed);
+		$embed_encoded = urlencode($embed_json);
+
+		// Construct Merchi API URL with embed parameters
+		$merchi_api_url = $merchi_url . 'v6/specialised-order-estimate/?skip_rights=y&product_id=' . $product_id . '&embed=' . $embed_encoded;
 
 		// Make request to Merchi API
 		$response = wp_remote_post($merchi_api_url, array(
@@ -510,14 +640,13 @@ private function render_attribute_field($field, $name_prefix) {
 				'X-Domain-Id' => $merchi_domain,
 				'Accept' => 'application/json'
 			),
-			'body' => json_encode($body['job'] ?? $body),
+			'body' => json_encode($request_body),
 			'timeout' => 30,
-			'sslverify' => !$staging_mode // Disable SSL verification in staging
+			'sslverify' => !$staging_mode
 		));
 
 		// Check for wp_remote_post errors
 		if (is_wp_error($response)) {
-			error_log('Merchi API error: ' . $response->get_error_message());
 			return new WP_Error('merchi_api_error', $response->get_error_message(), array('status' => 500));
 		}
 
@@ -525,8 +654,11 @@ private function render_attribute_field($field, $name_prefix) {
 		$response_code = wp_remote_retrieve_response_code($response);
 		$response_body = wp_remote_retrieve_body($response);
 		
-		error_log('Merchi API response code: ' . $response_code);
-		error_log('Merchi API response body: ' . $response_body);
+		// Parse response body
+		$data = json_decode($response_body, true);
+
+		// Add SDK logging script to response
+		$data['_sdk_log_script'] = $sdk_log_script;
 
 		// Handle non-200 responses
 		if ($response_code !== 200) {
@@ -538,9 +670,7 @@ private function render_attribute_field($field, $name_prefix) {
 		}
 
 		// Parse and return response
-		$data = json_decode($response_body, true);
 		if (json_last_error() !== JSON_ERROR_NONE) {
-			error_log('JSON decode error: ' . json_last_error_msg());
 			return new WP_Error('json_decode_error', 'Failed to decode API response', array('status' => 500));
 		}
 

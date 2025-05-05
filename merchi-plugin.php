@@ -1747,64 +1747,23 @@ function fetch_merchi_product_callback() {
 
     $api_url_base = MERCHI_URL . "v6/products/$merchi_product_id/?apiKey=" . MERCHI_API_SECRET . "&inDomain=" . MERCHI_DOMAIN . "&skip_rights=y";
 
-    $optionsEmbed = [
-			'buyCost' => new stdClass(),
-			'buyUnitCost' => new stdClass(),
-			'inventoryGroup' => new stdClass(),
-			'linkedInventoryGroup' => new stdClass(),
-			'options' => [
-					'buyCost' => new stdClass(),
-					'buyUnitCost' => new stdClass(),
-					'linkedFile' => new stdClass(),
-					'variationCostDiscountGroup' => new stdClass(),
-					'variationUnitCostDiscountGroup' => new stdClass()
-			],
-			'variationCostDiscountGroup' => new stdClass(),
-			'variationUnitCostDiscountGroup' => new stdClass()
-	];
-	
-	$initEmbed = [
-			'buyUnitPrice' => new stdClass(),
-			'domain' => [
-					'company' => [
-							'addresses' => new stdClass(),
-							'isBlocked' => new stdClass(),
-							'isStripeAccountEnabled' => new stdClass(),
-							'taxTypes' => new stdClass()
-					],
-					'logo' => new stdClass(),
-					'favicon' => new stdClass()
-			],
-			'categories' => [
-					'image' => new stdClass(),
-					'subcategories' => [
-							'image' => new stdClass(),
-							'subcategories' => [
-									'image' => new stdClass(),
-									'subcategories' => [
-											'image' => new stdClass(),
-											'subcategories' => new stdClass()
-									]
-							]
-					]
-			],
-			'featureImage' => new stdClass(),
-			'groupBuyStatus' => new stdClass(),
-			'groupVariationFields' => $optionsEmbed,
-			'images' => new stdClass(),
-			'independentVariationFields' => $optionsEmbed,
-			'productionFiles' => new stdClass(),
-			'publicFiles' => new stdClass(),
-			'taxType' => new stdClass(),
-			'defaultJob' => new stdClass()
-	];
-	
-	// Encode the PHP array to JSON and URL encode it
-	$embed_json = json_encode($initEmbed);
-	$embed_encoded = urlencode($embed_json);
-	
-	// Construct the complete API URL with the extended embed parameter
-	$api_url = $api_url_base . "&embed=" . $embed_encoded;
+    $productEmbed = [
+        'component' => new stdClass(),
+        'defaultJob' => new stdClass(),
+        'domain' => [
+            'activeTheme' => ['mainCss' => new stdClass()],
+            'logo' => new stdClass()
+        ],
+        'draftTemplates' => ['file' => new stdClass()],
+        'groupBuyStatus' => new stdClass(),
+        'groupVariationFields' => ['options' => ['linkedFile' => new stdClass()]],
+        'images' => new stdClass(),
+        'independentVariationFields' => ['options' => ['linkedFile' => new stdClass()]],
+        'publicFiles' => new stdClass(),
+    ];
+    $embed_json = json_encode($productEmbed);
+    $embed_encoded = urlencode($embed_json);
+    $api_url = $api_url_base . "&embed=" . $embed_encoded;
 		
 	$response = wp_remote_get($api_url);
 	$data = json_decode(wp_remote_retrieve_body($response), true);
