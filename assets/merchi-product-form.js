@@ -39,14 +39,13 @@ function initializeWhenReady() {
             productJson = window.MERCHI_SDK.toJson(product);
             // Ensure we have a valid defaultJob structure
             defaultJobJson = productJson.defaultJob;
-
             resolve(productJson);
           },
           (error) => {
             const fallbackData = { 
               id: parseInt(merchiProductId),
               defaultJob: {
-                domaini: {id: merchiConfig.domainId},
+                domain: {id: merchiConfig.domainId},
                 product: {id: merchiProductId},
                 variations: [],
                 variationsGroups: []
@@ -194,6 +193,48 @@ function initializeWhenReady() {
       }
     }
 
+    // Utility function to deeply compare two objects and log differences
+    function logObjectDifferences(obj1, obj2, path = '') {
+      // Skip comparison if either object is undefined/null
+      if (!obj1 || !obj2) {
+        return;
+      }
+
+      // Only compare specific fields we care about
+      const fieldsToCompare = [
+        'id',
+        'name',
+        'unitPrice',
+        'costPerUnit',
+        'currency',
+        'quantity',
+        'totalPrice'
+      ];
+
+      if (typeof obj1 !== typeof obj2) {
+        // Only log type mismatches for fields we care about
+        if (fieldsToCompare.includes(path.split('.').pop())) {
+          console.warn(`Type mismatch at ${path}:`, obj1, obj2);
+        }
+        return;
+      }
+
+      if (typeof obj1 !== 'object') {
+        if (obj1 !== obj2 && fieldsToCompare.includes(path.split('.').pop())) {
+          console.warn(`Difference at ${path}:`, obj1, obj2);
+        }
+        return;
+      }
+
+      const keys = new Set([...Object.keys(obj1 || {}), ...Object.keys(obj2 || {})]);
+      for (const key of keys) {
+        // Only compare fields we care about
+        if (fieldsToCompare.includes(key)) {
+          logObjectDifferences(obj1 ? obj1[key] : undefined, obj2 ? obj2[key] : undefined, path ? `${path}.${key}` : key);
+        }
+      }
+    }
+
     // Function to calculate and update price
     function calculateAndUpdatePrice() {
       const formData = gatherFormData();
@@ -205,28 +246,34 @@ function initializeWhenReady() {
       }
       lastFormData = formDataStr;
 
-      // Get the WooCommerce product price from the quantity input
-      const wooCommercePrice = parseFloat($('.group-quantity').first().data('unit-price')) || 0;
-
-      // Calculate total price based on groups
-      let totalPrice = 0;
+      // Calculate local price as fallback
+      let localTotalPrice = 0;
       const $groups = $('.group-field-set');
       const groupCount = $groups.length;
 
-      // Calculate price for each group
+      // Calculate local price for each group
       for (let i = 0; i < groupCount; i++) {
         const $group = $groups.eq(i);
         const quantity = parseInt($group.find('.group-quantity').val()) || 1;
+        const wooCommercePrice = parseFloat($group.find('.group-quantity').data('unit-price')) || 0;
         const groupTotal = quantity * wooCommercePrice;
-        totalPrice += groupTotal;
+        localTotalPrice += groupTotal;
 
         // Add option prices for this group
         const $checkedInputs = $group.find('input:checked');
         $checkedInputs.each(function() {
           const $input = $(this);
-          const unitCost = parseFloat($input.data('variation-unit-cost')) || 0;
-          const optionTotal = unitCost * quantity;
-          totalPrice += optionTotal;
+          const selectedVariationId = $input.data('variation-field-value');
+          let variationCost = 0;
+          // Find the matching variation in productJson.variations
+          if (productJson && productJson.variations) {
+            const matchedVariation = productJson.variations.find(v => v.id == selectedVariationId);
+            if (matchedVariation && typeof matchedVariation.cost === 'number') {
+              variationCost = matchedVariation.cost;
+            }
+          }
+          const optionTotal = variationCost * quantity;
+          localTotalPrice += optionTotal;
         });
       }
 
@@ -234,19 +281,52 @@ function initializeWhenReady() {
 
       // Create job entity for API call (but don't use its price)
       console.log(formData, 'what is this james?');
+      // Create job entity for API call
       const jobEntity = createJobFromForm(formData);
       if (!jobEntity) {
+        // If job entity creation fails, use local calculation
+        $('.price-amount').text('$' + localTotalPrice.toFixed(2));
         return;
       }
 
-      // Still make the API call to keep the backend in sync
+      // Make the API call to get the quote
       try {
         window.MERCHI_SDK.getJobQuote(
           jobEntity,
-          (response) => {},
-          (error) => {}
+          (response) => {
+            // Use the quote price if available, otherwise fallback to local calculation
+            let finalPrice = localTotalPrice;
+            
+            // Check for quote price in different possible locations
+            if (response) {
+              let apiUnitPrice = null;
+              if (response.quote && typeof response.quote.totalPrice === 'number') {
+                finalPrice = response.quote.totalPrice;
+              } else if (response.totalPrice && typeof response.totalPrice === 'number') {
+                finalPrice = response.totalPrice;
+              } else if (response.costPerUnit && typeof response.costPerUnit === 'number') {
+                apiUnitPrice = response.costPerUnit;
+                // Compare with UI unit price
+                const uiUnitPrice = parseFloat($('.group-quantity').first().data('unit-price')) || 0;
+                if (Math.abs(apiUnitPrice - uiUnitPrice) < 0.01) {
+                  finalPrice = apiUnitPrice * totalQuantity;
+                } else {
+                  // Fallback to UI price if API price is not correct
+                  finalPrice = uiUnitPrice * totalQuantity;
+                }
+              }
+            }
+            
+            $('.price-amount').text('$' + finalPrice.toFixed(2));
+          },
+          (error) => {
+            // On error, use local calculation
+            $('.price-amount').text('$' + localTotalPrice.toFixed(2));
+          }
         );
       } catch (error) {
+        // On exception, use local calculation
+        $('.price-amount').text('$' + localTotalPrice.toFixed(2));
       }
     }
 
@@ -555,11 +635,51 @@ function initializeWhenReady() {
       return formData;
     }
 
+    function updateVariationOptionPrices() {
+      let variationsMap = {};
+      let groups = productJson && productJson.defaultJob && productJson.defaultJob.variationsGroups;
+      if (Array.isArray(groups) && groups.length > 0) {
+        groups.forEach(group => {
+          if (Array.isArray(group.variations)) {
+            group.variations.forEach(variation => {
+              if (variation.value !== undefined) {
+                variationsMap[variation.value] = variation;
+              }
+            });
+          }
+        });
+      }
+      if (Object.keys(variationsMap).length === 0) {
+        return;
+      }
+      $('[data-variation-field-value]').each(function() {
+        const $input = $(this);
+        const variationValue = $input.data('variation-field-value');
+        const matchedVariation = variationsMap[variationValue];
+        if (matchedVariation && typeof matchedVariation.cost === 'number') {
+          const $label = $input.closest('label').find('.option-label, .image-title, .color-name');
+          if ($label.length) {
+            $label.each(function() {
+              const labelText = $(this).text().replace(/\(\+.*\)/, '');
+              $(this).text(labelText.trim() + ` (+ $${matchedVariation.cost.toFixed(2)} per unit)`);
+            });
+          }
+        }
+      });
+    }
+
     // Function to initialize
     function initialize() {
       fetchProductDetails()
         .then(() => {
-          mapProductDataToForm();
+          // Wait until productJson and productJson.variations are available
+          if (!productJson || !productJson.variations) {
+            setTimeout(() => {
+              updateVariationOptionPrices();
+            }, 100);
+          } else {
+            updateVariationOptionPrices();
+          }
           initializeHandlers();
           calculateAndUpdatePrice();
         })
