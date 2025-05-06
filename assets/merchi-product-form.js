@@ -391,12 +391,12 @@ jQuery(document).ready(function($) {
     // Initialize event handlers
     function initializeHandlers() {
       // Remove any existing handlers
-      $(document).off('change', '#custom-variation-options input, #custom-variation-options select, .group-quantity');
+      $(document).off('change', '.custom-variation-options input, .custom-variation-options select, .group-quantity');
       $('#add-group-button').off('click');
       $(document).off('click', '.delete-group-button');
 
       // Add form change handler with debounce
-      $(document).on('change', '#custom-variation-options input, #custom-variation-options select', function() {
+      $(document).on('change', '.custom-variation-options input, .custom-variation-options select', function() {
         debouncedCalculatePrice();
       });
 
@@ -425,6 +425,108 @@ jQuery(document).ready(function($) {
         updateGroupNumbers();
         // Trigger immediate price calculation
         calculateAndUpdatePrice();
+      });
+
+      // Replace the file upload preview handler
+      $(document).off('change', 'input[type="file"]');
+      $(document).on('change', 'input[type="file"]', function(e) {
+        var $input = $(this);
+        var files = Array.from(this.files);
+        var $wrapper = $input.closest('.custom-upload-wrapper');
+        var $previewArea = $wrapper.next('.multi-file-upload-preview');
+        if ($previewArea.length === 0) {
+          $previewArea = $('<div class="multi-file-upload-preview"></div>');
+          $wrapper.after($previewArea);
+        }
+
+        // --- Maintain a DataTransfer object for this input ---
+        if (!$input[0]._dt) {
+          $input[0]._dt = new DataTransfer();
+        }
+        var dt = $input[0]._dt;
+
+        // Add new files, avoiding duplicates by name+size
+        files.forEach(function(file) {
+          var exists = false;
+          for (var i = 0; i < dt.items.length; i++) {
+            var f = dt.items[i].getAsFile();
+            if (f.name === file.name && f.size === file.size) {
+              exists = true;
+              break;
+            }
+          }
+          if (!exists) dt.items.add(file);
+        });
+        // Update input files
+        $input[0].files = dt.files;
+
+        // --- Render preview ---
+        $previewArea.empty();
+        var dtFiles = Array.from(dt.files);
+        if (dtFiles.length > 0) {
+          dtFiles.forEach(function(file, idx) {
+            var $fileBox = $('<div class="multi-file-box" style="display: flex; align-items: center; margin-bottom: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 8px;"></div>');
+            var $removeBtn = $('<span class="file-upload-remove" style="margin-left: 10px; cursor: pointer; font-size: 20px; color: #d00;">&times;</span>');
+            $removeBtn.on('click', function(e) {
+              e.stopPropagation();
+              var newDT = new DataTransfer();
+              dtFiles.forEach(function(f, i) {
+                if (i !== idx) newDT.items.add(f);
+              });
+              $input[0]._dt = newDT;
+              $input[0].files = newDT.files;
+              $input.trigger('change');
+            });
+            if (file.type.startsWith('image/')) {
+              var reader = new FileReader();
+              reader.onload = function(e) {
+                var $img = $('<img />', {
+                  src: e.target.result,
+                  css: {
+                    'max-width': '60px',
+                    'max-height': '60px',
+                    'object-fit': 'contain',
+                    'margin-right': '10px',
+                    'border-radius': '4px',
+                    'box-shadow': '0 1px 4px rgba(0,0,0,0.08)'
+                  }
+                });
+                $fileBox.prepend($img);
+              };
+              reader.readAsDataURL(file);
+            } else {
+              var $fileIcon = $('<span style="font-size: 32px; margin-right: 10px;">📄</span>');
+              $fileBox.prepend($fileIcon);
+            }
+            var $fileName = $('<span style="font-weight: bold; font-size:0.5em; color: #333;">' + file.name + '</span>');
+            var $downloadBtn = $('<a style="margin-left: 10px; font-size: 18px; text-decoration: none;" href="#" download>⬇️</a>');
+            $downloadBtn.on('click', function(ev) {
+              ev.preventDefault();
+              var url = URL.createObjectURL(file);
+              var a = document.createElement('a');
+              a.href = url;
+              a.download = file.name;
+              document.body.appendChild(a);
+              a.click();
+              setTimeout(function() { URL.revokeObjectURL(url); document.body.removeChild(a); }, 100);
+            });
+            $fileBox.append($fileName).append($downloadBtn).append($removeBtn);
+            $previewArea.append($fileBox);
+          });
+          // Show file count
+          var $count = $('<div style="color: #666; font-size: 14px; font-weight:bold; margin-top: 4px;">' + dtFiles.length + ' file' + (dtFiles.length > 1 ? 's' : '') + ' selected <span style="cursor:pointer;color:#0073aa;" class="toggle-file-list">&#9650;</span></div>');
+          $previewArea.append($count);
+          $count.find('.toggle-file-list').on('click', function() {
+            $previewArea.toggleClass('collapsed');
+            $previewArea.find('.multi-file-box').toggle();
+            $(this).html($previewArea.hasClass('collapsed') ? '&#9660;' : '&#9650;');
+          });
+        } else {
+          $previewArea.empty();
+        }
+        // Always show icon and instruction
+        $wrapper.find('.upload-icon').show();
+        $wrapper.find('.upload-instruction, .upload-types').show();
       });
     }
 
@@ -500,9 +602,8 @@ jQuery(document).ready(function($) {
         $group.find('.custom-field').each(function() {
           const $container = $(this);
           const $input = $container.find('input, select, textarea').first();
-          const variationFieldId = $input.data('variation-field-id');
-          const fieldType = parseInt($input.data('field-type'));
           const variationFieldData = $input.data('variation-field');
+          const variationFieldId = variationFieldData && variationFieldData.id;
   
           if (!variationFieldId) return;
   
@@ -529,7 +630,7 @@ jQuery(document).ready(function($) {
               position: parseInt($input.data('position')) || 0,
               required: $input.data('required') === true,
               placeholder: $input.data('placeholder') || '',
-              fieldType: fieldType,
+              fieldType: parseInt($input.data('field-type')) || 0,
               sellerProductEditable: $input.data('seller-product-editable') === true,
               multipleSelect: $input.data('multiple-select') === true,
               options: []
@@ -564,12 +665,11 @@ jQuery(document).ready(function($) {
       });
 
       // Process standalone variations (outside groups)
-      $('#custom-variation-options .custom-field').each(function() {
+      $('.custom-variation-options .custom-field').each(function() {
         const $container = $(this);
         const $input = $container.find('input, select, textarea').first();
-        const variationFieldId = $input.data('variation-field-id');
-        const fieldType = parseInt($input.data('field-type'));
         const variationFieldData = $input.data('variation-field');
+        const variationFieldId = variationFieldData && variationFieldData.id;
     
         if (!variationFieldId) return;
     
@@ -596,7 +696,7 @@ jQuery(document).ready(function($) {
             position: parseInt($input.data('position')) || 0,
             required: $input.data('required') === true,
             placeholder: $input.data('placeholder') || '',
-            fieldType: fieldType,
+            fieldType: parseInt($input.data('field-type')) || 0,
             sellerProductEditable: $input.data('seller-product-editable') === true,
             multipleSelect: $input.data('multiple-select') === true,
             options: []

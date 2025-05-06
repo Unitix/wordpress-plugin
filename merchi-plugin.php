@@ -1838,6 +1838,7 @@ if (!empty($merchi_product['groupVariationFields'])) {
                 'fieldType' => $field_type,
                 'fieldID'   => $field_id,
                 'required'  => !empty($group_field['required']),
+                'multipleSelect' => !empty($group_field['multipleSelect']),
             ];
         } else {
             $grouped_field_template[] = [
@@ -1845,10 +1846,11 @@ if (!empty($merchi_product['groupVariationFields'])) {
                 'slug'         => $slug,
                 'label'        => $field_name,
                 'fieldType'    => $field_type,
-								'fieldID'      => $field_id,
+                'fieldID'      => $field_id,
                 'placeholder'  => esc_attr($group_field['placeholder'] ?? ''),
                 'instructions' => esc_html($group_field['instructions'] ?? ''),
                 'required'     => !empty($group_field['required']),
+                'multipleSelect' => !empty($group_field['multipleSelect']),
             ];
         }
     }
@@ -1934,6 +1936,7 @@ if (!empty($merchi_product['groupVariationFields'])) {
 							'placeholder'   => $variation_field['placeholder'] ?? '',
 							'instructions'  => $variation_field['instructions'] ?? '',
 							'required'      => !empty($variation_field['required']),
+							'multipleSelect' => !empty($variation_field['multipleSelect']),
 					];
 	
 					$product_meta_inputs[] = $meta_field;
