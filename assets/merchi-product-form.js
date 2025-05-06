@@ -1,12 +1,13 @@
 // Wait for both jQuery and Merchi SDK to be ready
 function initializeWhenReady() {
-  if (!window.MERCHI_SDK) {
+  const merchiSdk = window.MERCHI_SDK;
+  if (!merchiSdk) {
     window.addEventListener('merchi_sdk_ready', initializeWhenReady);
     return;
   }
 
   // Ensure SDK is properly initialized
-  if (!window.MERCHI_SDK.Job || !window.MERCHI_SDK.getJobQuote) {
+  if (!merchiSdk) {
     return;
   }
 
@@ -32,11 +33,11 @@ function initializeWhenReady() {
     // Function to fetch product details
     function fetchProductDetails() {
       return new Promise((resolve) => {
-        const productEnt = new MERCHI_SDK.Product().id(merchiProductId);
+        const productEnt = new merchiSdk.Product().id(merchiProductId);
         
         productEnt.get(
           (product) => {
-            productJson = window.MERCHI_SDK.toJson(product);
+            productJson = merchiSdk.toJson(product);
             // Ensure we have a valid defaultJob structure
             defaultJobJson = productJson.defaultJob;
             resolve(productJson);
@@ -96,62 +97,39 @@ function initializeWhenReady() {
 
     // Function to create a job structure based on form data
     function createJobFromForm(formData) {
-      if (!window.MERCHI_SDK) {
-        throw new Error('Merchi SDK is not loaded');
-      }
-      
-      if (!productJson) {
-        return null;
-      }
+      if (!merchiSdk) throw new Error('Merchi SDK is not loaded');
 
       try {
-        // Get domain_id from various possible sources
-        const domainId = defaultJobJson.domain_id ||
-                        (formData.job && formData.job.domain && formData.job.domain.id) ||
-                        merchiConfig.domainId;
-
-        // Get product_id from various possible sources
-        const productId = defaultJobJson.product_id ||
-                          (formData.job && formData.job.product && formData.job.product.id) ||
-                          merchiProductId;
-
-        if (!domainId || !productId) {
-          throw new Error('Missing required domain or product ID');
+        if (!defaultJobJson) {
+          throw new Error('No defaultJos json.');
         }
 
-        // Create a new job entity using the SDK
-        const jobEntity = new window.MERCHI_SDK.Job();
-        
-        // Set the domain
-        const domain = new window.MERCHI_SDK.Domain();
-        domain.id(parseInt(domainId));
-        jobEntity.domain(domain);
-
-        // Set the product
-        const product = new window.MERCHI_SDK.Product();
-        product.id(parseInt(productId));
-        jobEntity.product(product);
+        const jobEnt = merchiSdk.fromJson(new merchiSdk.Job(), defaultJobJson);
 
         // Initialize empty arrays for variations and groups
-        jobEntity.variations([]);
-        jobEntity.variationsGroups([]);
+        jobEnt.variations([]);
+        jobEnt.variationsGroups([]);
 
         // Process variation groups
-        if (formData.job && formData.job.variations_groups) {
+        const { job } = formData;
+        console.log(job, 'what is this');
+        if (job && job.variationsGroups) {
           const variationsGroups = [];
-          formData.job.variations_groups.forEach(group => {
-            if (group && group.variations) {
-              const groupEntity = new window.MERCHI_SDK.VariationsGroup();
-              groupEntity.quantity(parseInt(group.quantity) || 1);
-              
+          job.variationsGroups.forEach(group => {
+            if (group?.variations) {
               const variations = [];
+              const groupEntity = new merchiSdk.VariationsGroup()
+                .quantity(parseInt(group.quantity) || 1)
+                .variations([]);
+
               group.variations.forEach(variation => {
-                if (variation && variation.value && variation.variationField) {
-                  const variationEntity = new window.MERCHI_SDK.Variation();
-                  const variationField = new window.MERCHI_SDK.VariationField();
-                  variationField.id(parseInt(variation.variationField.id));
+                console.log(variation, 'what is this variation');
+                if (variation?.variationField) {
+                  const variationEntity = new merchiSdk.Variation()
+                    .value(variation.value)
+                  const variationField = new merchiSdk.VariationField()
+                    .id(parseInt(variation.variationField.id));
                   variationEntity.variationField(variationField);
-                  variationEntity.value(variation.value);
                   variations.push(variationEntity);
                 }
               });
@@ -164,80 +142,40 @@ function initializeWhenReady() {
           });
 
           if (variationsGroups.length > 0) {
-            jobEntity.variationsGroups(variationsGroups);
+            jobEnt.variationsGroups(variationsGroups);
           }
         }
 
         // Process standalone variations
-        if (formData.job && formData.job.variations) {
+        if (job?.variations) {
           const variations = [];
-          formData.job.variations.forEach(variation => {
-            if (variation && variation.value && variation.variationField) {
-              const variationEntity = new window.MERCHI_SDK.Variation();
-              const variationField = new window.MERCHI_SDK.VariationField();
-              variationField.id(parseInt(variation.variationField.id));
+          job.variations.forEach(variation => {
+            if (variation?.variationField) {
+              const variationEntity = new merchiSdk.Variation()
+                .value(variation.value);
+              const variationField = new merchiSdk.VariationField()
+                .id(parseInt(variation.variationField.id));
               variationEntity.variationField(variationField);
-              variationEntity.value(variation.value);
               variations.push(variationEntity);
             }
           });
 
           if (variations.length > 0) {
-            jobEntity.variations(variations);
+            jobEnt.variations(variations);
           }
         }
 
-        return jobEntity;
+        return jobEnt;
       } catch (error) {
+        console.log(error, 'what is this error');
         throw error;
-      }
-    }
-
-    // Utility function to deeply compare two objects and log differences
-    function logObjectDifferences(obj1, obj2, path = '') {
-      // Skip comparison if either object is undefined/null
-      if (!obj1 || !obj2) {
-        return;
-      }
-
-      // Only compare specific fields we care about
-      const fieldsToCompare = [
-        'id',
-        'name',
-        'unitPrice',
-        'costPerUnit',
-        'currency',
-        'quantity',
-        'totalPrice'
-      ];
-
-      if (typeof obj1 !== typeof obj2) {
-        // Only log type mismatches for fields we care about
-        if (fieldsToCompare.includes(path.split('.').pop())) {
-          console.warn(`Type mismatch at ${path}:`, obj1, obj2);
-        }
-        return;
-      }
-
-      if (typeof obj1 !== 'object') {
-        if (obj1 !== obj2 && fieldsToCompare.includes(path.split('.').pop())) {
-          console.warn(`Difference at ${path}:`, obj1, obj2);
-        }
-        return;
-      }
-
-      const keys = new Set([...Object.keys(obj1 || {}), ...Object.keys(obj2 || {})]);
-      for (const key of keys) {
-        // Only compare fields we care about
-        if (fieldsToCompare.includes(key)) {
-          logObjectDifferences(obj1 ? obj1[key] : undefined, obj2 ? obj2[key] : undefined, path ? `${path}.${key}` : key);
-        }
       }
     }
 
     // Function to calculate and update price
     function calculateAndUpdatePrice() {
       const formData = gatherFormData();
+      let totalPrice = 0;
       
       // Skip if form data hasn't changed
       const formDataStr = JSON.stringify(formData);
@@ -263,16 +201,8 @@ function initializeWhenReady() {
         const $checkedInputs = $group.find('input:checked');
         $checkedInputs.each(function() {
           const $input = $(this);
-          const selectedVariationId = $input.data('variation-field-value');
-          let variationCost = 0;
-          // Find the matching variation in productJson.variations
-          if (productJson && productJson.variations) {
-            const matchedVariation = productJson.variations.find(v => v.id == selectedVariationId);
-            if (matchedVariation && typeof matchedVariation.cost === 'number') {
-              variationCost = matchedVariation.cost;
-            }
-          }
-          const optionTotal = variationCost * quantity;
+          const unitCost = parseFloat($input.data('variation-unit-cost')) || 0;
+          const optionTotal = unitCost * quantity;
           localTotalPrice += optionTotal;
         });
       }
@@ -280,8 +210,6 @@ function initializeWhenReady() {
       $('.price-amount').text('$' + totalPrice.toFixed(2));
 
       // Create job entity for API call (but don't use its price)
-      console.log(formData, 'what is this james?');
-      // Create job entity for API call
       const jobEntity = createJobFromForm(formData);
       if (!jobEntity) {
         // If job entity creation fails, use local calculation
@@ -291,13 +219,16 @@ function initializeWhenReady() {
 
       // Make the API call to get the quote
       try {
-        window.MERCHI_SDK.getJobQuote(
+        console.log('tryy getquote', jobEntity);
+
+        merchiSdk.getJobQuote(
           jobEntity,
           (response) => {
             // Use the quote price if available, otherwise fallback to local calculation
             let finalPrice = localTotalPrice;
             
             // Check for quote price in different possible locations
+            console.log('in success');
             if (response) {
               let apiUnitPrice = null;
               if (response.quote && typeof response.quote.totalPrice === 'number') {
@@ -326,6 +257,7 @@ function initializeWhenReady() {
         );
       } catch (error) {
         // On exception, use local calculation
+        console.log('in error', error);
         $('.price-amount').text('$' + localTotalPrice.toFixed(2));
       }
     }
@@ -352,7 +284,7 @@ function initializeWhenReady() {
         // Update name attribute
         let name = $input.attr("name");
         if (name) {
-          name = name.replace(/group_fields\[\d+\]/, `group_fields[${newGroupIndex}]`);
+          name = name.replace(/job.variationsGroups\[\d+\]/, `job.variationsGroups[${newGroupIndex}]`);
           $input.attr("name", name);
         }
         
@@ -405,12 +337,12 @@ function initializeWhenReady() {
 
       // Handle quantity changes immediately without debounce
       $(document).on('change', '.group-quantity', function() {
-        calculateAndUpdatePrice();
+        debouncedCalculatePrice();
       });
 
       // Handle quantity input events (for when user types)
       $(document).on('input', '.group-quantity', function() {
-        calculateAndUpdatePrice();
+        debouncedCalculatePrice();
       });
 
       // Add group button handler
@@ -443,7 +375,7 @@ function initializeWhenReady() {
           const $input = $(this);
           const name = $input.attr("name");
           if (name) {
-            const newName = name.replace(/group_fields\[\d+\]/, "group_fields[" + newIndex + "]");
+            const newName = name.replace(/job.variationsGroups\[\d+\]/, "job.variationsGroups[" + newIndex + "]");
             $input.attr("name", newName);
           }
           

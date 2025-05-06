@@ -618,7 +618,7 @@ jQuery(document).ready(function ($) {
         newGroup.find("input, select, textarea").each(function() {
             var name = $(this).attr("name");
             if (name) {
-                name = name.replace("group_fields[1]", "group_fields[" + groupIndex + "]");
+                name = name.replace("job.variationsGroups[1]", "job.variationsGroups[" + groupIndex + "]");
                 $(this).attr("name", name);
             }
         });
@@ -639,7 +639,7 @@ jQuery(document).ready(function ($) {
             $(this).find("input, select, textarea").each(function() {
                 var name = $(this).attr("name");
                 if (name) {
-                    name = name.replace(/group_fields\[\d+\]/, "group_fields[" + newIndex + "]");
+                    name = name.replace(/job.variationsGroups\[\d+\]/, "job.variationsGroups[" + newIndex + "]");
                     $(this).attr("name", name);
                 }
             });

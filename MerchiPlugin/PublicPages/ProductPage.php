@@ -231,14 +231,14 @@ class ProductPage extends BaseController {
 		// Add group quantity field inside the group container
 		echo '<div class="custom-field">';
 		echo '<label>Group (1) quantity ($' . number_format((float)$unit_price, 2) . ' unit price)</label>';
-		echo '<input type="number" class="group-quantity" name="group_fields[1][quantity]" value="1" min="1" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="1">';
+		echo '<input type="number" class="group-quantity" name="job.variationsGroups[1].quantity" value="1" min="1" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="1">';
 		echo '</div>';
 
 		foreach ($group_fields_template as $field) {
 			if ($field['type'] === 'attribute') {
-				echo $this->render_attribute_field($field, "group_fields[1]");
+				echo $this->render_attribute_field($field, "job.variationsGroups[1]");
 			} else {
-				echo $this->render_meta_field($field, "group_fields[1]");
+				echo $this->render_meta_field($field, "job.variationsGroups[1]");
 			}
 		}
 		echo '<button type="button" class="delete-group-button" style="display: none;">Delete Group</button>';
@@ -296,7 +296,6 @@ private function render_attribute_field($field, $name_prefix) {
         'required' => !empty($field['required']),
         'placeholder' => $field['placeholder'] ?? '',
         'fieldType' => $field_type,
-        'sellerProductEditable' => !empty($field['sellerProductEditable']),
         'multipleSelect' => $is_multiple,
         'options' => $options
     );
@@ -308,7 +307,7 @@ private function render_attribute_field($field, $name_prefix) {
     $html .= "<label for='{$slug}'>{$label}</label>";
 
     // Add variation field data to all input elements
-    $common_data_attrs = ' data-variation-field-id="'.esc_attr($field_id).'" data-variation-field=\''.$variation_field_json.'\'';
+    $common_data_attrs = ' data-variation-field=\''.$variation_field_json.'\'';
 
     // SELECT field type (2)
     if ($field_type === 2) {
@@ -373,7 +372,6 @@ private function render_attribute_field($field, $name_prefix) {
         $html .= '<input type="hidden" name="job.variationsGroups[0].variations[1].variationField.name" value="' . esc_attr($label) . '">';
         $html .= '<input type="hidden" name="job.variationsGroups[0].variations[1].variationField.fieldType" value="' . esc_attr($field_type) . '">';
         $html .= '<input type="hidden" name="job.variationsGroups[0].variations[1].variationField.position" value="2">';
-        $html .= '<input type="hidden" name="job.variationsGroups[0].variations[1].variationField.sellerProductEditable" value="false">';
         $html .= '<input type="hidden" name="job.variationsGroups[0].variations[1].variationField.multipleSelect" value="true">';
         $html .= '<input type="hidden" name="job.variationsGroups[0].variations[1].variationField.required" value="false">';
 
@@ -402,7 +400,7 @@ private function render_attribute_field($field, $name_prefix) {
                         $common_data_attrs . ' 
                         data-variation-field-value="' . esc_attr($variation_option_id) . '"
                         data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"
-                        class="image-select-input"/>';
+                        class="image-select-input" />';
                         
             $html .= '<label class="image-select-label" for="' . $input_id . '">';
             $html .= '<div class="image-select-wrapper">';
@@ -458,13 +456,13 @@ private function render_attribute_field($field, $name_prefix) {
 		$html .= "<label for='{$slug}'>{$label}</label>";
 
 		switch ($fieldType) {
-			case 1: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' data-variation-field-id='{$field_id}' placeholder='{$placeholder}' {$required} />"; break;
-			case 3: $html .= "<label class='custom-upload-wrapper'><div class='upload-icon'>📎</div><div class='upload-instruction'>Drop file here or click to browse</div><div class='upload-types'>.jpeg, .jpg, .gif, .png, .pdf</div><input type='file' name='{$name_prefix}[{$slug}]' {$required} data-variation-field-id='{$field_id}' accept='.jpeg,.jpg,.gif,.png,.pdf'/></label>"; break;
-			case 4: $html .= "<textarea name='{$name_prefix}[{$slug}]' data-variation-field-id='{$field_id}' placeholder='{$placeholder}' {$required}></textarea>"; break;
-			case 5: $html .= "<input type='number' name='{$name_prefix}[{$slug}]' data-variation-field-id='{$field_id}' placeholder='{$placeholder}' {$required} />"; break;
-			case 10: $html .= "<input type='color' name='{$name_prefix}[{$slug}]' data-variation-field-id='{$field_id}' {$required} />"; break;
+			case 1: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} />"; break;
+			case 3: $html .= "<label class='custom-upload-wrapper'><div class='upload-icon'>📎</div><div class='upload-instruction'>Drop file here or click to browse</div><div class='upload-types'>.jpeg, .jpg, .gif, .png, .pdf</div><input type='file' name='{$name_prefix}[{$slug}]' {$required}  accept='.jpeg,.jpg,.gif,.png,.pdf'/></label>"; break;
+			case 4: $html .= "<textarea name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required}></textarea>"; break;
+			case 5: $html .= "<input type='number' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} />"; break;
+			case 10: $html .= "<input type='color' name='{$name_prefix}[{$slug}]' {$required} />"; break;
 			case 8: $html .= "<p class='field-instructions'>{$instructions}</p>"; break;
-			default: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' data-variation-field-id='{$field_id}' {$required} />"; break;
+			default: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} />"; break;
 		}
 
 		$html .= '</div>';
@@ -538,7 +536,6 @@ private function render_attribute_field($field, $name_prefix) {
 				console.log("Product ID:", "%s");
 				console.log("Domain ID:", "%s");
 				console.log("Staging Mode:", %s);
-				console.groupEnd();
 			</script>',
 			esc_js($merchi_url),
 			esc_js($merchi_url),
