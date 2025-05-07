@@ -220,7 +220,6 @@ function initializeWhenReady() {
       // Make the API call to get the quote
       try {
         console.log('tryy getquote', jobEntity);
-
         merchiSdk.getJobQuote(
           jobEntity,
           (response) => {
