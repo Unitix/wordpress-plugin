@@ -17,6 +17,8 @@ class ProductPage extends BaseController {
 		add_action( 'wp', [ $this, 'remove_product_content' ] );
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_merchi_scripts' ] );
 		add_filter( 'woocommerce_quantity_input_args', [ $this, 'remove_quantity_field' ], 10, 2 );
+		add_filter( 'woocommerce_loop_add_to_cart_link', [ $this, 'add_loading_spinner_to_button' ], 10, 2 );
+		add_filter( 'woocommerce_single_add_to_cart_button', [ $this, 'add_loading_spinner_to_button' ], 10, 2 );
 		
 		// Register REST API endpoint
 		add_action('rest_api_init', function () {
@@ -649,5 +651,23 @@ private function render_attribute_field($field, $name_prefix) {
 		}
 
 		return new WP_REST_Response($data, 200);
+	}
+
+	/**
+	 * Add loading spinner to add to cart button
+	 */
+	public function add_loading_spinner_to_button($button_html, $product) {
+		// Add loading spinner span
+		$spinner = '<span class="loading-spinner"></span>';
+		
+		// Insert spinner before the button text
+		$button_html = str_replace('>', '>' . $spinner, $button_html);
+		
+		// Add product-button-add-to-cart class if not present
+		if (strpos($button_html, 'product-button-add-to-cart') === false) {
+			$button_html = str_replace('class="', 'class="product-button-add-to-cart ', $button_html);
+		}
+		
+		return $button_html;
 	}
 }

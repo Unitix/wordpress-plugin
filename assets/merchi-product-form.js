@@ -798,3 +798,109 @@ jQuery(document).ready(function($) {
 
 // Start initialization
 initializeWhenReady();
+
+// Function to validate form data
+function validateForm() {
+    const errors = [];
+    const $form = $('.merchi-product-form');
+    
+    // Validate required fields
+    $form.find('.custom-field[data-required="true"]').each(function() {
+        const $container = $(this);
+        const $input = $container.find('input, select, textarea').first();
+        const fieldName = $input.data('field-name') || 'Field';
+        
+        if ($input.is('input[type="radio"], input[type="checkbox"]')) {
+            const $checked = $container.find('input:checked');
+            if ($checked.length === 0) {
+                errors.push(`${fieldName} is required`);
+                $container.addClass('field-error');
+            } else {
+                $container.removeClass('field-error');
+            }
+        } else if (!$input.val()) {
+            errors.push(`${fieldName} is required`);
+            $input.addClass('field-error');
+        } else {
+            $input.removeClass('field-error');
+        }
+    });
+
+    // Validate quantities
+    $('.group-quantity').each(function() {
+        const $input = $(this);
+        const quantity = parseInt($input.val());
+        if (isNaN(quantity) || quantity < 1) {
+            errors.push('Quantity must be at least 1');
+            $input.addClass('field-error');
+        } else {
+            $input.removeClass('field-error');
+        }
+    });
+
+    // Display errors if any
+    const $errorContainer = $('.form-error-container');
+    if (errors.length > 0) {
+        if ($errorContainer.length === 0) {
+            $('<div class="form-error-container"></div>').insertAfter('.merchi-product-form');
+        }
+        $errorContainer.html(errors.map(error => `<div class="form-error">${error}</div>`).join(''));
+        return false;
+    } else {
+        $errorContainer.remove();
+        return true;
+    }
+}
+
+// Function to handle loading state
+function setLoadingState(isLoading) {
+    const $button = $('.product-button-add-to-cart');
+    if (isLoading) {
+        $button.addClass('loading').prop('disabled', true);
+    } else {
+        $button.removeClass('loading').prop('disabled', false);
+    }
+}
+
+// Modify the existing click handler
+$(document).on('click', '.product-button-add-to-cart', function(e) {
+    e.preventDefault();
+    
+    // Validate form before proceeding
+    if (!validateForm()) {
+        return;
+    }
+
+    setLoadingState(true);
+
+    // Rest of your existing click handler code...
+    // Make sure to call setLoadingState(false) in both success and error cases
+    try {
+        // Your existing code...
+        if (scriptData.is_single_product) {
+            const cookie = getCookieByName("cart-" + scriptData.merchi_domain);
+            // ... rest of the code ...
+            
+            jQuery.ajax({
+                method: "POST",
+                url: frontendajax.ajaxurl,
+                data: {
+                    action: "send_id_for_add_cart",
+                    item: cartPayload,
+                },
+                success: function (response) {
+                    setLoadingState(false);
+                    window.location.href = site_url + '/cart/';
+                },
+                error: function (error) {
+                    setLoadingState(false);
+                    alert("Something went wrong, Please try again later");
+                },
+            });
+        }
+    } catch (error) {
+        setLoadingState(false);
+        console.error(error);
+        alert("An error occurred. Please try again.");
+    }
+});
