@@ -469,3 +469,53 @@ label.custom-attribute-option {
         grid-template-columns: repeat(4, 1fr);
     }
 }
+
+/* Add to Cart Button Loading State */
+.product-button-add-to-cart {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.product-button-add-to-cart.loading {
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+.product-button-add-to-cart .loading-spinner {
+    display: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+}
+
+.product-button-add-to-cart.loading .loading-spinner {
+    display: inline-block;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Form Validation Styles */
+.form-error {
+    color: #dc3545;
+    font-size: 14px;
+    margin-top: 5px;
+}
+
+.field-error {
+    border-color: #dc3545 !important;
+}
+
+.field-error-message {
+    color: #dc3545;
+    font-size: 12px;
+    margin-top: 4px;
+}

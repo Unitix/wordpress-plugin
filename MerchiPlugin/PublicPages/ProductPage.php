@@ -17,6 +17,8 @@ class ProductPage extends BaseController {
 		add_action( 'wp', [ $this, 'remove_product_content' ] );
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_merchi_scripts' ] );
 		add_filter( 'woocommerce_quantity_input_args', [ $this, 'remove_quantity_field' ], 10, 2 );
+		add_filter( 'woocommerce_loop_add_to_cart_link', [ $this, 'add_loading_spinner_to_button' ], 10, 2 );
+		add_filter( 'woocommerce_single_add_to_cart_button', [ $this, 'add_loading_spinner_to_button' ], 10, 2 );
 		
 		// Register REST API endpoint
 		add_action('rest_api_init', function () {
@@ -74,7 +76,9 @@ class ProductPage extends BaseController {
 			wp_localize_script('merchi-product-form', 'merchiConfig', array(
 				'domainId' => $merchi_domain,
 				'apiUrl' => $merchi_url,
-				'productId' => get_post_meta(get_the_ID(), 'product_id', true)
+				'productId' => get_post_meta(get_the_ID(), 'product_id', true),
+				'stagingMode' => $staging_mode === 'yes',
+				'apiKey' => $merchi_secret
 			));
 
 			// Verify configuration
@@ -87,6 +91,31 @@ class ProductPage extends BaseController {
 			if (empty(get_post_meta(get_the_ID(), 'product_id', true))) {
 				error_log('Warning: Merchi Product ID is empty');
 			}
+
+			// Add SDK initialization script
+			$sdk_init_script = sprintf(
+				'<script>
+					document.addEventListener("DOMContentLoaded", function() {
+						// Only initialize if SDK is not already initialized
+						if (typeof merchi !== "undefined" && !merchi.isInitialized) {
+							const sdkConfig = {
+								backendUri: "%s",
+								hasSessionToken: false,
+								hasRequiredMethods: true
+							};
+							
+							// Initialize SDK
+							merchi.init(sdkConfig);
+						}
+					});
+				</script>',
+				esc_js($merchi_url)
+			);
+
+			// Add the SDK initialization script
+			add_action('wp_footer', function() use ($sdk_init_script) {
+				echo $sdk_init_script;
+			});
 		}
 	}
 
@@ -98,89 +127,19 @@ class ProductPage extends BaseController {
 
     if (empty($fields) || !is_array($fields)) return;
 
-    echo '<div id="custom-variation-options" class="merchi-product-form">';
+    // Sort fields by position before rendering
+    usort($fields, function($a, $b) {
+        return ($a['position'] ?? 0) <=> ($b['position'] ?? 0);
+    });
+
+    echo '<div class="custom-variation-options merchi-product-form">';
 
     foreach ($fields as $field) {
-        $type = $field['type'];
-        $label = esc_html($field['label']);
-        $slug = esc_attr($field['slug']);
-        $required = !empty($field['required']) ? 'required' : '';
-        $fieldType = intval($field['fieldType']);
-        $fieldID = intval($field['fieldID']);
-
-        echo '<div class="custom-field">';
-        echo "<label for='{$slug}'>{$label}</label>";
-
-        if ($type === 'attribute' && !empty($field['taxonomy'])) {
-					$terms = get_terms(['taxonomy' => $field['taxonomy'], 'hide_empty' => false]);
-					if ($terms) {
-							$has_images = false;
-							foreach ($terms as $term) {
-									$image_id = get_term_meta($term->term_id, 'taxonomy_image', true);
-									if ($image_id) {
-											$has_images = true;
-											break;
-									}
-							}
-			
-							$is_multiple = !empty($field['multipleSelect']);
-							echo '<div class="custom-attribute-options" data-attribute="' . esc_attr($field['taxonomy']) . '">';
-			
-							if ($is_multiple) {
-									foreach ($terms as $term) {
-											$image_id = get_term_meta($term->term_id, 'taxonomy_image', true);
-											$image_url = $image_id ? wp_get_attachment_url($image_id) : '';
-											$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
-			
-											// Debug log
-											error_log('Term: ' . $term->name . ', Image ID: ' . $image_id . ', Image URL: ' . $image_url);
-			
-											echo '<label class="custom-attribute-option">';
-											echo '<input type="checkbox" name="' . esc_attr($field['taxonomy']) . '[]" value="' . esc_attr($term->slug) . '" data-variation-field-id="'.esc_attr($fieldID).'" data-variation-field-value="' . esc_attr($variation_option_id) . '"/>';
-											if ($image_url) {
-													echo '<img src="' . esc_url($image_url) . '" class="attribute-image" alt="' . esc_attr($term->name) . '">';
-											}
-											echo '<span class="option-label">' . esc_html($term->name) . '</span>';
-											echo '</label>';
-									}
-							} else {
-									foreach ($terms as $index => $term) {
-											$image_id = get_term_meta($term->term_id, 'taxonomy_image', true);
-											$image_url = $image_id ? wp_get_attachment_url($image_id) : '';
-											$is_checked = $index === 0 ? 'checked' : '';
-											$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
-			
-											// Debug log
-											error_log('Term: ' . $term->name . ', Image ID: ' . $image_id . ', Image URL: ' . $image_url);
-			
-											echo '<label class="custom-attribute-option">';
-											echo '<input type="radio" name="' . esc_attr($field['taxonomy']) . '" data-variation-field-id="'.esc_attr($fieldID).'" value="' . esc_attr($term->slug) . '" ' . $is_checked . ' data-variation-field-value="' . esc_attr($variation_option_id) . '"/>';
-											if ($image_url) {
-													echo '<img src="' . esc_url($image_url) . '" class="attribute-image" alt="' . esc_attr($term->name) . '">';
-											}
-											echo '<span class="option-label">' . esc_html($term->name) . '</span>';
-											echo '</label>';
-									}
-							}
-			
-							echo '</div>';
-					}
-			} elseif ($type === 'meta') {
-            $placeholder = esc_attr($field['placeholder'] ?? '');
-            $instructions = esc_html($field['instructions'] ?? '');
-						$field_id = esc_attr($fieldID);
-            switch ($fieldType) {
-                case 1: echo "<input type='text' id='{$slug}' name='custom_fields[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field-id='{$field_id}'/>"; break;
-                case 3: echo "<label class='custom-upload-wrapper'><div class='upload-icon'>📎</div><div class='upload-instruction'>Drop file here or click to browse</div><div class='upload-types'>.jpeg, .jpg, .gif, .png, .pdf</div><input type='file' id='{$slug}' name='custom_fields[{$slug}]' {$required} data-variation-field-id='{$field_id}' accept='.jpeg,.jpg,.gif,.png,.pdf'/></label>"; break;
-                case 4: echo "<textarea id='{$slug}' name='custom_fields[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field-id='{$field_id}'></textarea>"; break;
-                case 5: echo "<input type='number' id='{$slug}' name='custom_fields[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field-id='{$field_id}'/>"; break;
-                case 10: echo "<input type='color' id='{$slug}' name='custom_fields[{$slug}]' {$required} data-variation-field-id='{$field_id}'/>"; break;
-                case 8: echo "<p class='field-instructions'>{$instructions}</p>"; break;
-                default: echo "<input type='text' id='{$slug}' name='custom_fields[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field-id='{$field_id}'/>"; break;
-            }
+        if ($field['type'] === 'attribute') {
+            echo $this->render_attribute_field($field, 'custom_fields');
+        } else {
+            echo $this->render_meta_field($field, 'custom_fields');
         }
-
-        echo '</div>';
     }
 
     echo '</div>';
@@ -194,6 +153,11 @@ class ProductPage extends BaseController {
 		$unit_price = $product->get_price() ?: '0';
 
 		if (empty($group_fields_template)) return;
+
+		// Sort group fields by position before rendering
+		usort($group_fields_template, function($a, $b) {
+			return ($a['position'] ?? 0) <=> ($b['position'] ?? 0);
+		});
 
 		echo '<div id="grouped-fields-container" class="merchi-product-form">';
 		echo '<h3>Grouped Options</h3>';
@@ -226,9 +190,22 @@ class ProductPage extends BaseController {
 	}
 
 
-private function render_attribute_field($field, $name_prefix) {
-    $terms = get_terms(['taxonomy' => $field['taxonomy'], 'hide_empty' => false]);
+private function get_variation_field_options($field) {
+    if (!empty($field['taxonomy'])) {
+        // Attribute field: fetch terms from taxonomy
+        return get_terms([
+            'taxonomy' => $field['taxonomy'],
+            'hide_empty' => false
+        ]);
+    } else if (!empty($field['options'])) {
+        // Meta field: return options array if present (customize as needed)
+        return $field['options'];
+    }
+    return [];
+}
 
+private function render_attribute_field($field, $name_prefix) {
+    $terms = $this->get_variation_field_options($field);
     if (empty($terms)) return '';
 
     $slug = esc_attr($field['slug']);
@@ -281,7 +258,7 @@ private function render_attribute_field($field, $name_prefix) {
     $html .= "<label for='{$slug}'>{$label}</label>";
 
     // Add variation field data to all input elements
-    $common_data_attrs = ' data-variation-field-id="'.esc_attr($field_id).'" data-variation-field=\''.$variation_field_json.'\'';
+    $common_data_attrs = ' data-variation-field=\''.$variation_field_json.'\'';
 
     // SELECT field type (2)
     if ($field_type === 2) {
@@ -291,7 +268,7 @@ private function render_attribute_field($field, $name_prefix) {
                 $variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
                 $variation_unit_cost = get_term_meta($term->term_id, 'variation_unit_cost', true);
                 $variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
-                $html .= '<option value="' . esc_attr($term->slug) . '" data-variation-field-value="' . esc_attr($variation_option_id) . '">' . esc_html($term->name) . ' (+ $' . number_format($variation_unit_cost, 2) . ' per unit)</option>';
+                $html .= '<option value="' . esc_attr($variation_option_id) . '" data-variation-field-value="' . esc_attr($variation_option_id) . '">' . esc_html($term->name) . ' (+ $' . number_format($variation_unit_cost, 2) . ' per unit)</option>';
             }
             $html .= '</select>';
         } else {
@@ -301,7 +278,7 @@ private function render_attribute_field($field, $name_prefix) {
                 $variation_unit_cost = get_term_meta($term->term_id, 'variation_unit_cost', true);
                 $variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
                 $is_selected = $index === 0 ? 'selected' : '';
-                $html .= '<option value="' . esc_attr($term->slug) . '" ' . $is_selected . ' data-variation-field-value="' . esc_attr($variation_option_id) . '">' . esc_html($term->name) . ' (+ $' . number_format($variation_unit_cost, 2) . ' per unit)</option>';
+                $html .= '<option value="' . esc_attr($variation_option_id) . '" ' . $is_selected . ' data-variation-field-value="' . esc_attr($variation_option_id) . '">' . esc_html($term->name) . ' (+ $' . number_format($variation_unit_cost, 2) . ' per unit)</option>';
             }
             $html .= '</select>';
         }
@@ -315,7 +292,7 @@ private function render_attribute_field($field, $name_prefix) {
             $variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
             $html .= '<div class="checkbox-option">';
             $html .= '<label class="checkbox-label">';
-            $html .= '<input type="checkbox" name="' . $name_prefix . '[' . $slug . '][]" value="' . esc_attr($term->slug) . '"' . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"/>';
+            $html .= '<input type="checkbox" name="' . $name_prefix . '[' . $slug . '][]" value="' .esc_attr($variation_option_id) . '"' . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"/>';
             $html .= '<span class="option-label">' . esc_html($term->name) . ' (+ $' . number_format($variation_unit_cost, 2) . ' per unit)</span>';
             $html .= '</label>';
             $html .= '</div>';
@@ -332,7 +309,7 @@ private function render_attribute_field($field, $name_prefix) {
             $is_checked = $index === 0 ? 'checked' : '';
             $html .= '<div class="radio-option">';
             $html .= '<label class="radio-label">';
-            $html .= '<input type="radio" name="' . $name_prefix . '[' . $slug . ']" value="' . esc_attr($term->slug) . '" ' . $is_checked . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"/>';
+            $html .= '<input type="radio" name="' . $name_prefix . '[' . $slug . ']" value="' . esc_attr($variation_option_id) . '" ' . $is_checked . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"/>';
             $html .= '<span class="option-label">' . esc_html($term->name) . ' (+ $' . number_format($variation_unit_cost, 2) . ' per unit)</span>';
             $html .= '</label>';
             $html .= '</div>';
@@ -341,21 +318,14 @@ private function render_attribute_field($field, $name_prefix) {
     }
     // IMAGE_SELECT type (9)
     else if ($field_type === 9) {
+        $is_multiple = !empty($field['multipleSelect']);
+        $input_type = $is_multiple ? 'checkbox' : 'radio';
         $html .= '<fieldset class="group-variation-container" name="job.variationsGroups[0].variations[1]"' . $common_data_attrs . '>';
-        $html .= '<input type="hidden" name="job.variationsGroups[0].variations[1].variationField.id" value="' . esc_attr($field_id) . '">';
-        $html .= '<input type="hidden" name="job.variationsGroups[0].variations[1].variationField.name" value="' . esc_attr($label) . '">';
-        $html .= '<input type="hidden" name="job.variationsGroups[0].variations[1].variationField.fieldType" value="' . esc_attr($field_type) . '">';
-        $html .= '<input type="hidden" name="job.variationsGroups[0].variations[1].variationField.position" value="2">';
-        $html .= '<input type="hidden" name="job.variationsGroups[0].variations[1].variationField.sellerProductEditable" value="false">';
-        $html .= '<input type="hidden" name="job.variationsGroups[0].variations[1].variationField.multipleSelect" value="true">';
-        $html .= '<input type="hidden" name="job.variationsGroups[0].variations[1].variationField.required" value="false">';
-
         $html .= '<div class="image-select-options-container">';
         foreach ($terms as $index => $term) {
             $variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
             $variation_unit_cost = get_term_meta($term->term_id, 'variation_unit_cost', true);
             $variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
-            
             // Get image URL from term meta
             $image_url = get_term_meta($term->term_id, 'linkedFile.viewUrl', true);
             if (!$image_url) {
@@ -364,19 +334,16 @@ private function render_attribute_field($field, $name_prefix) {
             if (!$image_url) {
                 $image_url = get_term_meta($term->term_id, 'linkedFileViewUrl', true);
             }
-            
             $html .= '<div class="image-select-option">';
             $input_id = esc_attr($slug . '_' . $term->slug);
-            
-            $html .= '<input type="checkbox" 
+            $html .= '<input type="' . $input_type . '" 
                         id="' . $input_id . '"
-                        name="' . $name_prefix . '[' . $slug . '][]" 
-                        value="' . esc_attr($term->slug) . '"' . 
+                        name="' . $name_prefix . '[' . $slug . ']' . ($is_multiple ? '[]' : '') . '" 
+                        value="' . esc_attr($variation_option_id) . '"' . 
                         $common_data_attrs . ' 
                         data-variation-field-value="' . esc_attr($variation_option_id) . '"
                         data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"
                         class="image-select-input"/>';
-                        
             $html .= '<label class="image-select-label" for="' . $input_id . '">';
             $html .= '<div class="image-select-wrapper">';
             if ($image_url) {
@@ -395,6 +362,8 @@ private function render_attribute_field($field, $name_prefix) {
     } 
     // COLOUR_SELECT type (11)
     else if ($field_type === 11) {
+        $is_multiple = !empty($field['multipleSelect']);
+        $input_type = $is_multiple ? 'checkbox' : 'radio';
         $html .= '<div class="color-options-grid">';
         foreach ($terms as $index => $term) {
             $is_checked = $index === 0 ? 'checked' : '';
@@ -402,8 +371,9 @@ private function render_attribute_field($field, $name_prefix) {
             $variation_unit_cost = get_term_meta($term->term_id, 'variation_unit_cost', true);
             $variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
             $color_value = strtolower($term->name);
+            $input_name = $name_prefix . '[' . $slug . ']' . ($is_multiple ? '[]' : '');
             $html .= '<label class="color-option">';
-            $html .= '<input type="radio" name="' . $name_prefix . '[' . $slug . ']" value="' . esc_attr($term->slug) . '" ' . $is_checked . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"/>';
+            $html .= '<input type="' . $input_type . '" name="' . $input_name . '" value="' . esc_attr($variation_option_id) . '" ' . ($is_multiple ? '' : $is_checked) . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"/>';
             $html .= '<div class="color-option-inner">';
             $html .= '<span class="color-indicator" style="background-color: ' . esc_attr($color_value) . ';"></span>';
             $html .= '<span class="checkmark">✓</span>';
@@ -427,17 +397,50 @@ private function render_attribute_field($field, $name_prefix) {
 		$instructions = esc_html($field['instructions'] ?? '');
 		$required = !empty($field['required']) ? 'required' : '';
 
+		// Build $variation_field_data and $variation_field_json for meta fields
+		$variation_field_data = array(
+			'id' => intval($field_id),
+			'name' => $label,
+			'position' => intval($field['position'] ?? 0),
+			'required' => !empty($field['required']),
+			'placeholder' => $placeholder,
+			'fieldType' => $fieldType,
+			'sellerProductEditable' => !empty($field['sellerProductEditable']),
+			'multipleSelect' => !empty($field['multipleSelect']),
+			'options' => $this->get_variation_field_options($field)
+		);
+		$variation_field_json = esc_attr(json_encode($variation_field_data));
+
 		$html = '<div class="custom-field">';
 		$html .= "<label for='{$slug}'>{$label}</label>";
 
-		switch ($fieldType) {
-			case 1: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' data-variation-field-id='{$field_id}' placeholder='{$placeholder}' {$required} />"; break;
-			case 3: $html .= "<label class='custom-upload-wrapper'><div class='upload-icon'>📎</div><div class='upload-instruction'>Drop file here or click to browse</div><div class='upload-types'>.jpeg, .jpg, .gif, .png, .pdf</div><input type='file' name='{$name_prefix}[{$slug}]' {$required} data-variation-field-id='{$field_id}' accept='.jpeg,.jpg,.gif,.png,.pdf'/></label>"; break;
-			case 4: $html .= "<textarea name='{$name_prefix}[{$slug}]' data-variation-field-id='{$field_id}' placeholder='{$placeholder}' {$required}></textarea>"; break;
-			case 5: $html .= "<input type='number' name='{$name_prefix}[{$slug}]' data-variation-field-id='{$field_id}' placeholder='{$placeholder}' {$required} />"; break;
-			case 10: $html .= "<input type='color' name='{$name_prefix}[{$slug}]' data-variation-field-id='{$field_id}' {$required} />"; break;
-			case 8: $html .= "<p class='field-instructions'>{$instructions}</p>"; break;
-			default: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' data-variation-field-id='{$field_id}' {$required} />"; break;
+		// Use get_variation_field_options for meta fields with options
+		$options = $this->get_variation_field_options($field);
+		if (!empty($options)) {
+			// Render as select dropdown for meta fields with options
+			$html .= "<select name='{$name_prefix}[{$slug}]' {$required} data-variation-field='{$variation_field_json}'>";
+			foreach ($options as $option) {
+				// Option can be array or string
+				if (is_array($option)) {
+					$value = esc_attr($option['value'] ?? $option['id'] ?? '');
+					$label = esc_html($option['label'] ?? $option['value'] ?? $option['id'] ?? '');
+				} else {
+					$value = esc_attr($option);
+					$label = esc_html($option);
+				}
+				$html .= "<option value='{$value}'>{$label}</option>";
+			}
+			$html .= "</select>";
+		} else {
+			switch ($fieldType) {
+				case 1: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' />"; break;
+				case 3: $html .= "<label class='custom-upload-wrapper'><div class='upload-icon'>📎</div><div class='upload-instruction'>Drop file here or click to browse</div><div class='upload-types'>.jpeg, .jpg, .gif, .png, .pdf</div><input type='file' name='{$name_prefix}[{$slug}][]' multiple {$required} accept='.jpeg,.jpg,.gif,.png,.pdf' data-variation-field='{$variation_field_json}'/></label>"; break;
+				case 4: $html .= "<textarea name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}'></textarea>"; break;
+				case 5: $html .= "<input type='number' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' />"; break;
+				case 10: $html .= "<input type='color' name='{$name_prefix}[{$slug}]' {$required} data-variation-field='{$variation_field_json}' />"; break;
+				case 8: $html .= "<p class='field-instructions'>{$instructions}</p>"; break;
+				default: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' />"; break;
+			}
 		}
 
 		$html .= '</div>';
@@ -486,21 +489,124 @@ private function render_attribute_field($field, $name_prefix) {
 		$merchi_secret = $staging_mode === 'yes' ? get_option('staging_merchi_api_secret') : get_option('merchi_api_secret');
 		$merchi_domain = $staging_mode === 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
 
-		// Debug logging
-		error_log('Merchi proxy request received:');
-		error_log('Request body: ' . print_r($body, true));
-		error_log('Merchi config - URL: ' . $merchi_url . ', Domain: ' . $merchi_domain);
-
 		// Get product ID from request body or query params
 		$product_id = $body['product_id'] ?? $request->get_param('product_id');
 		if (!$product_id) {
 			return new WP_Error('missing_product_id', 'Product ID is required', array('status' => 400));
 		}
 
-		// Construct Merchi API URL
-		$merchi_api_url = $merchi_url . 'v6/specialised-order-estimate/?skip_rights=y&product_id=' . $product_id;
-		
-		error_log('Calling Merchi API: ' . $merchi_api_url);
+		// Add SDK logging script
+		$sdk_log_script = sprintf(
+			'<script>
+				// Log SDK initialization
+				console.log("Setting backendUri to:", "%s");
+				
+				const sdkConfig = {
+					backendUri: "%s",
+					hasSessionToken: false,
+					hasRequiredMethods: true
+				};
+				
+				console.log("Merchi SDK initialized with config:", sdkConfig);
+				
+				// Log API request details
+				console.group("Merchi API Request");
+				console.log("Product ID:", "%s");
+				console.log("Domain ID:", "%s");
+				console.log("Staging Mode:", %s);
+				console.groupEnd();
+			</script>',
+			esc_js($merchi_url),
+			esc_js($merchi_url),
+			esc_js($product_id),
+			esc_js($merchi_domain),
+			$staging_mode === 'yes' ? 'true' : 'false'
+		);
+
+		// First, get the product details using the SDK approach
+		$product_api_url = $merchi_url . 'v6/products/' . $product_id . '/?skip_rights=y';
+		$product_response = wp_remote_get($product_api_url, array(
+			'headers' => array(
+				'Content-Type' => 'application/json',
+				'Authorization' => 'ApiKey ' . $merchi_secret,
+				'X-Domain-Id' => $merchi_domain,
+				'Accept' => 'application/json'
+			),
+			'timeout' => 30,
+			'sslverify' => !$staging_mode
+		));
+
+		if (is_wp_error($product_response)) {
+			return new WP_Error('product_fetch_error', $product_response->get_error_message(), array('status' => 500));
+		}
+
+		$product_data = json_decode(wp_remote_retrieve_body($product_response), true);
+		if (!isset($product_data['product'])) {
+			return new WP_Error('no_product_data', 'No product data found in response', array('status' => 500));
+		}
+
+		// Prepare the request body using the SDK's defaultJob structure
+		$request_body = array(
+			'job' => array(
+				'domain' => array('id' => $merchi_domain),
+				'product' => array(
+					'id' => $product_id,
+					'groupVariationFields' => $product_data['product']['groupVariationFields'] ?? [],
+					'independentVariationFields' => $product_data['product']['independentVariationFields'] ?? []
+				),
+				'variations' => array(),
+				'variationsGroups' => array(),
+				'jobType' => 1,
+				'currency' => 'AUD',
+				'costPerUnit' => $product_data['product']['unitPrice'] ?? 0,
+				'limitedStock' => true,
+				'inventoriesStatus' => 3,
+				'inventoryCount' => 0,
+				'inventorySufficient' => false,
+				'items' => array(),
+				'needsGroupBuy' => false,
+				'needsInventory' => false,
+				'needsSupplyChainRequest' => false
+			)
+		);
+
+		// Merge with any existing body data
+		if (isset($body['job'])) {
+			$request_body['job'] = array_merge($request_body['job'], $body['job']);
+		}
+
+		// Define embed parameters matching the SDK structure
+		$embed = array(
+			'component' => new stdClass(),
+			'defaultJob' => new stdClass(),
+			'domain' => array(
+				'activeTheme' => array('mainCss' => new stdClass()),
+				'logo' => new stdClass()
+			),
+			'draftTemplates' => array('file' => new stdClass()),
+			'groupBuyStatus' => new stdClass(),
+			'groupVariationFields' => array(
+				'options' => array(
+					'linkedFile' => new stdClass()
+				)
+			),
+			'images' => new stdClass(),
+			'independentVariationFields' => array(
+				'options' => array(
+					'linkedFile' => new stdClass()
+				)
+			),
+			'publicFiles' => new stdClass(),
+			'variations' => array(),
+			'variationsGroups' => array()
+		);
+
+		// Encode embed parameters
+		$embed_json = json_encode($embed);
+		$embed_encoded = urlencode($embed_json);
+
+		// Construct Merchi API URL with embed parameters
+		$merchi_api_url = $merchi_url . 'v6/specialised-order-estimate/?skip_rights=y&product_id=' . $product_id . '&embed=' . $embed_encoded;
 
 		// Make request to Merchi API
 		$response = wp_remote_post($merchi_api_url, array(
@@ -510,14 +616,13 @@ private function render_attribute_field($field, $name_prefix) {
 				'X-Domain-Id' => $merchi_domain,
 				'Accept' => 'application/json'
 			),
-			'body' => json_encode($body['job'] ?? $body),
+			'body' => json_encode($request_body),
 			'timeout' => 30,
-			'sslverify' => !$staging_mode // Disable SSL verification in staging
+			'sslverify' => !$staging_mode
 		));
 
 		// Check for wp_remote_post errors
 		if (is_wp_error($response)) {
-			error_log('Merchi API error: ' . $response->get_error_message());
 			return new WP_Error('merchi_api_error', $response->get_error_message(), array('status' => 500));
 		}
 
@@ -525,8 +630,11 @@ private function render_attribute_field($field, $name_prefix) {
 		$response_code = wp_remote_retrieve_response_code($response);
 		$response_body = wp_remote_retrieve_body($response);
 		
-		error_log('Merchi API response code: ' . $response_code);
-		error_log('Merchi API response body: ' . $response_body);
+		// Parse response body
+		$data = json_decode($response_body, true);
+
+		// Add SDK logging script to response
+		$data['_sdk_log_script'] = $sdk_log_script;
 
 		// Handle non-200 responses
 		if ($response_code !== 200) {
@@ -538,12 +646,28 @@ private function render_attribute_field($field, $name_prefix) {
 		}
 
 		// Parse and return response
-		$data = json_decode($response_body, true);
 		if (json_last_error() !== JSON_ERROR_NONE) {
-			error_log('JSON decode error: ' . json_last_error_msg());
 			return new WP_Error('json_decode_error', 'Failed to decode API response', array('status' => 500));
 		}
 
 		return new WP_REST_Response($data, 200);
+	}
+
+	/**
+	 * Add loading spinner to add to cart button
+	 */
+	public function add_loading_spinner_to_button($button_html, $product) {
+		// Add loading spinner span
+		$spinner = '<span class="loading-spinner"></span>';
+		
+		// Insert spinner before the button text
+		$button_html = str_replace('>', '>' . $spinner, $button_html);
+		
+		// Add product-button-add-to-cart class if not present
+		if (strpos($button_html, 'product-button-add-to-cart') === false) {
+			$button_html = str_replace('class="', 'class="product-button-add-to-cart ', $button_html);
+		}
+		
+		return $button_html;
 	}
 }

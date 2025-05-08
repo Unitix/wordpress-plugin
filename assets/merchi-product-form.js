@@ -1,29 +1,17 @@
 // Wait for both jQuery and Merchi SDK to be ready
 function initializeWhenReady() {
-  if (!window.MERCHI_SDK) {
+  const merchiSdk = window.MERCHI_SDK;
+  if (!merchiSdk) {
     window.addEventListener('merchi_sdk_ready', initializeWhenReady);
     return;
   }
 
   // Ensure SDK is properly initialized
-  if (!window.MERCHI_SDK.Job || !window.MERCHI_SDK.getJobQuote) {
+  if (!merchiSdk.Job || !merchiSdk.getJobQuote) {
     return;
   }
 
   jQuery(document).ready(function($) {
-    // Debug mode configuration
-    const debugMode = window.merchiConfig && window.merchiConfig.debugMode || false;
-      
-    // Logging helper
-    const log = {
-      debug: function(...args) {
-        if (debugMode) {
-        }
-      },
-      error: function(...args) {
-      }
-    };
-
     // Get the Merchi product ID from the page
     const merchiProductId = merchiConfig.productId;
     let productJson = null;
@@ -32,21 +20,21 @@ function initializeWhenReady() {
     // Function to fetch product details
     function fetchProductDetails() {
       return new Promise((resolve) => {
-        const productEnt = new MERCHI_SDK.Product().id(merchiProductId);
+        const productEnt = new merchiSdk.Product().id(merchiProductId);
         
         productEnt.get(
           (product) => {
-            productJson = window.MERCHI_SDK.toJson(product);
+            productJson = merchiSdk.toJson(product);
             // Ensure we have a valid defaultJob structure
             defaultJobJson = productJson.defaultJob;
-
             resolve(productJson);
           },
           (error) => {
-            const fallbackData = { 
+            const fallbackData = {
               id: parseInt(merchiProductId),
+              domain: {id: merchiConfig.domainId},
               defaultJob: {
-                domaini: {id: merchiConfig.domainId},
+                domain: {id: merchiConfig.domainId},
                 product: {id: merchiProductId},
                 variations: [],
                 variationsGroups: []
@@ -76,7 +64,6 @@ function initializeWhenReady() {
 
     // Cache the price calculation timeout and last form data
     let priceCalculationTimeout;
-    let lastFormData = null;
     let lastCalculationTime = 0;
     const DEBOUNCE_DELAY = 300; // 300ms debounce
     const MIN_CALCULATION_INTERVAL = 500; // Minimum 500ms between calculations
@@ -95,166 +82,60 @@ function initializeWhenReady() {
       calculateAndUpdatePrice();
     }
 
-    // Function to create a job structure based on form data
-    function createJobFromForm(formData) {
-      if (!window.MERCHI_SDK) {
-        throw new Error('Merchi SDK is not loaded');
-      }
-      
-      if (!productJson) {
-        return null;
-      }
+    // Function to calculate and update price
+    async function calculateAndUpdatePrice() {
+      const formData = await gatherFormData();
+      const jobEntity = merchiSdk.fromJson(new merchiSdk.Job(), formData);
 
+      // Calculate local price as fallback
+      let localTotalPrice = 0;
+
+      // Make the API call to get the quote
       try {
-        // Get domain_id from various possible sources
-        const domainId = defaultJobJson.domain_id ||
-                        (formData.job && formData.job.domain && formData.job.domain.id) ||
-                        merchiConfig.domainId;
-
-        // Get product_id from various possible sources
-        const productId = defaultJobJson.product_id ||
-                          (formData.job && formData.job.product && formData.job.product.id) ||
-                          merchiProductId;
-
-        if (!domainId || !productId) {
-          throw new Error('Missing required domain or product ID');
-        }
-
-        // Create a new job entity using the SDK
-        const jobEntity = new window.MERCHI_SDK.Job();
-        
-        // Set the domain
-        const domain = new window.MERCHI_SDK.Domain();
-        domain.id(parseInt(domainId));
-        jobEntity.domain(domain);
-
-        // Set the product
-        const product = new window.MERCHI_SDK.Product();
-        product.id(parseInt(productId));
-        jobEntity.product(product);
-
-        // Initialize empty arrays for variations and groups
-        jobEntity.variations([]);
-        jobEntity.variationsGroups([]);
-
-        // Process variation groups
-        if (formData.job && formData.job.variations_groups) {
-          const variationsGroups = [];
-          formData.job.variations_groups.forEach(group => {
-            if (group && group.variations) {
-              const groupEntity = new window.MERCHI_SDK.VariationsGroup();
-              groupEntity.quantity(parseInt(group.quantity) || 1);
-              
-              const variations = [];
-              group.variations.forEach(variation => {
-                if (variation && variation.value && variation.variationField) {
-                  const variationEntity = new window.MERCHI_SDK.Variation();
-                  const variationField = new window.MERCHI_SDK.VariationField();
-                  variationField.id(parseInt(variation.variationField.id));
-                  variationEntity.variationField(variationField);
-                  variationEntity.value(variation.value);
-                  variations.push(variationEntity);
+        merchiSdk.getJobQuote(
+          jobEntity,
+          (response) => {
+            // Use the quote price if available, otherwise fallback to local calculation
+            let finalPrice = localTotalPrice;
+            
+            // Check for quote price in different possible locations
+            if (response) {
+              let apiUnitPrice = null;
+              if (response.quote && typeof response.quote.totalPrice === 'number') {
+                finalPrice = response.quote.totalPrice;
+              } else if (response.totalPrice && typeof response.totalPrice === 'number') {
+                finalPrice = response.totalPrice;
+              } else if (response.costPerUnit && typeof response.costPerUnit === 'number') {
+                apiUnitPrice = response.costPerUnit;
+                // Compare with UI unit price
+                const uiUnitPrice = parseFloat(jQuery('.group-quantity').first().data('unit-price')) || 0;
+                if (Math.abs(apiUnitPrice - uiUnitPrice) < 0.01) {
+                  finalPrice = apiUnitPrice * totalQuantity;
+                } else {
+                  // Fallback to UI price if API price is not correct
+                  finalPrice = uiUnitPrice * totalQuantity;
                 }
-              });
-
-              if (variations.length > 0) {
-                groupEntity.variations(variations);
-                variationsGroups.push(groupEntity);
               }
             }
-          });
-
-          if (variationsGroups.length > 0) {
-            jobEntity.variationsGroups(variationsGroups);
+            
+            jQuery('.price-amount').text('$' + finalPrice.toFixed(2));
+          },
+          (error) => {
+            // On error, use local calculation
+            jQuery('.price-amount').text('$' + localTotalPrice.toFixed(2));
           }
-        }
-
-        // Process standalone variations
-        if (formData.job && formData.job.variations) {
-          const variations = [];
-          formData.job.variations.forEach(variation => {
-            if (variation && variation.value && variation.variationField) {
-              const variationEntity = new window.MERCHI_SDK.Variation();
-              const variationField = new window.MERCHI_SDK.VariationField();
-              variationField.id(parseInt(variation.variationField.id));
-              variationEntity.variationField(variationField);
-              variationEntity.value(variation.value);
-              variations.push(variationEntity);
-            }
-          });
-
-          if (variations.length > 0) {
-            jobEntity.variations(variations);
-          }
-        }
-
-        return jobEntity;
-      } catch (error) {
-        throw error;
-      }
-    }
-
-    // Function to calculate and update price
-    function calculateAndUpdatePrice() {
-      const formData = gatherFormData();
-      
-      // Skip if form data hasn't changed
-      const formDataStr = JSON.stringify(formData);
-      if (lastFormData === formDataStr) {
-        return;
-      }
-      lastFormData = formDataStr;
-
-      // Get the WooCommerce product price from the quantity input
-      const wooCommercePrice = parseFloat($('.group-quantity').first().data('unit-price')) || 0;
-
-      // Calculate total price based on groups
-      let totalPrice = 0;
-      const $groups = $('.group-field-set');
-      const groupCount = $groups.length;
-
-      // Calculate price for each group
-      for (let i = 0; i < groupCount; i++) {
-        const $group = $groups.eq(i);
-        const quantity = parseInt($group.find('.group-quantity').val()) || 1;
-        const groupTotal = quantity * wooCommercePrice;
-        totalPrice += groupTotal;
-
-        // Add option prices for this group
-        const $checkedInputs = $group.find('input:checked');
-        $checkedInputs.each(function() {
-          const $input = $(this);
-          const unitCost = parseFloat($input.data('variation-unit-cost')) || 0;
-          const optionTotal = unitCost * quantity;
-          totalPrice += optionTotal;
-        });
-      }
-
-      $('.price-amount').text('$' + totalPrice.toFixed(2));
-
-      // Create job entity for API call (but don't use its price)
-      console.log(formData, 'what is this james?');
-      const jobEntity = createJobFromForm(formData);
-      if (!jobEntity) {
-        return;
-      }
-
-      // Still make the API call to keep the backend in sync
-      try {
-        window.MERCHI_SDK.getJobQuote(
-          jobEntity,
-          (response) => {},
-          (error) => {}
         );
       } catch (error) {
+        // On exception, use local calculation
+        jQuery('.price-amount').text('$' + localTotalPrice.toFixed(2));
       }
     }
 
     // Function to add a new group
     function addNewGroup() {
       // Get the first group as template
-      const $firstGroup = $(".group-field-set").first();
-      const newGroupIndex = $(".group-field-set").length + 1;
+      const $firstGroup = jQuery(".group-field-set").first();
+      const newGroupIndex = jQuery(".group-field-set").length + 1;
       
       // Clone the group
       const $newGroup = $firstGroup.clone();
@@ -267,7 +148,7 @@ function initializeWhenReady() {
       
       // Update all form elements in the new group
       $newGroup.find("input, select, textarea").each(function() {
-        const $input = $(this);
+        const $input = jQuery(this);
         
         // Update name attribute
         let name = $input.attr("name");
@@ -300,11 +181,11 @@ function initializeWhenReady() {
       $newGroup.find(".delete-group-button").show();
       
       // Add the new group
-      $("#grouped-fields-container").append($newGroup);
+      jQuery("#grouped-fields-container").append($newGroup);
       
       // Show all delete buttons if more than one group
-      if ($(".group-field-set").length > 1) {
-        $(".delete-group-button").show();
+      if (jQuery(".group-field-set").length > 1) {
+        jQuery(".delete-group-button").show();
       }
 
       // Trigger immediate price calculation
@@ -314,53 +195,155 @@ function initializeWhenReady() {
     // Initialize event handlers
     function initializeHandlers() {
       // Remove any existing handlers
-      $(document).off('change', '#custom-variation-options input, #custom-variation-options select, .group-quantity');
-      $('#add-group-button').off('click');
-      $(document).off('click', '.delete-group-button');
+      jQuery(document).off('change', '.custom-variation-options input, .custom-variation-options select, .group-quantity');
+      jQuery('#add-group-button').off('click');
+      jQuery(document).off('click', '.delete-group-button');
 
       // Add form change handler with debounce
-      $(document).on('change', '#custom-variation-options input, #custom-variation-options select', function() {
+      jQuery(document).on('change', '.custom-variation-options input, .custom-variation-options select', function() {
         debouncedCalculatePrice();
       });
 
       // Handle quantity changes immediately without debounce
-      $(document).on('change', '.group-quantity', function() {
+      jQuery(document).on('change', '.group-quantity', function() {
         calculateAndUpdatePrice();
       });
 
       // Handle quantity input events (for when user types)
-      $(document).on('input', '.group-quantity', function() {
+      jQuery(document).on('input', '.group-quantity', function() {
         calculateAndUpdatePrice();
       });
 
       // Add group button handler
-      $('#add-group-button').on('click', function(e) {
+      jQuery('#add-group-button').on('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
         addNewGroup();
       });
 
       // Delete group handler with immediate price update
-      $(document).on('click', '.delete-group-button', function(e) {
+      jQuery(document).on('click', '.delete-group-button', function(e) {
         e.preventDefault();
-        const $group = $(this).closest(".group-field-set");
+        const $group = jQuery(this).closest(".group-field-set");
         $group.remove();
         updateGroupNumbers();
         // Trigger immediate price calculation
         calculateAndUpdatePrice();
       });
+
+      // Replace the file upload preview handler
+      jQuery(document).off('change', 'input[type="file"]');
+      jQuery(document).on('change', 'input[type="file"]', function(e) {
+        var $input = jQuery(this);
+        var files = Array.from(this.files);
+        var $wrapper = $input.closest('.custom-upload-wrapper');
+        var $previewArea = $wrapper.next('.multi-file-upload-preview');
+        if ($previewArea.length === 0) {
+          $previewArea = jQuery('<div class="multi-file-upload-preview"></div>');
+          $wrapper.after($previewArea);
+        }
+
+        // --- Maintain a DataTransfer object for this input ---
+        if (!$input[0]._dt) {
+          $input[0]._dt = new DataTransfer();
+        }
+        var dt = $input[0]._dt;
+
+        // Add new files, avoiding duplicates by name+size
+        files.forEach(function(file) {
+          var exists = false;
+          for (var i = 0; i < dt.items.length; i++) {
+            var f = dt.items[i].getAsFile();
+            if (f.name === file.name && f.size === file.size) {
+              exists = true;
+              break;
+            }
+          }
+          if (!exists) dt.items.add(file);
+        });
+        // Update input files
+        $input[0].files = dt.files;
+
+        // --- Render preview ---
+        $previewArea.empty();
+        var dtFiles = Array.from(dt.files);
+        if (dtFiles.length > 0) {
+          dtFiles.forEach(function(file, idx) {
+            var $fileBox = jQuery('<div class="multi-file-box" style="display: flex; align-items: center; margin-bottom: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 8px;"></div>');
+            var $removeBtn = jQuery('<span class="file-upload-remove" style="margin-left: 10px; cursor: pointer; font-size: 20px; color: #d00;">&times;</span>');
+            $removeBtn.on('click', function(e) {
+              e.stopPropagation();
+              var newDT = new DataTransfer();
+              dtFiles.forEach(function(f, i) {
+                if (i !== idx) newDT.items.add(f);
+              });
+              $input[0]._dt = newDT;
+              $input[0].files = newDT.files;
+              $input.trigger('change');
+            });
+            if (file.type.startsWith('image/')) {
+              var reader = new FileReader();
+              reader.onload = function(e) {
+                var $img = jQuery('<img />', {
+                  src: e.target.result,
+                  css: {
+                    'max-width': '60px',
+                    'max-height': '60px',
+                    'object-fit': 'contain',
+                    'margin-right': '10px',
+                    'border-radius': '4px',
+                    'box-shadow': '0 1px 4px rgba(0,0,0,0.08)'
+                  }
+                });
+                $fileBox.prepend($img);
+              };
+              reader.readAsDataURL(file);
+            } else {
+              var $fileIcon = jQuery('<span style="font-size: 32px; margin-right: 10px;">📄</span>');
+              $fileBox.prepend($fileIcon);
+            }
+            var $fileName = jQuery('<span style="font-weight: bold; font-size:0.5em; color: #333;">' + file.name + '</span>');
+            var $downloadBtn = jQuery('<a style="margin-left: 10px; font-size: 18px; text-decoration: none;" href="#" download>⬇️</a>');
+            $downloadBtn.on('click', function(ev) {
+              ev.preventDefault();
+              var url = URL.createObjectURL(file);
+              var a = document.createElement('a');
+              a.href = url;
+              a.download = file.name;
+              document.body.appendChild(a);
+              a.click();
+              setTimeout(function() { URL.revokeObjectURL(url); document.body.removeChild(a); }, 100);
+            });
+            $fileBox.append($fileName).append($downloadBtn).append($removeBtn);
+            $previewArea.append($fileBox);
+          });
+          // Show file count
+          var $count = jQuery('<div style="color: #666; font-size: 14px; font-weight:bold; margin-top: 4px;">' + dtFiles.length + ' file' + (dtFiles.length > 1 ? 's' : '') + ' selected <span style="cursor:pointer;color:#0073aa;" class="toggle-file-list">&#9650;</span></div>');
+          $previewArea.append($count);
+          $count.find('.toggle-file-list').on('click', function() {
+            $previewArea.toggleClass('collapsed');
+            $previewArea.find('.multi-file-box').toggle();
+            jQuery(this).html($previewArea.hasClass('collapsed') ? '&#9660;' : '&#9650;');
+          });
+        } else {
+          $previewArea.empty();
+        }
+        // Always show icon and instruction
+        $wrapper.find('.upload-icon').show();
+        $wrapper.find('.upload-instruction, .upload-types').show();
+      });
     }
 
     function updateGroupNumbers() {
-      $(".group-field-set").each(function(index) {
+      jQuery(".group-field-set").each(function(index) {
         const newIndex = index + 1;
-        const $group = $(this);
+        const $group = jQuery(this);
         
         $group.attr("data-group-index", newIndex);
         $group.find(".group-number").text(newIndex);
         
         $group.find("input, select, textarea").each(function() {
-          const $input = $(this);
+          const $input = jQuery(this);
           const name = $input.attr("name");
           if (name) {
             const newName = name.replace(/group_fields\[\d+\]/, "group_fields[" + newIndex + "]");
@@ -375,8 +358,8 @@ function initializeWhenReady() {
       });
 
       // Toggle delete buttons
-      const $deleteButtons = $(".delete-group-button");
-      if ($(".group-field-set").length === 1) {
+      const $deleteButtons = jQuery(".delete-group-button");
+      if (jQuery(".group-field-set").length === 1) {
         $deleteButtons.hide();
       } else {
         $deleteButtons.show();
@@ -394,108 +377,20 @@ function initializeWhenReady() {
         .text('Group (' + groupIndex + ') quantity ($' + unitPrice.toFixed(2) + ' unit price)');
     }
 
-    // Function to gather form data with proper group handling
-    function gatherFormData() {
-      const formData = {
-        job: {
-          domain: {
-            id: parseInt(merchiConfig.domainId)
-          },
-          product: {
-            id: parseInt(merchiProductId)
-          },
-          variations: [],
-          variationsGroups: []
-        }
-      };
-
-      // Process variation groups
-      $('.group-field-set').each(function(groupIndex) {
-        const $group = $(this);
-        const groupQuantity = parseInt($group.find('.group-quantity').val()) || 1;
-        
-        const groupData = {
-          quantity: groupQuantity,
-          variations: []
-        };
-
-        // Process variations within this group
-        $group.find('.custom-field').each(function() {
-          const $container = $(this);
-          const $input = $container.find('input, select, textarea').first();
-          const variationFieldId = $input.data('variation-field-id');
-          const fieldType = parseInt($input.data('field-type'));
-          const variationFieldData = $input.data('variation-field');
-
-          if (!variationFieldId) return;
-
-          // Get the value based on input type
-          let value = null;
-          if ($input.is('select')) {
-            value = $input.val();
-          } else if ($input.is('input[type="text"], input[type="number"], textarea')) {
-            value = $input.val();
-          } else if ($input.is('input[type="radio"], input[type="checkbox"]')) {
-            const $checked = $container.find('input:checked');
-            if ($checked.length) {
-              value = $checked.data('option-id') || $checked.data('variation-field-value') || $checked.val();
-            }
-          } else if ($input.is('input[type="color"]')) {
-            value = $input.val();
-          }
-
-          if (value !== null) {
-            // Create complete variation field data
-            const variationField = {
-              id: variationFieldId,
-              name: $input.data('field-name') || '',
-              position: parseInt($input.data('position')) || 0,
-              required: $input.data('required') === true,
-              placeholder: $input.data('placeholder') || '',
-              fieldType: fieldType,
-              sellerProductEditable: $input.data('seller-product-editable') === true,
-              multipleSelect: $input.data('multiple-select') === true,
-              options: []
-            };
-
-            // Get options from the API response data stored in the input
-            if (variationFieldData && variationFieldData.options) {
-              variationField.options = variationFieldData.options.map(option => ({
-                id: parseInt(option.id),
-                value: option.value,
-                currency: option.currency || 'AUD',
-                position: parseInt(option.position) || 0,
-                variationCost: parseFloat(option.variationCost) || 0,
-                variationUnitCost: parseFloat(option.variationUnitCost) || 0
-              }));
-            }
-
-            // Create variation data with nested structure
-            const variationData = {
-              value: value,
-              variationField: variationField
-            };
-
-            groupData.variations.push(variationData);
-          }
-        });
-
-        // Only add group if it has variations or a quantity
-        if (groupData.variations.length > 0 || groupData.quantity > 1) {
-          formData.job.variationsGroups.push(groupData);
-        }
-      });
-
-      // Process standalone variations (outside groups)
-      $('#custom-variation-options .custom-field').each(function() {
-        const $container = $(this);
-        const $input = $container.find('input, select, textarea').first();
-        const variationFieldId = $input.data('variation-field-id');
-        const fieldType = parseInt($input.data('field-type'));
+    // Function to process variations from a container
+    function processVariations($container, variationsArray) {
+      $container.find('.custom-field').each(function() {
+        const $fieldContainer = jQuery(this);
+        const $input = $fieldContainer.find('input, select, textarea').first();
         const variationFieldData = $input.data('variation-field');
-    
+        const variationFieldId = variationFieldData?.id;
+
         if (!variationFieldId) return;
-    
+
+        // Find the index of the variation by matching the variationFieldId
+        const variationIndex = variationsArray.findIndex(v => v.variationField.id === variationFieldId);
+        if (variationIndex === -1) return;
+
         // Get the value based on input type
         let value = null;
         if ($input.is('select')) {
@@ -503,63 +398,99 @@ function initializeWhenReady() {
         } else if ($input.is('input[type="text"], input[type="number"], textarea')) {
           value = $input.val();
         } else if ($input.is('input[type="radio"], input[type="checkbox"]')) {
-          const $checked = $container.find('input:checked');
+          const $checked = $fieldContainer.find('input:checked');
           if ($checked.length) {
-            value = $checked.data('option-id') || $checked.data('variation-field-value') || $checked.val();
+            value = $checked.val();
           }
         } else if ($input.is('input[type="color"]')) {
           value = $input.val();
         }
 
-        if (value !== null) {
-          // Create complete variation field data
-          const variationField = {
-            id: variationFieldId,
-            name: $input.data('field-name') || '',
-            position: parseInt($input.data('position')) || 0,
-            required: $input.data('required') === true,
-            placeholder: $input.data('placeholder') || '',
-            fieldType: fieldType,
-            sellerProductEditable: $input.data('seller-product-editable') === true,
-            multipleSelect: $input.data('multiple-select') === true,
-            options: []
-          };
+        // Update the value of the variation
+        variationsArray[variationIndex].value = value;
+      });
+    }
 
-          // Get options from the API response data stored in the input
-          if (variationFieldData && variationFieldData.options) {
-            variationField.options = variationFieldData.options.map(option => ({
-              id: parseInt(option.id),
-              value: option.value,
-              currency: option.currency || 'AUD',
-              position: parseInt(option.position) || 0,
-              variationCost: parseFloat(option.variationCost) || 0,
-              variationUnitCost: parseFloat(option.variationUnitCost) || 0
-            }));
-          }
+    // Function to gather form data with proper group handling
+    async function gatherFormData() {
+      // Process variation groups
+      const formData = {
+        ...defaultJobJson,
+        variationsGroups: [],
+        variations: []
+      };
 
-          // Create variation data with nested structure
-          const variationData = {
-            value: value,
-            variationField: variationField
-          };
+      // Process group variations
+      jQuery('.group-field-set').each(function(groupIndex) {
+        const $group = jQuery(this);
+        
+        // push the group to the form data and update the quantity
+        formData.variationsGroups.push({
+          quantity: parseInt($group.find('.group-quantity').val()) || 1,
+          variations: [...defaultJobJson.variationsGroups[0].variations],
+        });
 
-          formData.job.variations.push(variationData);
-        }
+        // Process variations within this group
+        processVariations($group, formData.variationsGroups[groupIndex].variations);
       });
 
+      // Process standalone variations
+      processVariations(jQuery('.custom-variation-options'), formData.variations);
+
       // Add total quantity to the form data to ensure cache invalidation on quantity changes
-      formData.totalQuantity = $('.group-quantity').toArray().reduce((sum, input) => {
-        return sum + (parseInt($(input).val()) || 1);
+      formData.totalQuantity = jQuery('.group-quantity').toArray().reduce((sum, input) => {
+        return sum + (parseInt(jQuery(input).val()) || 1);
       }, 0);
 
+      console.log(formData, 'what is this form data?');
       return formData;
+    }
+
+    function updateVariationOptionPrices() {
+      let variationsMap = {};
+      let groups = productJson && productJson.defaultJob && productJson.defaultJob.variationsGroups;
+      if (Array.isArray(groups) && groups.length > 0) {
+        groups.forEach(group => {
+          if (Array.isArray(group.variations)) {
+            group.variations.forEach(variation => {
+              if (variation.value !== undefined) {
+                variationsMap[variation.value] = variation;
+              }
+            });
+          }
+        });
+      }
+      if (Object.keys(variationsMap).length === 0) {
+        return;
+      }
+      jQuery('[data-variation-field-value]').each(function() {
+        const $input = jQuery(this);
+        const variationValue = $input.data('variation-field-value');
+        const matchedVariation = variationsMap[variationValue];
+        if (matchedVariation && typeof matchedVariation.cost === 'number') {
+          const $label = $input.closest('label').find('.option-label, .image-title, .color-name');
+          if ($label.length) {
+            $label.each(function() {
+              const labelText = jQuery(this).text().replace(/\(\+.*\)/, '');
+              jQuery(this).text(labelText.trim() + ` (+ $${matchedVariation.cost.toFixed(2)} per unit)`);
+            });
+          }
+        }
+      });
     }
 
     // Function to initialize
     function initialize() {
       fetchProductDetails()
         .then(() => {
-          mapProductDataToForm();
+          // Wait until productJson and productJson.variations are available
+          if (!productJson || !productJson.variations) {
+            setTimeout(() => {
+              updateVariationOptionPrices();
+            }, 100);
+          } else {
+            updateVariationOptionPrices();
+          }
           initializeHandlers();
           calculateAndUpdatePrice();
         })
@@ -575,9 +506,115 @@ function initializeWhenReady() {
     window.merchiFormInitialized = true;
 
     // Start initialization when document is ready
-    $(document).ready(initialize);
+    jQuery(document).ready(initialize);
   });
 }
 
 // Start initialization
 initializeWhenReady();
+
+// Function to validate form data
+function validateForm() {
+    const errors = [];
+    const $form = jQuery('.merchi-product-form');
+    
+    // Validate required fields
+    $form.find('.custom-field[data-required="true"]').each(function() {
+        const $container = jQuery(this);
+        const $input = $container.find('input, select, textarea').first();
+        const fieldName = $input.data('field-name') || 'Field';
+        
+        if ($input.is('input[type="radio"], input[type="checkbox"]')) {
+            const $checked = $container.find('input:checked');
+            if ($checked.length === 0) {
+                errors.push(`${fieldName} is required`);
+                $container.addClass('field-error');
+            } else {
+                $container.removeClass('field-error');
+            }
+        } else if (!$input.val()) {
+            errors.push(`${fieldName} is required`);
+            $input.addClass('field-error');
+        } else {
+            $input.removeClass('field-error');
+        }
+    });
+
+    // Validate quantities
+    jQuery('.group-quantity').each(function() {
+        const $input = jQuery(this);
+        const quantity = parseInt($input.val());
+        if (isNaN(quantity) || quantity < 1) {
+            errors.push('Quantity must be at least 1');
+            $input.addClass('field-error');
+        } else {
+            $input.removeClass('field-error');
+        }
+    });
+
+    // Display errors if any
+    const $errorContainer = jQuery('.form-error-container');
+    if (errors.length > 0) {
+        if ($errorContainer.length === 0) {
+            jQuery('<div class="form-error-container"></div>').insertAfter('.merchi-product-form');
+        }
+        $errorContainer.html(errors.map(error => `<div class="form-error">${error}</div>`).join(''));
+        return false;
+    } else {
+        $errorContainer.remove();
+        return true;
+    }
+}
+
+// Function to handle loading state
+function setLoadingState(isLoading) {
+    const $button = jQuery('.product-button-add-to-cart');
+    if (isLoading) {
+        $button.addClass('loading').prop('disabled', true);
+    } else {
+        $button.removeClass('loading').prop('disabled', false);
+    }
+}
+
+// Modify the existing click handler
+jQuery(document).on('click', '.product-button-add-to-cart', function(e) {
+    e.preventDefault();
+    
+    // Validate form before proceeding
+    if (!validateForm()) {
+        return;
+    }
+
+    setLoadingState(true);
+
+    // Rest of your existing click handler code...
+    // Make sure to call setLoadingState(false) in both success and error cases
+    try {
+        // Your existing code...
+        if (scriptData.is_single_product) {
+            const cookie = getCookieByName("cart-" + scriptData.merchi_domain);
+            // ... rest of the code ...
+            
+            jQuery.ajax({
+                method: "POST",
+                url: frontendajax.ajaxurl,
+                data: {
+                    action: "send_id_for_add_cart",
+                    item: cartPayload,
+                },
+                success: function (response) {
+                    setLoadingState(false);
+                    window.location.href = site_url + '/cart/';
+                },
+                error: function (error) {
+                    setLoadingState(false);
+                    alert("Something went wrong, Please try again later");
+                },
+            });
+        }
+    } catch (error) {
+        setLoadingState(false);
+        console.error(error);
+        alert("An error occurred. Please try again.");
+    }
+});
