@@ -173,7 +173,7 @@ class ProductPage extends BaseController {
 
 		foreach ($group_fields_template as $field) {
 			if ($field['type'] === 'attribute') {
-				echo $this->render_attribute_field($field, "group_fields[1]");
+				echo $this->render_attribute_field($field, "group_fields[1]", true);
 			} else {
 				echo $this->render_meta_field($field, "group_fields[1]");
 			}
@@ -244,7 +244,7 @@ private function cost_label_content($variation_unit_cost, $variation_cost) {
     return $label;
 }
 
-private function render_attribute_field($field, $name_prefix) {
+private function render_attribute_field($field, $name_prefix, $is_group = false) {
     $terms = $this->get_variation_field_options($field);
     if (empty($terms)) return '';
 
@@ -293,13 +293,13 @@ private function render_attribute_field($field, $name_prefix) {
     $variation_field_json = esc_attr(json_encode($variation_field_data));
 
     $html = '<div class="custom-field">';
-    $html .= "<label for='{$slug}'>{$label}</label>";
 
     // Add variation field data to all input elements
     $common_data_attrs = ' data-variation-field=\''.$variation_field_json.'\'';
 
     // SELECT field type (2)
     if ($field_type === 2) {
+		  	$html .= "<label for='{$slug}'>{$label}</label>";
         if ($is_multiple) {
             $html .= '<select multiple name="' . $name_prefix . '[' . $slug . '][]"' . $common_data_attrs . ' data-calculate="' . ($has_cost ? 'true' : 'false') . '">';
             foreach ($terms as $term) {
@@ -333,6 +333,7 @@ private function render_attribute_field($field, $name_prefix) {
     } 
     // CHECKBOX type (6)
     else if ($field_type === 6) {
+			$html .= "<label for='{$slug}'>{$label}</label>";
         $html .= '<div class="checkbox-options-container">';
         foreach ($terms as $term) {
             $variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
@@ -353,6 +354,7 @@ private function render_attribute_field($field, $name_prefix) {
     } 
     // RADIO type (7)
     else if ($field_type === 7) {
+			  $html .= "<label for='{$slug}'>{$label}</label>";
         $html .= '<div class="radio-options-container">';
         foreach ($terms as $index => $term) {
             $variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
@@ -374,6 +376,8 @@ private function render_attribute_field($field, $name_prefix) {
     }
     // IMAGE_SELECT type (9)
     else if ($field_type === 9) {
+        $label_group_index = $is_group ? '0' : 'false';
+        $html .= "<label for='{$slug}' data-group-index='{$label_group_index}' data-update-label='true' data-variation-field-id='{$field_id}'>{$label}</label>";
         $is_multiple = !empty($field['multipleSelect']);
         $input_type = $is_multiple ? 'checkbox' : 'radio';
         $html .= '<fieldset class="group-variation-container" name="job.variationsGroups[0].variations[1]"' . $common_data_attrs . '>';
@@ -401,15 +405,14 @@ private function render_attribute_field($field, $name_prefix) {
                         $common_data_attrs . ' 
                         data-variation-field-value="' . esc_attr($variation_option_id) . '"
                         data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"
+												data-update-label="true"
                         data-calculate="' . ($has_cost ? 'true' : 'false') . '"
                         ' . ($index === 0 && !$is_multiple ? 'checked' : '') . ' />';
             $html .= '<label for="' . $input_id . '" class="image-select-label">';
             if ($image_url) {
                 $html .= '<img src="' . esc_url($image_url) . '" alt="' . esc_attr($term->name) . '" />';
             }
-            $html .= '<span class="option-label">' . esc_html($term->name) 
-                . $this->cost_label_content($variation_unit_cost, $variation_cost)
-                . '</span>';
+            $html .= '<span class="option-label">' . esc_html($term->name) . '</span>';
             $html .= '</label>';
             $html .= '</div>';
         }
@@ -418,6 +421,8 @@ private function render_attribute_field($field, $name_prefix) {
     } 
     // COLOUR_SELECT type (11)
     else if ($field_type === 11) {
+        $label_group_index = $is_group ? '0' : 'false';
+        $html .= "<label for='{$slug}' data-group-index='{$label_group_index}' data-update-label='true' data-variation-field-id='{$field_id}'>{$label}</label>";
         $is_multiple = !empty($field['multipleSelect']);
         $input_type = $is_multiple ? 'checkbox' : 'radio';
         $html .= '<div class="color-options-grid">';
@@ -436,9 +441,7 @@ private function render_attribute_field($field, $name_prefix) {
             $html .= '<span class="color-indicator" style="background-color: ' . esc_attr($color_value) . ';"></span>';
             $html .= '<span class="checkmark">✓</span>';
             $html .= '</div>';
-            $html .= '<span class="color-name">' . esc_html($term->name) 
-                . $this->cost_label_content($variation_unit_cost, $variation_cost)
-                . '</span>';
+            $html .= '<span class="color-name">' . esc_html($term->name) . '</span>';
             $html .= '</label>';
         }
         $html .= '</div>';
