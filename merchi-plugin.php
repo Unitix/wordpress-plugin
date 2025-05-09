@@ -1542,7 +1542,7 @@ function prodct_title_attach() {
     $update_args = array(
         'ID'         => $product_id,
         'post_title' => $product_title,
-		'post_status'   => 'publish',
+		    'post_status'   => 'publish',
     );
 
 	update_post_meta($product_id, '_sku', $product_sku);
@@ -1790,6 +1790,7 @@ if (!empty($merchi_product['groupVariationFields'])) {
     foreach ($merchi_product['groupVariationFields'] as $group_field) {
         $field_type = intval($group_field['fieldType']);
         $field_id = intval($group_field['id']);
+
         $field_name = sanitize_text_field($group_field['name']);
         $slug = generate_short_slug($field_name);
         $options = $group_field['options'] ?? [];
@@ -1824,6 +1825,12 @@ if (!empty($merchi_product['groupVariationFields'])) {
                         update_term_meta($term_id, 'variation_option_id', sanitize_text_field($option['id']));
                     }
 
+                    // Store variation costs in term meta
+                    $variation_cost = floatval($option['variationCost'] ?? 0);
+                    $variation_unit_cost = floatval($option['variationUnitCost'] ?? 0);
+                    update_term_meta($term_id, 'variationCost', $variation_cost);
+                    update_term_meta($term_id, 'variationUnitCost', $variation_unit_cost);
+
                     $variation_options[] = $option_value;
                 }
             }
@@ -1839,6 +1846,9 @@ if (!empty($merchi_product['groupVariationFields'])) {
                 'fieldID'   => $field_id,
                 'required'  => !empty($group_field['required']),
                 'multipleSelect' => !empty($group_field['multipleSelect']),
+                'position' => $group_field['position'] ?? 0,
+                'variationCost' => floatval($group_field['variationCost'] ?? 0),
+                'variationUnitCost' => floatval($group_field['variationUnitCost'] ?? 0),
             ];
         } else {
             $grouped_field_template[] = [
@@ -1851,6 +1861,9 @@ if (!empty($merchi_product['groupVariationFields'])) {
                 'instructions' => esc_html($group_field['instructions'] ?? ''),
                 'required'     => !empty($group_field['required']),
                 'multipleSelect' => !empty($group_field['multipleSelect']),
+                'position' => $group_field['position'] ?? 0,
+                'variationCost' => floatval($group_field['variationCost'] ?? 0),
+                'variationUnitCost' => floatval($group_field['variationUnitCost'] ?? 0),
             ];
         }
     }
@@ -1879,6 +1892,8 @@ if (!empty($merchi_product['groupVariationFields'])) {
 							if (!empty($option['include']) && !empty($option['value'])) {
 									$option_value = sanitize_text_field($option['value']);
 									$image_url = !empty($option['linkedFile']['viewUrl']) ? esc_url($option['linkedFile']['viewUrl']) : '';
+									$variation_option_cost = floatval($option['variationCost'] ?? 0);
+									$variation_option_unit_cost = floatval($option['variationUnitCost'] ?? 0);
 	
 									$term = term_exists($option_value, $taxonomy);
 									if (!$term) {
@@ -1900,7 +1915,11 @@ if (!empty($merchi_product['groupVariationFields'])) {
 									if (!empty($option['id'])) {
 										update_term_meta($term_id, 'variation_option_id', sanitize_text_field($option['id']));
 									}
-	
+
+									// Add variation costs to term meta
+									update_term_meta($term_id, 'variationCost', $variation_option_cost);
+									update_term_meta($term_id, 'variationUnitCost', $variation_option_unit_cost);
+
 									$variation_options[] = $option_value;
 							}
 					}
@@ -1925,6 +1944,9 @@ if (!empty($merchi_product['groupVariationFields'])) {
 							'fieldID'    => $field_id,
 							'required'   => !empty($variation_field['required']),
 							'multipleSelect' => !empty($variation_field['multipleSelect']),
+							'position' => $variation_field['position'] ?? 0,
+							'variationCost' => $variation_field['variationCost'] ?? 0,
+							'variationUnitCost' => $variation_field['variationUnitCost'] ?? 0,
 					];
 			} else {
 					$meta_field = [

@@ -199,11 +199,16 @@ function initializeWhenReady() {
       jQuery('#add-group-button').off('click');
       jQuery(document).off('click', '.delete-group-button');
 
-      // Add form change handler with debounce
-      jQuery(document).on('change', '.custom-variation-options input, .custom-variation-options select', function() {
-        debouncedCalculatePrice();
+      // add loop here
+      jQuery('.custom-field input, .custom-field select, .custom-field textarea, .custom-variation-options input, .custom-variation-options select, .custom-variation-options textarea').each(function() {
+        const $input = jQuery(this);
+        if (!!$input.attr('data-calculate')) {
+          $input.on('change', function() {
+            debouncedCalculatePrice();
+          });
+        }
       });
-
+      
       // Handle quantity changes immediately without debounce
       jQuery(document).on('change', '.group-quantity', function() {
         calculateAndUpdatePrice();
@@ -442,61 +447,19 @@ function initializeWhenReady() {
         return sum + (parseInt(jQuery(input).val()) || 1);
       }, 0);
 
-      console.log(formData, 'what is this form data?');
       return formData;
-    }
-
-    function updateVariationOptionPrices() {
-      let variationsMap = {};
-      let groups = productJson && productJson.defaultJob && productJson.defaultJob.variationsGroups;
-      if (Array.isArray(groups) && groups.length > 0) {
-        groups.forEach(group => {
-          if (Array.isArray(group.variations)) {
-            group.variations.forEach(variation => {
-              if (variation.value !== undefined) {
-                variationsMap[variation.value] = variation;
-              }
-            });
-          }
-        });
-      }
-      if (Object.keys(variationsMap).length === 0) {
-        return;
-      }
-      jQuery('[data-variation-field-value]').each(function() {
-        const $input = jQuery(this);
-        const variationValue = $input.data('variation-field-value');
-        const matchedVariation = variationsMap[variationValue];
-        if (matchedVariation && typeof matchedVariation.cost === 'number') {
-          const $label = $input.closest('label').find('.option-label, .image-title, .color-name');
-          if ($label.length) {
-            $label.each(function() {
-              const labelText = jQuery(this).text().replace(/\(\+.*\)/, '');
-              jQuery(this).text(labelText.trim() + ` (+ $${matchedVariation.cost.toFixed(2)} per unit)`);
-            });
-          }
-        }
-      });
     }
 
     // Function to initialize
     function initialize() {
       fetchProductDetails()
-        .then(() => {
-          // Wait until productJson and productJson.variations are available
-          if (!productJson || !productJson.variations) {
-            setTimeout(() => {
-              updateVariationOptionPrices();
-            }, 100);
-          } else {
-            updateVariationOptionPrices();
-          }
-          initializeHandlers();
-          calculateAndUpdatePrice();
-        })
-        .catch(error => {
-          initializeHandlers();
-        });
+      .then(() => {
+        initializeHandlers();
+        calculateAndUpdatePrice();
+      })
+      .catch(error => {
+        initializeHandlers();
+      });
     }
 
     // Remove any existing initialization
