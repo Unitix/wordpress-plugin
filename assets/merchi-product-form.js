@@ -102,14 +102,12 @@ function initializeWhenReady() {
     function onGetJobQuoteSuccess(response) {
       // Use the quote price if available, otherwise fallback to local calculation
       // add loop here 
-      const variationFieldIds = [];
       const {
         variations = [],
         variationsGroups = [],
       } = response;
 
       // loop over the variationsGroups
-      console.log('we in response and what is response', response);
       for (let i = 0; i < variationsGroups.length; i++) {
         const {
           variations = [],
