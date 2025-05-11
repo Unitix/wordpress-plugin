@@ -75,11 +75,75 @@ function initializeWhenReady() {
       
       // If we recently calculated, delay more
       if (now - lastCalculationTime < MIN_CALCULATION_INTERVAL) {
-        priceCalculationTimeout = setTimeout(calculateAndUpdatePrice, DEBOUNCE_DELAY);
+        priceCalculationTimeout = setTimeout(() => {
+          lastCalculationTime = Date.now();
+          calculateAndUpdatePrice();
+        }, DEBOUNCE_DELAY);
         return;
       }
       
+      // If enough time has passed, calculate immediately
+      lastCalculationTime = now;
       calculateAndUpdatePrice();
+    }
+
+    // Reusable function to update a variation label
+    function updateVariationLabel($label, variation) {
+      if (variation) {
+        const { onceOffCost, unitCostTotal, variationField } = variation;
+        let label = variationField.name;
+        const onceOffCostLabel = onceOffCost ? ` + ( $${onceOffCost.toFixed(2)} once off )` : '';
+        const unitCostLabel = unitCostTotal ? ` + ( $${unitCostTotal.toFixed(2)} per unit )` : '';
+        label += onceOffCostLabel + unitCostLabel;
+        $label.text(label);
+      }
+    }
+
+    function renderPrice(totalCost, countryTax) {
+      const tax = countryTax ?? {};
+      const { taxName, taxPercentage } = tax;
+      const taxText = taxName ? `in ${taxName} (${taxPercentage}%)` : 'inc tax';
+      return `$${totalCost.toFixed(2)} ${taxText}`;
+    }
+
+    function onGetJobQuoteSuccess(response) {
+      // Use the quote price if available, otherwise fallback to local calculation
+      // add loop here
+      console.log(response, 'what is response');
+      const {
+        taxType,
+        totalCost,
+        variations = [],
+        variationsGroups = [],
+      } = response;
+
+      // loop over the variationsGroups
+      for (let i = 0; i < variationsGroups.length; i++) {
+        const {
+          variations = [],
+        } = variationsGroups[i];
+
+        jQuery('label[data-update-label="true"][data-group-index="' + i + '"]').each(function() {
+          const $label = jQuery(this);
+          const variationFieldId = $label.data('variation-field-id');
+          const variation = variations.find(v => v.variationField?.id === variationFieldId);
+          updateVariationLabel($label, variation);
+        });
+      }
+
+      jQuery('label[data-update-label="true"][data-group-index="false"]').each(function() {
+        const $label = jQuery(this);
+        const variationFieldId = $label.data('variation-field-id');
+        const variation = variations.find(v => v.variationField?.id === variationFieldId);
+        updateVariationLabel($label, variation);
+      });
+      
+      jQuery('.price-amount').text(renderPrice(totalCost, taxType));
+    }
+
+    function onGetJobQuoteError(error) {
+      console.log(error, 'this is the error');
+      jQuery('.price-amount').text('$0.00');
     }
 
     // Function to calculate and update price
@@ -87,47 +151,12 @@ function initializeWhenReady() {
       const formData = await gatherFormData();
       const jobEntity = merchiSdk.fromJson(new merchiSdk.Job(), formData);
 
-      // Calculate local price as fallback
-      let localTotalPrice = 0;
-
       // Make the API call to get the quote
       try {
-        merchiSdk.getJobQuote(
-          jobEntity,
-          (response) => {
-            // Use the quote price if available, otherwise fallback to local calculation
-            let finalPrice = localTotalPrice;
-            
-            // Check for quote price in different possible locations
-            if (response) {
-              let apiUnitPrice = null;
-              if (response.quote && typeof response.quote.totalPrice === 'number') {
-                finalPrice = response.quote.totalPrice;
-              } else if (response.totalPrice && typeof response.totalPrice === 'number') {
-                finalPrice = response.totalPrice;
-              } else if (response.costPerUnit && typeof response.costPerUnit === 'number') {
-                apiUnitPrice = response.costPerUnit;
-                // Compare with UI unit price
-                const uiUnitPrice = parseFloat(jQuery('.group-quantity').first().data('unit-price')) || 0;
-                if (Math.abs(apiUnitPrice - uiUnitPrice) < 0.01) {
-                  finalPrice = apiUnitPrice * totalQuantity;
-                } else {
-                  // Fallback to UI price if API price is not correct
-                  finalPrice = uiUnitPrice * totalQuantity;
-                }
-              }
-            }
-            
-            jQuery('.price-amount').text('$' + finalPrice.toFixed(2));
-          },
-          (error) => {
-            // On error, use local calculation
-            jQuery('.price-amount').text('$' + localTotalPrice.toFixed(2));
-          }
-        );
+        merchiSdk.getJobQuote(jobEntity, onGetJobQuoteSuccess, onGetJobQuoteError);
       } catch (error) {
         // On exception, use local calculation
-        jQuery('.price-amount').text('$' + localTotalPrice.toFixed(2));
+        jQuery('.price-amount').text(renderPrice(0, null));
       }
     }
 
@@ -136,15 +165,22 @@ function initializeWhenReady() {
       // Get the first group as template
       const $firstGroup = jQuery(".group-field-set").first();
       const newGroupIndex = jQuery(".group-field-set").length + 1;
-      
+
       // Clone the group
       const $newGroup = $firstGroup.clone();
-      
+
       // Reset and update the new group
       $newGroup
         .attr("data-group-index", newGroupIndex)
         .find(".group-number")
         .text(newGroupIndex);
+
+      // in the new group find all the data-group-index + 1
+      $newGroup.find('[data-group-index]').each(function() {
+        const $element = jQuery(this);
+        const currentIndex = parseInt($element.data('group-index'));
+        $element.attr('data-group-index', currentIndex + 1);
+      });
       
       // Update all form elements in the new group
       $newGroup.find("input, select, textarea").each(function() {
@@ -199,20 +235,21 @@ function initializeWhenReady() {
       jQuery('#add-group-button').off('click');
       jQuery(document).off('click', '.delete-group-button');
 
-      // Add form change handler with debounce
-      jQuery(document).on('change', '.custom-variation-options input, .custom-variation-options select', function() {
-        debouncedCalculatePrice();
+      // add loop here
+      jQuery('.custom-field input, .custom-field select, .custom-field textarea, .custom-variation-options input, .custom-variation-options select, .custom-variation-options textarea').each(function() {
+        const $input = jQuery(this);
+        if ($input.attr('data-calculate')) {
+          $input.on('change', function() {
+            debouncedCalculatePrice();
+          });
+        }
       });
-
+      
       // Handle quantity changes immediately without debounce
-      jQuery(document).on('change', '.group-quantity', function() {
-        calculateAndUpdatePrice();
-      });
+      jQuery(document).on('change', '.group-quantity', calculateAndUpdatePrice);
 
       // Handle quantity input events (for when user types)
-      jQuery(document).on('input', '.group-quantity', function() {
-        calculateAndUpdatePrice();
-      });
+      jQuery(document).on('input', '.group-quantity', calculateAndUpdatePrice);
 
       // Add group button handler
       jQuery('#add-group-button').on('click', function(e) {
@@ -442,61 +479,19 @@ function initializeWhenReady() {
         return sum + (parseInt(jQuery(input).val()) || 1);
       }, 0);
 
-      console.log(formData, 'what is this form data?');
       return formData;
-    }
-
-    function updateVariationOptionPrices() {
-      let variationsMap = {};
-      let groups = productJson && productJson.defaultJob && productJson.defaultJob.variationsGroups;
-      if (Array.isArray(groups) && groups.length > 0) {
-        groups.forEach(group => {
-          if (Array.isArray(group.variations)) {
-            group.variations.forEach(variation => {
-              if (variation.value !== undefined) {
-                variationsMap[variation.value] = variation;
-              }
-            });
-          }
-        });
-      }
-      if (Object.keys(variationsMap).length === 0) {
-        return;
-      }
-      jQuery('[data-variation-field-value]').each(function() {
-        const $input = jQuery(this);
-        const variationValue = $input.data('variation-field-value');
-        const matchedVariation = variationsMap[variationValue];
-        if (matchedVariation && typeof matchedVariation.cost === 'number') {
-          const $label = $input.closest('label').find('.option-label, .image-title, .color-name');
-          if ($label.length) {
-            $label.each(function() {
-              const labelText = jQuery(this).text().replace(/\(\+.*\)/, '');
-              jQuery(this).text(labelText.trim() + ` (+ $${matchedVariation.cost.toFixed(2)} per unit)`);
-            });
-          }
-        }
-      });
     }
 
     // Function to initialize
     function initialize() {
       fetchProductDetails()
-        .then(() => {
-          // Wait until productJson and productJson.variations are available
-          if (!productJson || !productJson.variations) {
-            setTimeout(() => {
-              updateVariationOptionPrices();
-            }, 100);
-          } else {
-            updateVariationOptionPrices();
-          }
-          initializeHandlers();
-          calculateAndUpdatePrice();
-        })
-        .catch(error => {
-          initializeHandlers();
-        });
+      .then(() => {
+        initializeHandlers();
+        calculateAndUpdatePrice();
+      })
+      .catch(error => {
+        initializeHandlers();
+      });
     }
 
     // Remove any existing initialization

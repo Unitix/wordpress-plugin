@@ -173,7 +173,7 @@ class ProductPage extends BaseController {
 
 		foreach ($group_fields_template as $field) {
 			if ($field['type'] === 'attribute') {
-				echo $this->render_attribute_field($field, "group_fields[1]");
+				echo $this->render_attribute_field($field, "group_fields[1]", true);
 			} else {
 				echo $this->render_meta_field($field, "group_fields[1]");
 			}
@@ -204,7 +204,47 @@ private function get_variation_field_options($field) {
     return [];
 }
 
-private function render_attribute_field($field, $name_prefix) {
+private function check_field_costs($field_type, $field = null, $terms = []) {
+    $has_cost = false;
+
+    // Check for costs based on field type
+    if (in_array($field_type, [1, 3, 4, 5, 10])) {
+        // For simple field types, check field's variationCost and variationUnitCost
+        $variation_cost = floatval($field['variationCost'] ?? 0);
+        $variation_unit_cost = floatval($field['variationUnitCost'] ?? 0);
+        $has_cost = ($variation_cost > 0 || $variation_unit_cost > 0);
+    } else if (in_array($field_type, [2, 6, 7, 9, 11])) {
+        // For field types with options, check each option's costs
+        foreach ($terms as $term) {
+            $variation_cost = floatval(get_term_meta($term->term_id, 'variationCost', true) ?? 0);
+            $variation_unit_cost = floatval(get_term_meta($term->term_id, 'variationUnitCost', true) ?? 0);
+            if ($variation_cost > 0 || $variation_unit_cost > 0) {
+                $has_cost = true;
+                break;
+            }
+        }
+    }
+
+    return $has_cost;
+}
+
+private function cost_label_content($variation_unit_cost, $variation_cost) {
+    $label = '';
+    
+    // Add unit cost if it exists
+    if ($variation_unit_cost > 0) {
+        $label .= ' + ( $' . number_format($variation_unit_cost, 2) . ' per unit )';
+    }
+    
+    // Add fixed cost if it exists
+    if ($variation_cost > 0) {
+        $label .= ' + ( $' . number_format($variation_cost, 2) . ' once off )';
+    }
+    
+    return $label;
+}
+
+private function render_attribute_field($field, $name_prefix, $is_group = false) {
     $terms = $this->get_variation_field_options($field);
     if (empty($terms)) return '';
 
@@ -214,25 +254,23 @@ private function render_attribute_field($field, $name_prefix) {
     $is_multiple = !empty($field['multipleSelect']);
     $field_type = intval($field['fieldType']);
 
+    // Check for costs using the new function
+    $has_cost = $this->check_field_costs($field_type, $field, $terms);
+
     // Build options array for the variation field
     $options = array();
     foreach ($terms as $term) {
         $variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
-        $option_price = get_term_meta($term->term_id, 'option_price', true) ?: '0.00';
-        $currency = get_term_meta($term->term_id, 'currency', true) ?: 'AUD';
-        $position = get_term_meta($term->term_id, 'position', true) ?: '0';
-        $variation_cost = get_term_meta($term->term_id, 'variation_cost', true);
-        $variation_unit_cost = get_term_meta($term->term_id, 'variation_unit_cost', true);
-        
-        // Ensure proper decimal handling for costs
-        $variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
+        $variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
         $variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
+        $variation_cost = get_term_meta($term->term_id, 'variationCost', true);
+        $variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
         
         $options[] = array(
             'id' => intval($variation_option_id),
             'value' => $term->name,
-            'currency' => $currency,
-            'position' => intval($position),
+            'currency' => get_term_meta($term->term_id, 'currency', true) ?: 'AUD',
+            'position' => get_term_meta($term->term_id, 'position', true) ?: '0',
             'variationCost' => $variation_cost,
             'variationUnitCost' => $variation_unit_cost
         );
@@ -255,45 +293,60 @@ private function render_attribute_field($field, $name_prefix) {
     $variation_field_json = esc_attr(json_encode($variation_field_data));
 
     $html = '<div class="custom-field">';
-    $html .= "<label for='{$slug}'>{$label}</label>";
 
     // Add variation field data to all input elements
     $common_data_attrs = ' data-variation-field=\''.$variation_field_json.'\'';
 
     // SELECT field type (2)
     if ($field_type === 2) {
+		  	$html .= "<label for='{$slug}'>{$label}</label>";
         if ($is_multiple) {
-            $html .= '<select multiple name="' . $name_prefix . '[' . $slug . '][]"' . $common_data_attrs . '>';
+            $html .= '<select multiple name="' . $name_prefix . '[' . $slug . '][]"' . $common_data_attrs . ' data-calculate="' . ($has_cost ? 'true' : 'false') . '">';
             foreach ($terms as $term) {
                 $variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
-                $variation_unit_cost = get_term_meta($term->term_id, 'variation_unit_cost', true);
+                $variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
                 $variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
-                $html .= '<option value="' . esc_attr($variation_option_id) . '" data-variation-field-value="' . esc_attr($variation_option_id) . '">' . esc_html($term->name) . ' (+ $' . number_format($variation_unit_cost, 2) . ' per unit)</option>';
+                $variation_cost = get_term_meta($term->term_id, 'variationCost', true);
+                $variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
+                $html .= '<option value="' . esc_attr($variation_option_id) . '" data-variation-field-value="' . esc_attr($variation_option_id) . '">' 
+                    . esc_html($term->name) 
+                    . $this->cost_label_content($variation_unit_cost, $variation_cost)
+                    . '</option>';
             }
             $html .= '</select>';
         } else {
-            $html .= '<select name="' . $name_prefix . '[' . $slug . ']"' . $common_data_attrs . '>';
+            $html .= '<select name="' . $name_prefix . '[' . $slug . ']"' . $common_data_attrs . ' data-calculate="' . ($has_cost ? 'true' : 'false') . '">';
             foreach ($terms as $index => $term) {
                 $variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
-                $variation_unit_cost = get_term_meta($term->term_id, 'variation_unit_cost', true);
+                $variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
                 $variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
+                $variation_cost = get_term_meta($term->term_id, 'variationCost', true);
+                $variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
                 $is_selected = $index === 0 ? 'selected' : '';
-                $html .= '<option value="' . esc_attr($variation_option_id) . '" ' . $is_selected . ' data-variation-field-value="' . esc_attr($variation_option_id) . '">' . esc_html($term->name) . ' (+ $' . number_format($variation_unit_cost, 2) . ' per unit)</option>';
+                $html .= '<option value="' . esc_attr($variation_option_id) . '" ' . $is_selected . ' data-variation-field-value="' . esc_attr($variation_option_id) . '">' 
+                    . esc_html($term->name) 
+                    . $this->cost_label_content($variation_unit_cost, $variation_cost)
+                    . '</option>';
             }
             $html .= '</select>';
         }
     } 
     // CHECKBOX type (6)
     else if ($field_type === 6) {
+			$html .= "<label for='{$slug}'>{$label}</label>";
         $html .= '<div class="checkbox-options-container">';
         foreach ($terms as $term) {
             $variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
-            $variation_unit_cost = get_term_meta($term->term_id, 'variation_unit_cost', true);
+            $variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
             $variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
+            $variation_cost = get_term_meta($term->term_id, 'variationCost', true);
+            $variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
             $html .= '<div class="checkbox-option">';
             $html .= '<label class="checkbox-label">';
-            $html .= '<input type="checkbox" name="' . $name_prefix . '[' . $slug . '][]" value="' .esc_attr($variation_option_id) . '"' . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"/>';
-            $html .= '<span class="option-label">' . esc_html($term->name) . ' (+ $' . number_format($variation_unit_cost, 2) . ' per unit)</span>';
+            $html .= '<input type="checkbox" name="' . $name_prefix . '[' . $slug . '][]" value="' .esc_attr($variation_option_id) . '"' . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '"/>';
+            $html .= '<span class="option-label">' . esc_html($term->name) 
+                . $this->cost_label_content($variation_unit_cost, $variation_cost)
+                . '</span>';
             $html .= '</label>';
             $html .= '</div>';
         }
@@ -301,16 +354,21 @@ private function render_attribute_field($field, $name_prefix) {
     } 
     // RADIO type (7)
     else if ($field_type === 7) {
+			  $html .= "<label for='{$slug}'>{$label}</label>";
         $html .= '<div class="radio-options-container">';
         foreach ($terms as $index => $term) {
             $variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
-            $variation_unit_cost = get_term_meta($term->term_id, 'variation_unit_cost', true);
+            $variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
             $variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
+            $variation_cost = get_term_meta($term->term_id, 'variationCost', true);
+            $variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
             $is_checked = $index === 0 ? 'checked' : '';
             $html .= '<div class="radio-option">';
             $html .= '<label class="radio-label">';
-            $html .= '<input type="radio" name="' . $name_prefix . '[' . $slug . ']" value="' . esc_attr($variation_option_id) . '" ' . $is_checked . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"/>';
-            $html .= '<span class="option-label">' . esc_html($term->name) . ' (+ $' . number_format($variation_unit_cost, 2) . ' per unit)</span>';
+            $html .= '<input type="radio" name="' . $name_prefix . '[' . $slug . ']" value="' . esc_attr($variation_option_id) . '" ' . $is_checked . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '" />';
+            $html .= '<span class="option-label">' . esc_html($term->name) 
+                . $this->cost_label_content($variation_unit_cost, $variation_cost)
+                . '</span>';
             $html .= '</label>';
             $html .= '</div>';
         }
@@ -318,14 +376,18 @@ private function render_attribute_field($field, $name_prefix) {
     }
     // IMAGE_SELECT type (9)
     else if ($field_type === 9) {
+        $label_group_index = $is_group ? '0' : 'false';
+        $html .= "<label for='{$slug}' data-group-index='{$label_group_index}' data-update-label='true' data-variation-field-id='{$field_id}'>{$label}</label>";
         $is_multiple = !empty($field['multipleSelect']);
         $input_type = $is_multiple ? 'checkbox' : 'radio';
         $html .= '<fieldset class="group-variation-container" name="job.variationsGroups[0].variations[1]"' . $common_data_attrs . '>';
         $html .= '<div class="image-select-options-container">';
         foreach ($terms as $index => $term) {
             $variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
-            $variation_unit_cost = get_term_meta($term->term_id, 'variation_unit_cost', true);
+            $variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
             $variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
+            $variation_cost = get_term_meta($term->term_id, 'variationCost', true);
+            $variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
             // Get image URL from term meta
             $image_url = get_term_meta($term->term_id, 'linkedFile.viewUrl', true);
             if (!$image_url) {
@@ -343,42 +405,43 @@ private function render_attribute_field($field, $name_prefix) {
                         $common_data_attrs . ' 
                         data-variation-field-value="' . esc_attr($variation_option_id) . '"
                         data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"
-                        class="image-select-input"/>';
-            $html .= '<label class="image-select-label" for="' . $input_id . '">';
-            $html .= '<div class="image-select-wrapper">';
+												data-update-label="true"
+                        data-calculate="' . ($has_cost ? 'true' : 'false') . '"
+                        ' . ($index === 0 && !$is_multiple ? 'checked' : '') . ' />';
+            $html .= '<label for="' . $input_id . '" class="image-select-label">';
             if ($image_url) {
-                $html .= '<div class="image-container">';
-                $html .= '<img src="' . esc_url($image_url) . '" alt="' . esc_attr($term->name) . '" class="option-image">';
-                $html .= '<div class="image-select-checkmark"></div>';
-                $html .= '</div>';
+                $html .= '<img src="' . esc_url($image_url) . '" alt="' . esc_attr($term->name) . '" />';
             }
-            $html .= '<span class="image-title">' . esc_html($term->name) . ' (+ $' . number_format($variation_unit_cost, 2) . ' per unit)</span>';
-            $html .= '</div>'; // Close image-select-wrapper
+            $html .= '<span class="option-label">' . esc_html($term->name) . '</span>';
             $html .= '</label>';
-            $html .= '</div>'; // Close image-select-option
+            $html .= '</div>';
         }
         $html .= '</div>';
         $html .= '</fieldset>';
     } 
     // COLOUR_SELECT type (11)
     else if ($field_type === 11) {
+        $label_group_index = $is_group ? '0' : 'false';
+        $html .= "<label for='{$slug}' data-group-index='{$label_group_index}' data-update-label='true' data-variation-field-id='{$field_id}'>{$label}</label>";
         $is_multiple = !empty($field['multipleSelect']);
         $input_type = $is_multiple ? 'checkbox' : 'radio';
         $html .= '<div class="color-options-grid">';
         foreach ($terms as $index => $term) {
             $is_checked = $index === 0 ? 'checked' : '';
             $variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
-            $variation_unit_cost = get_term_meta($term->term_id, 'variation_unit_cost', true);
+            $variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
             $variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
+						$variation_cost = get_term_meta($term->term_id, 'variationCost', true);
+            $variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
             $color_value = strtolower($term->name);
             $input_name = $name_prefix . '[' . $slug . ']' . ($is_multiple ? '[]' : '');
             $html .= '<label class="color-option">';
-            $html .= '<input type="' . $input_type . '" name="' . $input_name . '" value="' . esc_attr($variation_option_id) . '" ' . ($is_multiple ? '' : $is_checked) . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"/>';
+            $html .= '<input type="' . $input_type . '" name="' . $input_name . '" value="' . esc_attr($variation_option_id) . '" ' . ($is_multiple ? '' : $is_checked) . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '"/>';
             $html .= '<div class="color-option-inner">';
             $html .= '<span class="color-indicator" style="background-color: ' . esc_attr($color_value) . ';"></span>';
             $html .= '<span class="checkmark">✓</span>';
             $html .= '</div>';
-            $html .= '<span class="color-name">' . esc_html($term->name) . ' (+ $' . number_format($variation_unit_cost, 2) . ' per unit)</span>';
+            $html .= '<span class="color-name">' . esc_html($term->name) . '</span>';
             $html .= '</label>';
         }
         $html .= '</div>';
@@ -397,6 +460,9 @@ private function render_attribute_field($field, $name_prefix) {
 		$instructions = esc_html($field['instructions'] ?? '');
 		$required = !empty($field['required']) ? 'required' : '';
 
+		// Check for costs using the new function
+		$has_cost = $this->check_field_costs($fieldType, $field);
+
 		// Build $variation_field_data and $variation_field_json for meta fields
 		$variation_field_data = array(
 			'id' => intval($field_id),
@@ -410,9 +476,11 @@ private function render_attribute_field($field, $name_prefix) {
 			'options' => $this->get_variation_field_options($field)
 		);
 		$variation_field_json = esc_attr(json_encode($variation_field_data));
+		$variation_unit_cost = $field['variationUnitCost'] ?? 0;
+		$variation_cost = $field['variationCost'] ?? 0;
 
 		$html = '<div class="custom-field">';
-		$html .= "<label for='{$slug}'>{$label}</label>";
+		$html .= "<label for='{$slug}'>{$label} {$this->cost_label_content($variation_unit_cost, $variation_cost)}</label>";
 
 		// Use get_variation_field_options for meta fields with options
 		$options = $this->get_variation_field_options($field);
@@ -433,13 +501,13 @@ private function render_attribute_field($field, $name_prefix) {
 			$html .= "</select>";
 		} else {
 			switch ($fieldType) {
-				case 1: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' />"; break;
-				case 3: $html .= "<label class='custom-upload-wrapper'><div class='upload-icon'>📎</div><div class='upload-instruction'>Drop file here or click to browse</div><div class='upload-types'>.jpeg, .jpg, .gif, .png, .pdf</div><input type='file' name='{$name_prefix}[{$slug}][]' multiple {$required} accept='.jpeg,.jpg,.gif,.png,.pdf' data-variation-field='{$variation_field_json}'/></label>"; break;
-				case 4: $html .= "<textarea name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}'></textarea>"; break;
-				case 5: $html .= "<input type='number' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' />"; break;
-				case 10: $html .= "<input type='color' name='{$name_prefix}[{$slug}]' {$required} data-variation-field='{$variation_field_json}' />"; break;
+				case 1: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' />"; break;
+				case 3: $html .= "<label class='custom-upload-wrapper'><div class='upload-icon'>📎</div><div class='upload-instruction'>Drop file here or click to browse</div><div class='upload-types'>.jpeg, .jpg, .gif, .png, .pdf</div><input type='file' name='{$name_prefix}[{$slug}][]' multiple {$required} accept='.jpeg,.jpg,.gif,.png,.pdf' data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "'/></label>"; break;
+				case 4: $html .= "<textarea name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "'></textarea>"; break;
+				case 5: $html .= "<input type='number' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' />"; break;
+				case 10: $html .= "<input type='color' name='{$name_prefix}[{$slug}]' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' />"; break;
 				case 8: $html .= "<p class='field-instructions'>{$instructions}</p>"; break;
-				default: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' />"; break;
+				default: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' />"; break;
 			}
 		}
 
@@ -514,7 +582,6 @@ private function render_attribute_field($field, $name_prefix) {
 				console.log("Product ID:", "%s");
 				console.log("Domain ID:", "%s");
 				console.log("Staging Mode:", %s);
-				console.groupEnd();
 			</script>',
 			esc_js($merchi_url),
 			esc_js($merchi_url),
