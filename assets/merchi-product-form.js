@@ -92,17 +92,27 @@ function initializeWhenReady() {
       if (variation) {
         const { onceOffCost, unitCostTotal, variationField } = variation;
         let label = variationField.name;
-        const onceOffCostLabel = onceOffCost ? ` + ( $${onceOffCost.toFixed(2)} )` : '';
-        const unitCostLabel = unitCostTotal ? ` + ( $${unitCostTotal.toFixed(2)} )` : '';
+        const onceOffCostLabel = onceOffCost ? ` + ( $${onceOffCost.toFixed(2)} once off )` : '';
+        const unitCostLabel = unitCostTotal ? ` + ( $${unitCostTotal.toFixed(2)} per unit )` : '';
         label += onceOffCostLabel + unitCostLabel;
         $label.text(label);
       }
     }
 
+    function renderPrice(totalCost, countryTax) {
+      const tax = countryTax ?? {};
+      const { taxName, taxPercentage } = tax;
+      const taxText = taxName ? `in ${taxName} (${taxPercentage}%)` : 'inc tax';
+      return `$${totalCost.toFixed(2)} ${taxText}`;
+    }
+
     function onGetJobQuoteSuccess(response) {
       // Use the quote price if available, otherwise fallback to local calculation
-      // add loop here 
+      // add loop here
+      console.log(response, 'what is response');
       const {
+        taxType,
+        totalCost,
         variations = [],
         variationsGroups = [],
       } = response;
@@ -128,11 +138,12 @@ function initializeWhenReady() {
         updateVariationLabel($label, variation);
       });
       
-      jQuery('.price-amount').text('$' + finalPrice.toFixed(2));
+      jQuery('.price-amount').text(renderPrice(totalCost, taxType));
     }
 
     function onGetJobQuoteError(error) {
       console.log(error, 'this is the error');
+      jQuery('.price-amount').text('$0.00');
     }
 
     // Function to calculate and update price
@@ -140,15 +151,12 @@ function initializeWhenReady() {
       const formData = await gatherFormData();
       const jobEntity = merchiSdk.fromJson(new merchiSdk.Job(), formData);
 
-      // Calculate local price as fallback
-      let localTotalPrice = 0;
-
       // Make the API call to get the quote
       try {
         merchiSdk.getJobQuote(jobEntity, onGetJobQuoteSuccess, onGetJobQuoteError);
       } catch (error) {
         // On exception, use local calculation
-        jQuery('.price-amount').text('$' + localTotalPrice.toFixed(2));
+        jQuery('.price-amount').text(renderPrice(0, null));
       }
     }
 
@@ -157,7 +165,7 @@ function initializeWhenReady() {
       // Get the first group as template
       const $firstGroup = jQuery(".group-field-set").first();
       const newGroupIndex = jQuery(".group-field-set").length + 1;
-      
+
       // Clone the group
       const $newGroup = $firstGroup.clone();
 
@@ -238,14 +246,10 @@ function initializeWhenReady() {
       });
       
       // Handle quantity changes immediately without debounce
-      jQuery(document).on('change', '.group-quantity', function() {
-        calculateAndUpdatePrice();
-      });
+      jQuery(document).on('change', '.group-quantity', calculateAndUpdatePrice);
 
       // Handle quantity input events (for when user types)
-      jQuery(document).on('input', '.group-quantity', function() {
-        calculateAndUpdatePrice();
-      });
+      jQuery(document).on('input', '.group-quantity', calculateAndUpdatePrice);
 
       // Add group button handler
       jQuery('#add-group-button').on('click', function(e) {

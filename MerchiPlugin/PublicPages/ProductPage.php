@@ -233,12 +233,12 @@ private function cost_label_content($variation_unit_cost, $variation_cost) {
     
     // Add unit cost if it exists
     if ($variation_unit_cost > 0) {
-        $label .= ' + ($' . number_format($variation_unit_cost, 2) . ' per unit)';
+        $label .= ' + ( $' . number_format($variation_unit_cost, 2) . ' per unit )';
     }
     
     // Add fixed cost if it exists
     if ($variation_cost > 0) {
-        $label .= ' + ($' . number_format($variation_cost, 2) . ' once off)';
+        $label .= ' + ( $' . number_format($variation_cost, 2) . ' once off )';
     }
     
     return $label;
