@@ -890,9 +890,6 @@ ul.cst-breadcrumb > li.cst-breadcrumb-li i.cst-delimiter {
 
 /* Group container */
 #grouped-fields-container {
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 20px;
 }
 
 /* Select field styling */

@@ -101,15 +101,14 @@ function initializeWhenReady() {
 
     function renderPrice(totalCost, countryTax) {
       const tax = countryTax ?? {};
-      const { taxName, taxPercentage } = tax;
-      const taxText = taxName ? `in ${taxName} (${taxPercentage}%)` : 'inc tax';
+      const { taxName, taxPercent } = tax;
+      const taxText = taxName ? `in ${taxName} (${taxPercent}%)` : 'inc tax';
       return `$${totalCost.toFixed(2)} ${taxText}`;
     }
 
     function onGetJobQuoteSuccess(response) {
       // Use the quote price if available, otherwise fallback to local calculation
       // add loop here
-      console.log(response, 'what is response');
       const {
         taxType,
         totalCost,
@@ -146,8 +145,142 @@ function initializeWhenReady() {
       jQuery('.price-amount').text('$0.00');
     }
 
+    function initializeFileUploadVariations($container) {
+      $container.find('input[type="file"]').each(function() {
+        const $input = jQuery(this);
+        const $wrapper = $input.closest('.custom-upload-wrapper');
+        let $previewArea = $wrapper.next('.multi-file-upload-preview');
+        
+        if ($previewArea.length === 0) {
+          $previewArea = jQuery('<div class="multi-file-upload-preview"></div>');
+          $wrapper.after($previewArea);
+        }
+
+        $input.off('change.file-input').on('change.file-input', function(e) {
+          var files = Array.from(this.files);
+          
+          // --- Maintain a DataTransfer object for this input ---
+          if (!$input[0]._dt) {
+            $input[0]._dt = new DataTransfer();
+          }
+          var dt = $input[0]._dt;
+
+          // Add new files, avoiding duplicates by name+size
+          files.forEach(function(file) {
+            var exists = false;
+            for (var i = 0; i < dt.items.length; i++) {
+              var f = dt.items[i].getAsFile();
+              if (f.name === file.name && f.size === file.size) {
+                exists = true;
+                break;
+              }
+            }
+            if (!exists) dt.items.add(file);
+          });
+          // Update input files
+          $input[0].files = dt.files;
+
+          // --- Render preview ---
+          $previewArea.empty();
+          var dtFiles = Array.from(dt.files);
+          if (dtFiles.length > 0) {
+            dtFiles.forEach(function(file, idx) {
+              var $fileBox = jQuery('<div class="multi-file-box" style="display: flex; align-items: center; margin-bottom: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 8px;"></div>');
+              var $removeBtn = jQuery('<span class="file-upload-remove" style="margin-left: 10px; cursor: pointer; font-size: 20px; color: #d00;">&times;</span>');
+              $removeBtn.on('click', function(e) {
+                e.stopPropagation();
+                var newDT = new DataTransfer();
+                dtFiles.forEach(function(f, i) {
+                  if (i !== idx) newDT.items.add(f);
+                });
+                $input[0]._dt = newDT;
+                $input[0].files = newDT.files;
+                $input.trigger('change');
+              });
+              if (file.type.startsWith('image/')) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                  var $img = jQuery('<img />', {
+                    src: e.target.result,
+                    css: {
+                      'max-width': '60px',
+                      'max-height': '60px',
+                      'object-fit': 'contain',
+                      'margin-right': '10px',
+                      'border-radius': '4px',
+                      'box-shadow': '0 1px 4px rgba(0,0,0,0.08)'
+                    }
+                  });
+                  $fileBox.prepend($img);
+                };
+                reader.readAsDataURL(file);
+              } else {
+                var $fileIcon = jQuery('<span style="font-size: 32px; margin-right: 10px;">📄</span>');
+                $fileBox.prepend($fileIcon);
+              }
+              var $fileName = jQuery('<span style="font-weight: bold; font-size:0.5em; color: #333;">' + file.name + '</span>');
+              var $downloadBtn = jQuery('<a style="margin-left: 10px; font-size: 18px; text-decoration: none;" href="#" download>⬇️</a>');
+              $downloadBtn.on('click', function(ev) {
+                ev.preventDefault();
+                var url = URL.createObjectURL(file);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = file.name;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(function() { URL.revokeObjectURL(url); document.body.removeChild(a); }, 100);
+              });
+              $fileBox.append($fileName).append($downloadBtn).append($removeBtn);
+              $previewArea.append($fileBox);
+            });
+            // Show file count
+            var $count = jQuery('<div style="color: #666; font-size: 14px; font-weight:bold; margin-top: 4px;">' + dtFiles.length + ' file' + (dtFiles.length > 1 ? 's' : '') + ' selected <span style="cursor:pointer;color:#0073aa;" class="toggle-file-list">&#9650;</span></div>');
+            $previewArea.append($count);
+            $count.find('.toggle-file-list').on('click', function() {
+              $previewArea.toggleClass('collapsed');
+              $previewArea.find('.multi-file-box').toggle();
+              jQuery(this).html($previewArea.hasClass('collapsed') ? '&#9660;' : '&#9650;');
+            });
+          } else {
+            $previewArea.empty();
+          }
+          // Always show icon and instruction
+          $wrapper.find('.upload-icon').show();
+          $wrapper.find('.upload-instruction, .upload-types').show();
+        });
+      });
+    }
+
+    function initializeImageSelectVariations($container) {
+      $container.find('.image-select-option').each(function() {
+        const $option = jQuery(this);
+        const $input = $option.find('input');
+        $option.off('click.image-select').on('click.image-select', function(e) {
+          e.preventDefault();
+          if ($input.is(':radio')) {
+            $input.prop('checked', true).trigger('change');
+          } else if ($input.is(':checkbox')) {
+            $input.prop('checked', !$input.prop('checked')).trigger('change');
+          }
+        });
+      });
+    }
+
+    function initializeVariationFields($container) {
+      $container.find('input[data-calculate], select[data-calculate], textarea[data-calculate]').each(function() {
+        const $input = jQuery(this);
+        $input.off('change.calculate'); // Remove previous handler
+        $input.on('change.calculate', debouncedCalculatePrice);
+      });
+    }
+
     // Function to calculate and update price
     async function calculateAndUpdatePrice() {
+      // set loading state on price.
+      const $price = jQuery('.price-amount').html();
+      if (!$price.includes('loading-spinner')) {
+        jQuery('.price-amount').html("<span class='loading-spinner'></span>" + $price);
+      }
       const formData = await gatherFormData();
       const jobEntity = merchiSdk.fromJson(new merchiSdk.Job(), formData);
 
@@ -160,6 +293,84 @@ function initializeWhenReady() {
       }
     }
 
+    // When deleteing a group we update each group index and name
+    function updateGroupNumbers() {
+      jQuery(".group-field-set").each(function(index) {
+        const newIndex = index + 1;
+        const $group = jQuery(this);
+        
+        $group.attr("data-group-index", newIndex);
+        $group.find(".group-number").text(newIndex);
+        
+        $group.find("input, select, textarea").each(function() {
+          const $input = jQuery(this);
+          const name = $input.attr("name");
+          if (name) {
+            const newName = name.replace(/group_fields\[\d+\]/, "group_fields[" + newIndex + "]");
+            $input.attr("name", newName);
+          }
+          
+          if ($input.hasClass('group-quantity')) {
+            $input.attr('data-group-index', newIndex);
+            updateGroupLabel($input);
+          }
+        });
+      });
+
+      // Toggle delete buttons
+      const $deleteButtons = jQuery(".delete-group-button");
+      if (jQuery(".group-field-set").length === 1) {
+        $deleteButtons.hide();
+      } else {
+        $deleteButtons.show();
+      }
+
+      // Trigger immediate price calculation after updating group numbers
+      calculateAndUpdatePrice();
+    }
+
+    // Function to initialize handlers for a specific group
+    function initializeGroupVariationHandlers($group) {
+      // Initialize calculate inputs
+      initializeVariationFields($group);
+
+      // Initialize image select options
+      initializeImageSelectVariations($group);
+
+      // Initialize file inputs
+      initializeFileUploadVariations($group);
+
+      // Bind group-quantity change for this group
+      $group.find('.group-quantity').off('change.group').on('change.group', calculateAndUpdatePrice);
+      $group.find('.delete-group-button').off('click.group').on('click.group', function() {
+        $group.remove();
+        updateGroupNumbers();
+        // Trigger immediate price calculation
+        calculateAndUpdatePrice();
+      });
+
+      $group.find('.delete-group-button').off('click');
+      // Delete group handler with immediate price update
+      $group.find('.delete-group-button').on('click', function(e) {
+        e.preventDefault();
+        const $group = jQuery(this).closest(".group-field-set");
+        $group.remove();
+        updateGroupNumbers();
+        // Trigger immediate price calculation
+        calculateAndUpdatePrice();
+      });
+    }
+
+    function initializeVariations() {
+      const $variationsContainer = jQuery('.custom-variation-options');
+      // Initialize calculate inputs
+      initializeVariationFields($variationsContainer);
+      // Initialize file inputs
+      initializeFileUploadVariations($variationsContainer);
+      // Initialize image select options
+      initializeImageSelectVariations($variationsContainer);
+    }
+  
     // Function to add a new group
     function addNewGroup() {
       // Get the first group as template
@@ -218,6 +429,9 @@ function initializeWhenReady() {
       
       // Add the new group
       jQuery("#grouped-fields-container").append($newGroup);
+
+      // Initialize handlers for this new group only
+      initializeGroupVariationHandlers($newGroup);
       
       // Show all delete buttons if more than one group
       if (jQuery(".group-field-set").length > 1) {
@@ -231,179 +445,48 @@ function initializeWhenReady() {
     // Initialize event handlers
     function initializeHandlers() {
       // Remove any existing handlers
-      jQuery(document).off('change', '.custom-variation-options input, .custom-variation-options select, .group-quantity');
-      jQuery('#add-group-button').off('click');
-      jQuery(document).off('click', '.delete-group-button');
 
-      // add loop here
-      jQuery('.custom-field input, .custom-field select, .custom-field textarea, .custom-variation-options input, .custom-variation-options select, .custom-variation-options textarea').each(function() {
-        const $input = jQuery(this);
-        if ($input.attr('data-calculate')) {
-          $input.on('change', function() {
-            debouncedCalculatePrice();
-          });
-        }
-      });
-      
-      // Handle quantity changes immediately without debounce
-      jQuery(document).on('change', '.group-quantity', calculateAndUpdatePrice);
+      // initialise event handlers for variations
+      initializeVariations();
 
-      // Handle quantity input events (for when user types)
-      jQuery(document).on('input', '.group-quantity', calculateAndUpdatePrice);
+      // initialise event handlers for groups
+      const $groups = jQuery('.group-field-set');
+      for (let i = 0; i < $groups.length; i++) {
+        initializeGroupVariationHandlers(jQuery($groups[i]));
+      }
+
+      jQuery('.add-group-button').off('click');
 
       // Add group button handler
-      jQuery('#add-group-button').on('click', function(e) {
+      jQuery('.add-group-button').on('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
         addNewGroup();
       });
 
-      // Delete group handler with immediate price update
-      jQuery(document).on('click', '.delete-group-button', function(e) {
-        e.preventDefault();
-        const $group = jQuery(this).closest(".group-field-set");
-        $group.remove();
-        updateGroupNumbers();
-        // Trigger immediate price calculation
-        calculateAndUpdatePrice();
-      });
-
-      // Replace the file upload preview handler
-      jQuery(document).off('change', 'input[type="file"]');
-      jQuery(document).on('change', 'input[type="file"]', function(e) {
-        var $input = jQuery(this);
-        var files = Array.from(this.files);
-        var $wrapper = $input.closest('.custom-upload-wrapper');
-        var $previewArea = $wrapper.next('.multi-file-upload-preview');
-        if ($previewArea.length === 0) {
-          $previewArea = jQuery('<div class="multi-file-upload-preview"></div>');
-          $wrapper.after($previewArea);
-        }
-
-        // --- Maintain a DataTransfer object for this input ---
-        if (!$input[0]._dt) {
-          $input[0]._dt = new DataTransfer();
-        }
-        var dt = $input[0]._dt;
-
-        // Add new files, avoiding duplicates by name+size
-        files.forEach(function(file) {
-          var exists = false;
-          for (var i = 0; i < dt.items.length; i++) {
-            var f = dt.items[i].getAsFile();
-            if (f.name === file.name && f.size === file.size) {
-              exists = true;
-              break;
-            }
-          }
-          if (!exists) dt.items.add(file);
-        });
-        // Update input files
-        $input[0].files = dt.files;
-
-        // --- Render preview ---
-        $previewArea.empty();
-        var dtFiles = Array.from(dt.files);
-        if (dtFiles.length > 0) {
-          dtFiles.forEach(function(file, idx) {
-            var $fileBox = jQuery('<div class="multi-file-box" style="display: flex; align-items: center; margin-bottom: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 8px;"></div>');
-            var $removeBtn = jQuery('<span class="file-upload-remove" style="margin-left: 10px; cursor: pointer; font-size: 20px; color: #d00;">&times;</span>');
-            $removeBtn.on('click', function(e) {
-              e.stopPropagation();
-              var newDT = new DataTransfer();
-              dtFiles.forEach(function(f, i) {
-                if (i !== idx) newDT.items.add(f);
-              });
-              $input[0]._dt = newDT;
-              $input[0].files = newDT.files;
-              $input.trigger('change');
-            });
-            if (file.type.startsWith('image/')) {
-              var reader = new FileReader();
-              reader.onload = function(e) {
-                var $img = jQuery('<img />', {
-                  src: e.target.result,
-                  css: {
-                    'max-width': '60px',
-                    'max-height': '60px',
-                    'object-fit': 'contain',
-                    'margin-right': '10px',
-                    'border-radius': '4px',
-                    'box-shadow': '0 1px 4px rgba(0,0,0,0.08)'
-                  }
-                });
-                $fileBox.prepend($img);
-              };
-              reader.readAsDataURL(file);
-            } else {
-              var $fileIcon = jQuery('<span style="font-size: 32px; margin-right: 10px;">📄</span>');
-              $fileBox.prepend($fileIcon);
-            }
-            var $fileName = jQuery('<span style="font-weight: bold; font-size:0.5em; color: #333;">' + file.name + '</span>');
-            var $downloadBtn = jQuery('<a style="margin-left: 10px; font-size: 18px; text-decoration: none;" href="#" download>⬇️</a>');
-            $downloadBtn.on('click', function(ev) {
-              ev.preventDefault();
-              var url = URL.createObjectURL(file);
-              var a = document.createElement('a');
-              a.href = url;
-              a.download = file.name;
-              document.body.appendChild(a);
-              a.click();
-              setTimeout(function() { URL.revokeObjectURL(url); document.body.removeChild(a); }, 100);
-            });
-            $fileBox.append($fileName).append($downloadBtn).append($removeBtn);
-            $previewArea.append($fileBox);
-          });
-          // Show file count
-          var $count = jQuery('<div style="color: #666; font-size: 14px; font-weight:bold; margin-top: 4px;">' + dtFiles.length + ' file' + (dtFiles.length > 1 ? 's' : '') + ' selected <span style="cursor:pointer;color:#0073aa;" class="toggle-file-list">&#9650;</span></div>');
-          $previewArea.append($count);
-          $count.find('.toggle-file-list').on('click', function() {
-            $previewArea.toggleClass('collapsed');
-            $previewArea.find('.multi-file-box').toggle();
-            jQuery(this).html($previewArea.hasClass('collapsed') ? '&#9660;' : '&#9650;');
-          });
-        } else {
-          $previewArea.empty();
-        }
-        // Always show icon and instruction
-        $wrapper.find('.upload-icon').show();
-        $wrapper.find('.upload-instruction, .upload-types').show();
-      });
-    }
-
-    function updateGroupNumbers() {
-      jQuery(".group-field-set").each(function(index) {
-        const newIndex = index + 1;
-        const $group = jQuery(this);
+      if (!productJson?.groupVariationFields?.length) {
+        // if the product has no group variation fields then we update the value of the quantity
+        // field to the productJson.defaultJob.quantity and also set event listners to the quantity field
+        const $quantityInput = jQuery('input.qty');
+        console.log('Quantity input found:', $quantityInput.length > 0);
         
-        $group.attr("data-group-index", newIndex);
-        $group.find(".group-number").text(newIndex);
-        
-        $group.find("input, select, textarea").each(function() {
-          const $input = jQuery(this);
-          const name = $input.attr("name");
-          if (name) {
-            const newName = name.replace(/group_fields\[\d+\]/, "group_fields[" + newIndex + "]");
-            $input.attr("name", newName);
-          }
+        if ($quantityInput.length > 0) {
+          $quantityInput.val(productJson.defaultJob.quantity);
           
-          if ($input.hasClass('group-quantity')) {
-            $input.attr('data-group-index', newIndex);
-            updateGroupLabel($input);
-          }
-        });
-      });
-
-      // Toggle delete buttons
-      const $deleteButtons = jQuery(".delete-group-button");
-      if (jQuery(".group-field-set").length === 1) {
-        $deleteButtons.hide();
-      } else {
-        $deleteButtons.show();
+          // Remove any existing handlers
+          $quantityInput.off('change');
+          
+          // Add the new handler
+          $quantityInput.on('change', function(e) {
+            calculateAndUpdatePrice();
+          });
+          
+          // Also bind to input event for immediate feedback
+          $quantityInput.on('input', function(e) {
+            calculateAndUpdatePrice();
+          });
+        }
       }
-
-      // Trigger immediate price calculation after updating group numbers
-      calculateAndUpdatePrice();
     }
 
     function updateGroupLabel($input) {
@@ -411,7 +494,7 @@ function initializeWhenReady() {
       const unitPrice = parseFloat($input.data('unit-price'));
       $input.closest('.custom-field')
         .find('label')
-        .text('Group (' + groupIndex + ') quantity ($' + unitPrice.toFixed(2) + ' unit price)');
+        .text('Group (' + groupIndex + ') ($' + unitPrice.toFixed(2) + ' unit price)');
     }
 
     // Function to process variations from a container
@@ -451,6 +534,8 @@ function initializeWhenReady() {
     // Function to gather form data with proper group handling
     async function gatherFormData() {
       // Process variation groups
+      const { groupVariationFields } = defaultJobJson.product;
+
       const formData = {
         ...defaultJobJson,
         variationsGroups: [],
@@ -458,31 +543,30 @@ function initializeWhenReady() {
       };
 
       // Process group variations
-      jQuery('.group-field-set').each(function(groupIndex) {
-        const $group = jQuery(this);
-        
-        // push the group to the form data and update the quantity
-        formData.variationsGroups.push({
-          quantity: parseInt($group.find('.group-quantity').val()) || 1,
-          variations: [...defaultJobJson.variationsGroups[0].variations],
-        });
+      if (groupVariationFields?.length) {
+        jQuery('.group-field-set').each(function(groupIndex) {
+          const $group = jQuery(this);
 
-        // Process variations within this group
-        processVariations($group, formData.variationsGroups[groupIndex].variations);
-      });
+          // push the group to the form data and update the quantity
+          formData.variationsGroups.push({
+            quantity: parseInt($group.find('.group-quantity').val()) || 1,
+            variations: [...defaultJobJson.variationsGroups[0].variations],
+          });
+
+          // Process variations within this group
+          processVariations($group, formData.variationsGroups[groupIndex].variations);
+        });
+      } else {
+        formData.quantity = parseInt(jQuery('input.qty').val()) || 1;
+      }
 
       // Process standalone variations
       processVariations(jQuery('.custom-variation-options'), formData.variations);
 
-      // Add total quantity to the form data to ensure cache invalidation on quantity changes
-      formData.totalQuantity = jQuery('.group-quantity').toArray().reduce((sum, input) => {
-        return sum + (parseInt(jQuery(input).val()) || 1);
-      }, 0);
-
       return formData;
     }
 
-    // Function to initialize
+    // Function to initialgize
     function initialize() {
       fetchProductDetails()
       .then(() => {
