@@ -1448,7 +1448,7 @@ function cst_init_gateway_class() {
         <span id="button-text">Pay now</span>
       </button>
       <div id="payment-message" class="hidden"></div>
-    </form>';
+      </form>';
 				 
 		}
 
@@ -1814,89 +1814,90 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 	$grouped_field_template = [];
 
 
-if (!empty($merchi_product['groupVariationFields'])) {
-    foreach ($merchi_product['groupVariationFields'] as $group_field) {
-        $field_type = intval($group_field['fieldType']);
-        $field_id = intval($group_field['id']);
+	if (!empty($merchi_product['groupVariationFields'])) {
+			foreach ($merchi_product['groupVariationFields'] as $group_field) {
+					$field_type = intval($group_field['fieldType']);
+					$field_id = intval($group_field['id']);
 
-        $field_name = sanitize_text_field($group_field['name']);
-        $slug = generate_short_slug($field_name);
-        $options = $group_field['options'] ?? [];
+					$field_name = sanitize_text_field($group_field['name']);
+					$slug = generate_short_slug($field_name);
+					$options = $group_field['options'] ?? [];
 
-        if (!empty($options) && is_array($options)) {
-            $taxonomy = 'pa_' . $slug;
-            if (!taxonomy_exists($taxonomy)) {
-                create_global_attribute($slug, $field_name);
-            }
+					if (!empty($options) && is_array($options)) {
+							$taxonomy = 'pa_' . $slug;
+							if (!taxonomy_exists($taxonomy)) {
+									create_global_attribute($slug, $field_name);
+							}
 
-            $variation_options = [];
-            foreach ($options as $option) {
-                if (!empty($option['include']) && !empty($option['value'])) {
-                    $option_value = sanitize_text_field($option['value']);
-                    $image_url = !empty($option['linkedFile']['viewUrl']) ? esc_url($option['linkedFile']['viewUrl']) : '';
+							$variation_options = [];
+							foreach ($options as $option) {
+									if (!empty($option['include']) && !empty($option['value'])) {
+											$option_value = sanitize_text_field($option['value']);
+											$image_url = !empty($option['linkedFile']['viewUrl']) ? esc_url($option['linkedFile']['viewUrl']) : '';
 
-                    $term = term_exists($option_value, $taxonomy);
-                    if (!$term) {
-                        $term_info = wp_insert_term($option_value, $taxonomy);
-                        if (!is_wp_error($term_info) && isset($term_info['term_id'])) {
-                            $term_id = $term_info['term_id'];
-                        }
-                    } else {
-                        $term_id = $term['term_id'];
-                    }
+											$term = term_exists($option_value, $taxonomy);
+											if (!$term) {
+													$term_info = wp_insert_term($option_value, $taxonomy);
+													if (!is_wp_error($term_info) && isset($term_info['term_id'])) {
+															$term_id = $term_info['term_id'];
+													}
+											} else {
+													$term_id = $term['term_id'];
+											}
 
-                    if (!empty($image_url) && !empty($term_id)) {
-                        update_term_meta($term_id, 'linkedFile.viewUrl', $image_url);
-                    }
+											if (!empty($image_url) && !empty($term_id)) {
+													update_term_meta($term_id, 'linkedFile.viewUrl', $image_url);
+											}
 
-                    if (!empty($option['id'])) {
-                        update_term_meta($term_id, 'variation_option_id', sanitize_text_field($option['id']));
-                    }
+											if (!empty($option['id'])) {
+													update_term_meta($term_id, 'variation_option_id', sanitize_text_field($option['id']));
+											}
 
-                    // Store variation costs in term meta
-                    $variation_cost = floatval($option['variationCost'] ?? 0);
-                    $variation_unit_cost = floatval($option['variationUnitCost'] ?? 0);
-                    update_term_meta($term_id, 'variationCost', $variation_cost);
-                    update_term_meta($term_id, 'variationUnitCost', $variation_unit_cost);
+											// Store variation costs in term meta
+											$variation_cost = floatval($option['variationCost'] ?? 0);
+											$variation_unit_cost = floatval($option['variationUnitCost'] ?? 0);
+											$colour = sanitize_text_field($option['colour']) ?? '';
+											update_term_meta($term_id, 'variationCost', $variation_cost);
+											update_term_meta($term_id, 'variationUnitCost', $variation_unit_cost);
+											update_term_meta($term_id, 'colour', $colour);
 
-                    $variation_options[] = $option_value;
-                }
-            }
+											$variation_options[] = $option_value;
+									}
+							}
 
-            wp_set_object_terms($woo_product_id, $variation_options, $taxonomy);
+							wp_set_object_terms($woo_product_id, $variation_options, $taxonomy);
 
-            $grouped_field_template[] = [
-                'type'      => 'attribute',
-                'taxonomy'  => $taxonomy,
-                'slug'      => $slug,
-                'label'     => $field_name,
-                'fieldType' => $field_type,
-                'fieldID'   => $field_id,
-                'required'  => !empty($group_field['required']),
-                'multipleSelect' => !empty($group_field['multipleSelect']),
-                'position' => $group_field['position'] ?? 0,
-                'variationCost' => floatval($group_field['variationCost'] ?? 0),
-                'variationUnitCost' => floatval($group_field['variationUnitCost'] ?? 0),
-            ];
-        } else {
-            $grouped_field_template[] = [
-                'type'         => 'meta',
-                'slug'         => $slug,
-                'label'        => $field_name,
-                'fieldType'    => $field_type,
-                'fieldID'      => $field_id,
-                'placeholder'  => esc_attr($group_field['placeholder'] ?? ''),
-                'instructions' => esc_html($group_field['instructions'] ?? ''),
-                'required'     => !empty($group_field['required']),
-                'multipleSelect' => !empty($group_field['multipleSelect']),
-                'position' => $group_field['position'] ?? 0,
-                'variationCost' => floatval($group_field['variationCost'] ?? 0),
-                'variationUnitCost' => floatval($group_field['variationUnitCost'] ?? 0),
-            ];
-        }
-    }
-}
-
+							$grouped_field_template[] = [
+									'type'      => 'attribute',
+									'taxonomy'  => $taxonomy,
+									'slug'      => $slug,
+									'label'     => $field_name,
+									'fieldType' => $field_type,
+									'fieldID'   => $field_id,
+									'required'  => !empty($group_field['required']),
+									'multipleSelect' => !empty($group_field['multipleSelect']),
+									'position' => $group_field['position'] ?? 0,
+									'variationCost' => floatval($group_field['variationCost'] ?? 0),
+									'variationUnitCost' => floatval($group_field['variationUnitCost'] ?? 0),
+							];
+					} else {
+							$grouped_field_template[] = [
+									'type'         => 'meta',
+									'slug'         => $slug,
+									'label'        => $field_name,
+									'fieldType'    => $field_type,
+									'fieldID'      => $field_id,
+									'placeholder'  => esc_attr($group_field['placeholder'] ?? ''),
+									'instructions' => esc_html($group_field['instructions'] ?? ''),
+									'required'     => !empty($group_field['required']),
+									'multipleSelect' => !empty($group_field['multipleSelect']),
+									'position' => $group_field['position'] ?? 0,
+									'variationCost' => floatval($group_field['variationCost'] ?? 0),
+									'variationUnitCost' => floatval($group_field['variationUnitCost'] ?? 0),
+							];
+					}
+			}
+	}
 
 	if (!empty($merchi_product['independentVariationFields'])) {
 		foreach ($merchi_product['independentVariationFields'] as $variation_field) {
@@ -1922,6 +1923,7 @@ if (!empty($merchi_product['groupVariationFields'])) {
 									$image_url = !empty($option['linkedFile']['viewUrl']) ? esc_url($option['linkedFile']['viewUrl']) : '';
 									$variation_option_cost = floatval($option['variationCost'] ?? 0);
 									$variation_option_unit_cost = floatval($option['variationUnitCost'] ?? 0);
+									$colour = sanitize_text_field($option['colour']) ?? '';
 	
 									$term = term_exists($option_value, $taxonomy);
 									if (!$term) {
@@ -1945,6 +1947,7 @@ if (!empty($merchi_product['groupVariationFields'])) {
 									}
 
 									// Add variation costs to term meta
+									update_term_meta($term_id, 'colour', $colour);
 									update_term_meta($term_id, 'variationCost', $variation_option_cost);
 									update_term_meta($term_id, 'variationUnitCost', $variation_option_unit_cost);
 
@@ -2078,8 +2081,6 @@ function download_and_attach_image($image_url) {
     error_log('Successfully created attachment with ID: ' . $attachment_id);
     return $attachment_id;
 }
-
-
 
 /**
 * Create a global WooCommerce attribute if it doesn't exist
@@ -2313,18 +2314,3 @@ function wc_get_product_variation_id($product_id, $attributes) {
 	}
 	return false;
 }
-
-// Attach custom form data to cart item when product is added to cart
-add_filter('woocommerce_add_cart_item_data', function($cart_item_data, $product_id, $variation_id) {
-    // Check for custom form data in POST (as array or JSON string)
-    if (isset($_POST['selection'])) {
-        $selection = $_POST['selection'];
-        // If sent as JSON, decode it
-        if (is_string($selection) && ($decoded = json_decode($selection, true)) && json_last_error() === JSON_ERROR_NONE) {
-            $selection = $decoded;
-        }
-        $cart_item_data['selection'] = $selection;
-    }
-    return $cart_item_data;
-}, 10, 3);
-
