@@ -178,6 +178,7 @@ class ProductPage extends BaseController {
 				echo $this->render_meta_field($field, "group_fields[1]");
 			}
 		}
+		echo '<div class="group-cost-display" data-group-index="1"></div>';
 		echo '<button type="button" class="delete-group-button" style="display: none;">Delete Group</button>';
 		echo '</div>';
 

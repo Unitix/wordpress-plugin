@@ -137,6 +137,15 @@ function initializeWhenReady() {
         updateVariationLabel($label, variation);
       });
       
+      // Update group cost display for each group
+      for (let i = 0; i < variationsGroups.length; i++) {
+        const group = variationsGroups[i];
+        const groupCost = group.groupCost || group.totalCost || 0;
+        jQuery('.group-cost-display[data-group-index="' + (i + 1) + '"]').text(
+          'Group Cost: $' + groupCost.toFixed(2)
+        );
+      }
+
       jQuery('.price-amount').text(renderPrice(totalCost, taxType));
     }
 
@@ -390,8 +399,11 @@ function initializeWhenReady() {
       $newGroup.find('[data-group-index]').each(function() {
         const $element = jQuery(this);
         const currentIndex = parseInt($element.data('group-index'));
-        $element.attr('data-group-index', currentIndex + 1);
+        $element.attr('data-group-index', newGroupIndex);
       });
+      
+      // Also update the group-cost-display's data-group-index
+      $newGroup.find('.group-cost-display').attr('data-group-index', newGroupIndex).text('');
       
       // Update all form elements in the new group
       $newGroup.find("input, select, textarea").each(function() {
