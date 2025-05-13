@@ -1174,18 +1174,46 @@ function cst_cart_item_after_remove() {
 }
 
 function filter_woocommerce_get_item_data( $cart_data, $cart_item = null ) {
-	
-	foreach( $cart_item as $key => $items ){
-		if($key === 'selection'){
-			foreach( $items as $k=>$itm){
-				$cart_data[] = array(
-					'name' => 'Choice '.$k,
-					'value' => $itm
-				);
-			}
-		}
-	}	
-	return $cart_data;
+    // Add a test field to verify the filter is working
+    $cart_data[] = array(
+        'name'  => 'Test Field',
+        'value' => 'Test Value',
+    );
+    // Existing logic for custom form data
+    if (isset($cart_item['selection']) && is_array($cart_item['selection'])) {
+        $group_count = 1;
+        foreach ($cart_item['selection'] as $group) {
+            if (is_array($group)) {
+                $group_label = count($cart_item['selection']) > 1 ? 'Group ' . $group_count . ' Details' : 'Details';
+                $fields_html = '';
+                foreach ($group as $field_label => $field_value) {
+                    $label = ucfirst(str_replace('_', ' ', $field_label));
+                    if (is_array($field_value)) {
+                        $value = implode(', ', $field_value);
+                    } elseif (preg_match('/^#([A-Fa-f0-9]{6})$/', $field_value)) {
+                        $value = '<span style="display:inline-block;width:16px;height:16px;background:' . esc_attr($field_value) . ';border:1px solid #ccc;vertical-align:middle;margin-right:4px;"></span> ' . esc_html($field_value);
+                    } elseif (filter_var($field_value, FILTER_VALIDATE_URL)) {
+                        $value = '<a href="' . esc_url($field_value) . '" target="_blank">' . basename($field_value) . '</a>';
+                    } else {
+                        $value = esc_html($field_value);
+                    }
+                    $fields_html .= '<div style="margin-bottom:2px;"><strong>' . esc_html($label) . ':</strong> ' . $value . '</div>';
+                }
+                $cart_data[] = array(
+                    'name' => $group_label,
+                    'value' => '<div style="margin-left:8px;">' . $fields_html . '</div>',
+                    'display' => '',
+                );
+                $group_count++;
+            } else {
+                $cart_data[] = array(
+                    'name' => 'Field',
+                    'value' => esc_html($group),
+                );
+            }
+        }
+    }
+    return $cart_data;
 }
 add_filter( 'woocommerce_get_item_data', 'filter_woocommerce_get_item_data', 99, 2 );
 
@@ -2285,4 +2313,18 @@ function wc_get_product_variation_id($product_id, $attributes) {
 	}
 	return false;
 }
+
+// Attach custom form data to cart item when product is added to cart
+add_filter('woocommerce_add_cart_item_data', function($cart_item_data, $product_id, $variation_id) {
+    // Check for custom form data in POST (as array or JSON string)
+    if (isset($_POST['selection'])) {
+        $selection = $_POST['selection'];
+        // If sent as JSON, decode it
+        if (is_string($selection) && ($decoded = json_decode($selection, true)) && json_last_error() === JSON_ERROR_NONE) {
+            $selection = $decoded;
+        }
+        $cart_item_data['selection'] = $selection;
+    }
+    return $cart_item_data;
+}, 10, 3);
 
