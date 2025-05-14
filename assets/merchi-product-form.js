@@ -197,20 +197,18 @@ function initializeWhenReady() {
       // Update all form elements in the new group
       $newGroup.find("input, select, textarea").each(function() {
         const $input = jQuery(this);
-        
-        // Update name attribute
+        // Update name attribute for all group fields
         let name = $input.attr("name");
         if (name) {
+          // Replace any group_fields[<number>] with the new group index
           name = name.replace(/group_fields\[\d+\]/, `group_fields[${newGroupIndex}]`);
           $input.attr("name", name);
         }
-        
         // Handle quantity field
         if ($input.hasClass('group-quantity')) {
           $input
             .attr('data-group-index', newGroupIndex)
             .val(1); // Reset quantity to 1
-          
           const unitPrice = parseFloat($input.data('unit-price'));
           $input.closest('.custom-field')
             .find('label')
@@ -446,13 +444,30 @@ function initializeWhenReady() {
           value = $input.val();
         } else if ($input.is('input[type="text"], input[type="number"], textarea')) {
           value = $input.val();
-        } else if ($input.is('input[type="radio"], input[type="checkbox"]')) {
-          const $checked = $fieldContainer.find('input:checked');
-          if ($checked.length) {
+        } else if ($input.is('input[type="checkbox"]')) {
+          // Collect all checked values as an array
+          const $checked = $fieldContainer.find('input[type="checkbox"]:checked');
+          if ($checked.length > 1) {
+            value = $checked.map(function() { return $(this).val(); }).get();
+          } else if ($checked.length === 1) {
             value = $checked.val();
+          } else {
+            value = null;
           }
+        } else if ($input.is('input[type="radio"]')) {
+          const $checked = $fieldContainer.find('input[type="radio"]:checked');
+          value = $checked.length ? $checked.val() : null;
         } else if ($input.is('input[type="color"]')) {
           value = $input.val();
+        } else if ($input.is('input[type="file"]')) {
+          // For file upload fields, store the file name(s) only
+          const files = $input[0].files;
+          if (files && files.length > 0) {
+            value = Array.from(files).map(f => f.name);
+            if (value.length === 1) value = value[0];
+          } else {
+            value = null;
+          }
         }
 
         // Update the value of the variation
@@ -473,10 +488,10 @@ function initializeWhenReady() {
       jQuery('.group-field-set').each(function(groupIndex) {
         const $group = jQuery(this);
         
-        // push the group to the form data and update the quantity
+        // Deep clone the variations array for each group
         formData.variationsGroups.push({
           quantity: parseInt($group.find('.group-quantity').val()) || 1,
-          variations: [...defaultJobJson.variationsGroups[0].variations],
+          variations: JSON.parse(JSON.stringify(defaultJobJson.variationsGroups[0].variations)),
         });
 
         // Process variations within this group
@@ -513,7 +528,145 @@ function initializeWhenReady() {
     window.merchiFormInitialized = true;
 
     // Start initialization when document is ready
-    jQuery(document).ready(initialize);
+    initialize();
+
+    // Move the click handler here so gatherFormData is in scope
+    $(document).on('click', '.single_add_to_cart_button', async function(e) {
+      e.preventDefault();
+      e.stopImmediatePropagation(); // Ensure only this handler runs
+      // Validate form before proceeding
+      if (!validateForm()) {
+          return;
+      }
+      setLoadingState(true);
+      try {
+          // Gather form data and log it
+          const formData = await gatherFormData();
+          console.log('Merchi Product Form Data being sent to cart:', formData);
+          // Log the group data specifically
+          console.log('DEBUG: variationsGroups (all groups):', formData.variationsGroups);
+          // Build cartPayload for PHP handler
+          let cartId = null;
+          let taxAmount = 0;
+          // Try to get cartId from cookie
+          const cookie = getCookieByName("cart-" + scriptData.merchi_domain);
+          if (cookie) {
+              cartId = cookie.split(',')[0];
+          } else {
+              cartId = 'js-cart-' + Math.random().toString(36).substr(2, 9);
+          }
+          // Build cartItems from formData (detailed version)
+          const cartItems = {
+            0: {
+              productID: formData.product?.id || formData.product_id || '',
+              quantity: formData.totalQuantity || formData.quantity || 1,
+              subTotal: formData.totalCost || 0,
+              totalCost: formData.totalCost || 0,
+              variations: [],
+              objExtras: []
+            }
+          };
+
+          // Map group variations (variationsGroups)
+          if (Array.isArray(formData.variationsGroups) && formData.variationsGroups.length > 0) {
+            formData.variationsGroups.forEach((group, gi) => {
+              let groupObj = {};
+              let groupExtras = {};
+              let loopcount = 0;
+              let varQuant = group.quantity || 1;
+
+              if (Array.isArray(group.variations)) {
+                group.variations.forEach((variation, vi) => {
+                  if (variation && (variation.value !== undefined)) {
+                    groupObj[vi] = variation.value;
+                  }
+                  loopcount = vi + 1;
+                });
+              }
+              groupExtras[loopcount] = varQuant;
+              groupExtras['quantity'] = varQuant;
+
+              cartItems[0].variations.push(groupObj);
+              cartItems[0].objExtras.push(groupExtras);
+            });
+          }
+
+          // Map standalone variations (if any)
+          if (Array.isArray(formData.variations) && formData.variations.length > 0) {
+            let obj = {};
+            let objExtras = {};
+            let loopcount = 0;
+            let varQuant = formData.totalQuantity || 1;
+
+            formData.variations.forEach((variation, vi) => {
+              if (variation && (variation.value !== undefined)) {
+                obj[vi] = variation.value;
+              }
+              loopcount = vi + 1;
+            });
+            objExtras[loopcount] = varQuant;
+            objExtras['quantity'] = varQuant;
+
+            cartItems[0].variations.push(obj);
+            cartItems[0].objExtras.push(objExtras);
+          }
+
+          const cartPayload = {
+              cartId: cartId,
+              taxAmount: taxAmount,
+              cartItems: cartItems
+          };
+          console.log('cartPayload being sent to send_id_for_add_cart:', cartPayload);
+          if (scriptData.is_single_product) {
+              console.log('AJAX: About to send data to send_id_for_add_cart');
+              jQuery.ajax({
+                  method: "POST",
+                  url: frontendajax.ajaxurl,
+                  data: {
+                      action: "send_id_for_add_cart",
+                      item: cartPayload,
+                  },
+                  success: function (response) {
+                      setLoadingState(false);
+                      // Set a flag in sessionStorage to show the success message after reload
+                      sessionStorage.setItem('merchiCartSuccess', '1');
+                      // Reload the page and scroll to top
+                      window.location.reload();
+                  },
+                  error: function (jqXHR, textStatus, errorThrown) {
+                      setLoadingState(false);
+                      console.error('AJAX Error!', {jqXHR, textStatus, errorThrown});
+                      if (jqXHR && jqXHR.responseText) {
+                          console.error('AJAX Error Response Text:', jqXHR.responseText);
+                      }
+                      alert("Something went wrong, Please try again later");
+                  },
+              });
+          }
+      } catch (error) {
+          setLoadingState(false);
+          console.error(error);
+          alert("An error occurred. Please try again.");
+      }
+    });
+
+    // At the top of the file or inside jQuery(document).ready
+    if (sessionStorage.getItem('merchiCartSuccess') === '1') {
+        sessionStorage.removeItem('merchiCartSuccess');
+        let $msg = $('.merchi-cart-success-message');
+        if ($msg.length === 0) {
+            $msg = $('<div class="merchi-cart-success-message" style="margin: 16px 88px; padding: 12px; background: #e6ffe6; border: 1px solid #b2e6b2; border-radius: 6px; color: #155724; font-weight: bold; position: relative;"></div>');
+            $('.merchi-product-form').before($msg);
+        }
+        $msg.html('<span class="merchi-cart-success-close" tabindex="0" aria-label="Close" style="position:absolute;top:8px;right:12px;font-size:22px;cursor:pointer;font-weight:normal;">&times;</span>' +
+            'Product added to cart! <a href="' + site_url + '/cart/" style="color:#0753d7;text-decoration:underline;">Click here to view cart</a>');
+        $msg.find('.merchi-cart-success-close').on('click keydown', function(e) {
+            if (e.type === 'click' || (e.type === 'keydown' && (e.key === 'Enter' || e.key === ' '))) {
+                $msg.fadeOut(200, function() { $msg.remove(); });
+            }
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   });
 }
 
@@ -575,53 +728,10 @@ function validateForm() {
 
 // Function to handle loading state
 function setLoadingState(isLoading) {
-    const $button = jQuery('.product-button-add-to-cart');
+    const $button = jQuery('.single_add_to_cart_button');
     if (isLoading) {
         $button.addClass('loading').prop('disabled', true);
     } else {
         $button.removeClass('loading').prop('disabled', false);
     }
 }
-
-// Modify the existing click handler
-jQuery(document).on('click', '.product-button-add-to-cart', function(e) {
-    e.preventDefault();
-    
-    // Validate form before proceeding
-    if (!validateForm()) {
-        return;
-    }
-
-    setLoadingState(true);
-
-    // Rest of your existing click handler code...
-    // Make sure to call setLoadingState(false) in both success and error cases
-    try {
-        // Your existing code...
-        if (scriptData.is_single_product) {
-            const cookie = getCookieByName("cart-" + scriptData.merchi_domain);
-            // ... rest of the code ...
-            
-            jQuery.ajax({
-                method: "POST",
-                url: frontendajax.ajaxurl,
-                data: {
-                    action: "send_id_for_add_cart",
-                    item: cartPayload,
-                },
-                success: function (response) {
-                    setLoadingState(false);
-                    window.location.href = site_url + '/cart/';
-                },
-                error: function (error) {
-                    setLoadingState(false);
-                    alert("Something went wrong, Please try again later");
-                },
-            });
-        }
-    } catch (error) {
-        setLoadingState(false);
-        console.error(error);
-        alert("An error occurred. Please try again.");
-    }
-});
