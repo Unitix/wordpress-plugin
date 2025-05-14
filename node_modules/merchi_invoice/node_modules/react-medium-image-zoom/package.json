@@ -1,0 +1,122 @@
+{
+  "name": "react-medium-image-zoom",
+  "version": "5.2.14",
+  "license": "BSD-3-Clause",
+  "description": "Accessible medium.com-style image zoom for React",
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./dist/styles.css": "./dist/styles.css"
+  },
+  "types": "./dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/rpearce/react-medium-image-zoom.git"
+  },
+  "homepage": "https://github.com/rpearce/react-medium-image-zoom",
+  "bugs": "https://github.com/rpearce/react-medium-image-zoom/issues",
+  "author": "Robert Pearce <me@robertwpearce.com> (https://robertwpearce.com)",
+  "contributors": [
+    "Robert Pearce <me@robertwpearce.com> (https://robertwpearce.com)",
+    "Cameron Bothner (https://github.com/cbothner)",
+    "ismay <ismay@ismaywolff.nl> (https://www.ismaywolff.nl)",
+    "Jeremy Bini <jeremybini@gmail.com> (https://jbini.com)",
+    "Josh Sloat (http://www.joshsloat.com)",
+    "Kaycee Ingram <kayceeingram33@gmail.com> (https://github.com/HippoDippo)",
+    "Ludwig Frank (https://github.com/ludwigfrank)",
+    "Rahul Gaba <rahulgaba16@gmail.com> (http://rahulgaba.com)",
+    "Spencer Davis (https://github.com/spencerfdavis)",
+    "dnlnvl (https://github.com/dnlnvl)",
+    "Douglas Galdino <dougg0k@gmail.com> (https://dougg0k.js.org)",
+    "Sun Knudsen (https://sunknudsen.com)",
+    "Youngrok Kim <rok0810@gmail.com> (https://rokoroku.github.io)",
+    "Josh-Cena <sidachen2003@gmail.com> (https://joshcena.com)",
+    "Yida Zhang <zjhch123@qq.com>",
+    "eych",
+    "tshmieldev",
+    "David Edler (https://github.com/edlerd)"
+  ],
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/rpearce"
+    }
+  ],
+  "keywords": [
+    "react",
+    "medium",
+    "image",
+    "zoom",
+    "image-zoom",
+    "modal",
+    "react-component"
+  ],
+  "tags": [
+    "react",
+    "medium",
+    "image",
+    "zoom",
+    "image-zoom",
+    "modal",
+    "react-component"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "files": [
+    "LICENSE",
+    "dist/"
+  ],
+  "scripts": {
+    "build": "rm -rf ./dist && rollup -c rollup.config.js && cp ./source/styles.css ./dist/styles.css",
+    "build:docs": "rm -rf ./docs && mkdir ./docs && storybook build --quiet -o docs",
+    "changeset": "changeset",
+    "ci": "concurrently npm:lint npm:build npm:build:docs",
+    "contributors:add": "all-contributors add",
+    "contributors:generate": "all-contributors generate",
+    "lint": "eslint .",
+    "prepack": "concurrently npm:lint npm:build",
+    "release": "changeset publish",
+    "start": "NODE_OPTIONS=--openssl-legacy-provider storybook dev -p 6006",
+    "storybook": "storybook dev -p 6006"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.28.0",
+    "@eslint/compat": "^1.2.6",
+    "@eslint/js": "^9.20.0",
+    "@rollup/plugin-typescript": "^12.1.2",
+    "@storybook/addon-a11y": "^8.5.8",
+    "@storybook/addon-docs": "^8.5.8",
+    "@storybook/addon-interactions": "^8.5.8",
+    "@storybook/addon-viewport": "^8.5.8",
+    "@storybook/addon-webpack5-compiler-swc": "^2.1.0",
+    "@storybook/react": "^8.5.8",
+    "@storybook/react-webpack5": "^8.5.8",
+    "@storybook/test": "^8.2.1",
+    "@storybook/test-runner": "^0.21.2",
+    "@types/eslint__js": "^8.42.3",
+    "@types/node": "^22.13.4",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "all-contributors-cli": "^6.26.1",
+    "concurrently": "^9.1.2",
+    "eslint": "^9.20.1",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.4",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "jest": "^29.7.0",
+    "neostandard": "^0.12.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "rollup": "^4.34.8",
+    "rollup-plugin-dts": "^6.1.1",
+    "storybook": "^8.5.8",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.24.1"
+  },
+  "peerDependencies": {
+    "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0",
+    "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
+  }
+}

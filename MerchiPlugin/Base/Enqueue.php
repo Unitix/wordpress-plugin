@@ -15,7 +15,7 @@ class Enqueue extends BaseController {
 
 
 	public function do_enqueue() {
-		wp_enqueue_style( 'styles', $this->plugin_url . 'assets/merchi_styles.css' );
+		wp_enqueue_style( 'styles', $this->plugin_url . 'src/css/merchi_styles.css' );
 		$mount_point = get_option( 'merchi_mount_point_id' );
 		$css         = ".$mount_point {visibility: hidden;}";
 		wp_add_inline_style( 'styles', $css );
@@ -37,7 +37,7 @@ class Enqueue extends BaseController {
 		// Enqueue our SDK wrapper
 		wp_enqueue_script(
 			'merchi_sdk',
-			$this->plugin_url . 'assets/merchi_sdk.js',
+			$this->plugin_url . 'dist/js/merchi_sdk.js',
 			['merchi_init'],
 			null,
 			true
@@ -46,7 +46,7 @@ class Enqueue extends BaseController {
 		// Enqueue our product form script
 		wp_enqueue_script(
 			'merchi_product_form',
-			$this->plugin_url . 'assets/merchi-product-form.js',
+			$this->plugin_url . 'dist/js/merchi_product_form.js',
 			['jquery', 'merchi_sdk'],
 			null,
 			true
@@ -70,33 +70,25 @@ class Enqueue extends BaseController {
 		);
 		wp_enqueue_script(
 			'merchi_sdk',
-			$this->plugin_url . 'assets/merchi_sdk.js',
+			$this->plugin_url . 'dist/js/merchi_sdk.js',
 			[ 'merchi_init' ]
 		);
 		$merchi_plugin_object = [
 			'merchiStoreName' => $merchi_url,
 		];
 
-		wp_enqueue_style( 'styles',  $this->plugin_url . 'assets/merchi_styles_admin.css' );
+		wp_enqueue_style( 'styles',  $this->plugin_url . 'src/css/merchi_styles_admin.css' );
 		wp_localize_script( 'merchi_plugin_val', 'merchiObject', $merchi_plugin_object );
-		wp_enqueue_script( 'ajax_script', $this->plugin_url . 'assets/create_merchi_products.js', [ 'jquery' ] );
+		wp_enqueue_script( 'ajax_script', $this->plugin_url . 'dist/js/create_merchi_products.js', [ 'jquery' ] );
 		wp_localize_script(
 			'ajax_script',
-			'create_merchi_products',
+			'merchi_ajax_object',
 			[
-				'ajax_url'    => admin_url( 'admin-ajax.php' ),
-				'check_nonce' => wp_create_nonce( 'merchi-nonce' ),
+				'ajax_url' => admin_url( 'admin-ajax.php' ),
+				'nonce'    => wp_create_nonce( 'merchi_ajax_nonce' ),
 			]
 		);
-		wp_enqueue_script( 'export_ajax_script', $this->plugin_url . 'assets/export_products.js', [ 'jquery' ] );
-		wp_localize_script(
-			'export_ajax_script',
-			'export_products',
-			[
-				'ajax_url'    => admin_url( 'admin-ajax.php' ),
-				'check_nonce' => wp_create_nonce( 'merchi-nonce' ),
-			]
-		);
+		wp_enqueue_script( 'export_ajax_script', $this->plugin_url . 'dist/js/export_products.js', [ 'jquery' ] );
 
 	}
 }

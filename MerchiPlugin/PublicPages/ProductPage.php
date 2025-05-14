@@ -52,10 +52,26 @@ class ProductPage extends BaseController {
 	public function enqueue_merchi_scripts() {
 		if (is_product()) {
 			wp_enqueue_script(
-				'merchi-product-form',
-				plugin_dir_url(dirname(dirname(__FILE__))) . 'assets/merchi-product-form.js',
-				array('jquery'),
+				'merchi_sdk',
+				plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_sdk.js',
+				array(),
 				'1.0.0',
+				true
+			);
+
+			wp_enqueue_script(
+				'merchi_product_form',
+				plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_product_form.js',
+				['jquery', 'merchi_sdk', 'merchi_checkout_init'],
+				null,
+				true
+			);
+
+			wp_enqueue_script(
+				'merchi_checkout_init',
+				plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_checkout_init.js',
+				['merchi_sdk'],
+				null,
 				true
 			);
 
@@ -73,12 +89,12 @@ class ProductPage extends BaseController {
 			error_log('Product ID: ' . get_post_meta(get_the_ID(), 'product_id', true));
 
 			// Add Merchi configuration data
-			wp_localize_script('merchi-product-form', 'merchiConfig', array(
+			wp_localize_script('merchi_product_form', 'merchiConfig', array(
 				'domainId' => $merchi_domain,
 				'apiUrl' => $merchi_url,
 				'productId' => get_post_meta(get_the_ID(), 'product_id', true),
 				'stagingMode' => $staging_mode === 'yes',
-				'apiKey' => $merchi_secret
+				'backendUri' => $merchi_url
 			));
 
 			// Verify configuration
@@ -132,7 +148,7 @@ class ProductPage extends BaseController {
         return ($a['position'] ?? 0) <=> ($b['position'] ?? 0);
     });
 
-    echo '<div class="custom-variation-options merchi-product-form">';
+    echo '<div class="custom-variation-options merchi_product_form">';
 
     foreach ($fields as $field) {
         if ($field['type'] === 'attribute') {
@@ -143,6 +159,9 @@ class ProductPage extends BaseController {
     }
 
     echo '</div>';
+
+    // Add the checkout container
+    echo '<div id="merchi-checkout-container"></div>';
 	}
 
 	public function custom_display_grouped_attributes() {
@@ -159,7 +178,7 @@ class ProductPage extends BaseController {
 			return ($a['position'] ?? 0) <=> ($b['position'] ?? 0);
 		});
 
-		echo '<div id="grouped-fields-container" class="merchi-product-form">';
+		echo '<div id="grouped-fields-container" class="merchi_product_form">';
 		echo '<h3>Grouped Options</h3>';
 
 		echo '<div class="group-field-set" data-group-index="1">';

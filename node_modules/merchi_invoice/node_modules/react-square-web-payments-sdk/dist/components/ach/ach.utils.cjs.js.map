@@ -1,0 +1,1 @@
+{"version":3,"file":"ach.utils.cjs.js","sources":["../../../src/components/ach/ach.utils.ts"],"sourcesContent":["export function transformPlaidEventName(name: string) {\n  return name.replace(/([A-Z])/g, '_$1').toUpperCase();\n}\n"],"names":["transformPlaidEventName","name"],"mappings":"4GAAO,SAASA,EAAwBC,EAAc,CACpD,OAAOA,EAAK,QAAQ,WAAY,KAAK,EAAE,YAAY,CACrD"}
