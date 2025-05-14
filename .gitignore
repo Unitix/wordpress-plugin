@@ -6,3 +6,7 @@ wc-api-php-master
 init.php
 .wp-evn.json
 -wp-env.json
+
+# Build output directory
+/dist/
+/node_modules/
