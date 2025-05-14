@@ -1,1 +1,0 @@
-{"version":3,"file":"stitches.config.cjs.js","sources":["../src/stitches.config.ts"],"sourcesContent":["// Dependencies\nimport { createStitches } from '@stitches/react';\n\nexport const { keyframes, styled } = createStitches();\n"],"names":["keyframes","styled","createStitches"],"mappings":"+IAGa,CAAE,UAAAA,EAAW,OAAAC,CAAO,EAAIC,EAAe,eAAA"}

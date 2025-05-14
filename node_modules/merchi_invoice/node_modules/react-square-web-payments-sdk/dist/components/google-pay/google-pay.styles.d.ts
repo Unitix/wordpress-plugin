@@ -1,2 +1,0 @@
-export declare const ButtonLoader: import("@stitches/react/types/styled-component").StyledComponent<"div", {}, {}, import("@stitches/react/types/css-util").CSS<{}, {}, import("@stitches/react/types/config").DefaultThemeMap, {}>>;
-//# sourceMappingURL=google-pay.styles.d.ts.map

@@ -1,3 +1,0 @@
-export declare const PayButton: import("@stitches/react/types/styled-component").StyledComponent<"button", {}, {}, import("@stitches/react/types/css-util").CSS<{}, {}, import("@stitches/react/types/config").DefaultThemeMap, {}>>;
-export declare const SvgIcon: import("@stitches/react/types/styled-component").StyledComponent<"svg", {}, {}, import("@stitches/react/types/css-util").CSS<{}, {}, import("@stitches/react/types/config").DefaultThemeMap, {}>>;
-//# sourceMappingURL=ach.styles.d.ts.map
