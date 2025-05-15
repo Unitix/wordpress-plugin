@@ -22,32 +22,32 @@ class ProductPage extends BaseController {
 		add_filter( 'woocommerce_single_add_to_cart_button', [ $this, 'add_loading_spinner_to_button' ], 10, 2 );
 		
 		// Register REST API endpoint
-		add_action('rest_api_init', function () {
-			register_rest_route('merchi/v1', '/price-estimate', array(
-				'methods' => 'POST',
-				'callback' => [ $this, 'proxy_price_estimate' ],
-				'permission_callback' => '__return_true', // Make endpoint public
-				'args' => array(
-					'product_id' => array(
-						'required' => true,
-						'type' => 'string',
-						'sanitize_callback' => 'sanitize_text_field'
-					)
-				)
-			));
-		});
+		// add_action('rest_api_init', function () {
+		// 	register_rest_route('merchi/v1', '/price-estimate', array(
+		// 		'methods' => 'POST',
+		// 		'callback' => [ $this, 'proxy_price_estimate' ],
+		// 		'permission_callback' => '__return_true', // Make endpoint public
+		// 		'args' => array(
+		// 			'product_id' => array(
+		// 				'required' => true,
+		// 				'type' => 'string',
+		// 				'sanitize_callback' => 'sanitize_text_field'
+		// 			)
+		// 		)
+		// 	));
+		// });
 
-		// Add CORS headers for REST API
-		add_action('rest_api_init', function() {
-			remove_filter('rest_pre_serve_request', 'rest_send_cors_headers');
-			add_filter('rest_pre_serve_request', function($value) {
-				header('Access-Control-Allow-Origin: *');
-				header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
-				header('Access-Control-Allow-Credentials: true');
-				header('Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept');
-				return $value;
-			});
-		});
+		// // Add CORS headers for REST API
+		// add_action('rest_api_init', function() {
+		// 	remove_filter('rest_pre_serve_request', 'rest_send_cors_headers');
+		// 	add_filter('rest_pre_serve_request', function($value) {
+		// 		header('Access-Control-Allow-Origin: *');
+		// 		header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+		// 		header('Access-Control-Allow-Credentials: true');
+		// 		header('Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept');
+		// 		return $value;
+		// 	});
+		// });
 	}
 
 	public function enqueue_merchi_scripts() {
@@ -108,36 +108,6 @@ class ProductPage extends BaseController {
 			if (empty(get_post_meta(get_the_ID(), 'product_id', true))) {
 				error_log('Warning: Merchi Product ID is empty');
 			}
-
-			// Add SDK initialization script
-			$sdk_init_script = sprintf(
-				'<script>
-					document.addEventListener("DOMContentLoaded", function() {
-						// Only initialize if SDK is not already initialized
-						if (typeof merchi !== "undefined" && !merchi.isInitialized) {
-							// const sdkConfig = {
-							// 	backendUri: "%s",
-							// 	hasSessionToken: false,
-							// 	hasRequiredMethods: true
-							// };
-							
-							// Initialize SDK
-							// merchi.init(sdkConfig);
-						}
-
-						// Expose initializeCheckout for the Get Quote button
-						if (typeof merchiCheckoutInit !== "undefined" && typeof merchiCheckoutInit.initializeCheckout === "function") {
-							window.initializeCheckout = merchiCheckoutInit.initializeCheckout;
-						}
-					});
-				</script>',
-				esc_js($merchi_url)
-			);
-
-			// Add the SDK initialization script
-			add_action('wp_footer', function() use ($sdk_init_script) {
-				echo $sdk_init_script;
-			});
 		}
 	}
 
@@ -193,7 +163,7 @@ class ProductPage extends BaseController {
 		// Add group quantity field inside the group container
 		echo '<div class="custom-field">';
 		echo '<label>Group (1) quantity ($' . number_format((float)$unit_price, 2) . ' unit price)</label>';
-		echo '<input type="number" class="group-quantity" name="group_fields[1][quantity]" value="1" min="1" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="1">';
+		echo '<input type="number" class="qty group-quantity" name="group_fields[1][quantity]" value="1" min="1" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="1">';
 		echo '</div>';
 
 		foreach ($group_fields_template as $field) {
@@ -329,7 +299,7 @@ class ProductPage extends BaseController {
 			if ($field_type === 2) {
 					$html .= "<label for='{$slug}'>{$label}</label>";
 					if ($is_multiple) {
-							$html .= '<select multiple name="' . $name_prefix . '[' . $slug . '][]"' . $common_data_attrs . ' data-calculate="' . ($has_cost ? 'true' : 'false') . '">';
+							$html .= '<select multiple name="' . $name_prefix . '[' . $slug . '][]"' . $common_data_attrs . ' data-calculate="' . ($has_cost ? 'true' : 'false') . '" class="select">';
 							foreach ($terms as $term) {
 									$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
 									$variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
@@ -343,7 +313,7 @@ class ProductPage extends BaseController {
 							}
 							$html .= '</select>';
 					} else {
-							$html .= '<select name="' . $name_prefix . '[' . $slug . ']"' . $common_data_attrs . ' data-calculate="' . ($has_cost ? 'true' : 'false') . '">';
+							$html .= '<select name="' . $name_prefix . '[' . $slug . ']"' . $common_data_attrs . ' data-calculate="' . ($has_cost ? 'true' : 'false') . '" class="select">';
 							foreach ($terms as $index => $term) {
 									$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
 									$variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
@@ -371,7 +341,7 @@ class ProductPage extends BaseController {
 							$variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
 							$html .= '<div class="checkbox-option">';
 							$html .= '<label class="checkbox-label">';
-							$html .= '<input type="checkbox" name="' . $name_prefix . '[' . $slug . '][]" value="' .esc_attr($variation_option_id) . '"' . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '"/>';
+							$html .= '<input type="checkbox" name="' . $name_prefix . '[' . $slug . '][]" value="' .esc_attr($variation_option_id) . '"' . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '" class="input-checkbox"/>';
 							$html .= '<span class="option-label">' . esc_html($term->name) 
 									. $this->cost_label_content($variation_unit_cost, $variation_cost)
 									. '</span>';
@@ -393,7 +363,7 @@ class ProductPage extends BaseController {
 							$is_checked = $index === 0 ? 'checked' : '';
 							$html .= '<div class="radio-option">';
 							$html .= '<label class="radio-label">';
-							$html .= '<input type="radio" name="' . $name_prefix . '[' . $slug . ']" value="' . esc_attr($variation_option_id) . '" ' . $is_checked . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '" />';
+							$html .= '<input type="radio" name="' . $name_prefix . '[' . $slug . ']" value="' . esc_attr($variation_option_id) . '" ' . $is_checked . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '" class="input-radio" />';
 							$html .= '<span class="option-label">' . esc_html($term->name) 
 									. $this->cost_label_content($variation_unit_cost, $variation_cost)
 									. '</span>';
@@ -527,13 +497,13 @@ class ProductPage extends BaseController {
 			$html .= "</select>";
 		} else {
 			switch ($fieldType) {
-				case 1: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' />"; break;
-				case 3: $html .= "<label class='custom-upload-wrapper'><div class='upload-icon'>📎</div><div class='upload-instruction'>Drop file here or click to browse</div><div class='upload-types'>.jpeg, .jpg, .gif, .png, .pdf</div><input type='file' name='{$name_prefix}[{$slug}][]' multiple {$required} accept='.jpeg,.jpg,.gif,.png,.pdf' data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "'/></label>"; break;
-				case 4: $html .= "<textarea name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "'></textarea>"; break;
-				case 5: $html .= "<input type='number' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' />"; break;
-				case 10: $html .= "<input type='color' name='{$name_prefix}[{$slug}]' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' />"; break;
+				case 1: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-text'/>"; break;
+				case 3: $html .= "<label class='custom-upload-wrapper'><div class='upload-icon'>📎</div><div class='upload-instruction'>Drop file here or click to browse</div><div class='upload-types'>.jpeg, .jpg, .gif, .png, .pdf</div><input type='file' name='{$name_prefix}[{$slug}][]' multiple {$required} accept='.jpeg,.jpg,.gif,.png,.pdf' data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-file'/></label>"; break;
+				case 4: $html .= "<textarea name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-textarea'></textarea>"; break;
+				case 5: $html .= "<input type='number' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-number'/>"; break;
+				case 10: $html .= "<input type='color' name='{$name_prefix}[{$slug}]' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-color'/>"; break;
 				case 8: $html .= "<p class='field-instructions'>{$instructions}</p>"; break;
-				default: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' />"; break;
+				default: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-text'/>"; break;
 			}
 		}
 
