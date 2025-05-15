@@ -626,15 +626,16 @@ function country_prefix_in_billing_phone() {
 
 function enqueue_admin_customfiles($hook)
 {
-	wp_enqueue_style('custom-admin-style', plugin_dir_url(__FILE__) . 'custom.css');
+	wp_enqueue_style('custom-admin-style', plugin_dir_url(__FILE__) . 'src/css/merchi_custom.css');
 	wp_enqueue_style('cst-jquery-ui-style', 'https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css');
 	wp_enqueue_script('cst-jquery-ui', 'https://code.jquery.com/ui/1.12.1/jquery-ui.js', array('jquery'), null, true);
 	if ('edit-tags.php' == $hook || 'term.php' == $hook) {
 		wp_enqueue_media();
 	}
-	wp_enqueue_script('custom-admin-script', plugin_dir_url(__FILE__) . 'custom.js', array('cst-jquery-ui'), null, true);
+	wp_enqueue_script('custom-admin-script', plugin_dir_url(__FILE__) . 'dist/js/merchi_admin_custom.js', array('cst-jquery-ui'), null, true);
 	wp_localize_script('custom-admin-script', 'frontendajax', array('ajaxurl' => admin_url('admin-ajax.php')));
-	wp_enqueue_script('custom-merchi-script', MERCHI_BASE_URL.'/static/js/dist/merchi-init.js', array(), null, true);
+	// I can't see where merchi_sdk.js is used in the merchi_admin_custom.js file
+	// wp_enqueue_script('custom-merchi-script', public_dir_url(__FILE__) .'dist/js/merchi_sdk.js', array(), null, true);
 	wp_localize_script('custom-admin-script', 'scriptData', array(
 		'merchi_mode' => MERCHI_MODE,
 		'merchi_domain' => MERCHI_DOMAIN,
@@ -647,11 +648,60 @@ add_action('admin_enqueue_scripts', 'enqueue_admin_customfiles');
 
 function enqueue_my_public_script()
 {
-	wp_enqueue_style('custom-admin-style', plugin_dir_url(__FILE__) . 'custom.css');
-	wp_enqueue_script('custom-checkout-script', plugins_url('/woocommerce/checkout/checkout.js', __FILE__), array(), '1.0', true);
+	wp_enqueue_style('custom-admin-style', plugin_dir_url(__FILE__) . 'src/css/merchi_custom.css');
+	wp_enqueue_script('custom-checkout-script', plugins_url('dist/js/woocommerce_cart_checkout.js', __FILE__), array(), '1.0', true);
 	wp_enqueue_script('custom-stripe-script', 'https://js.stripe.com/v3/', array(), '1.0', true);
-	wp_enqueue_script('custom-public-script', plugin_dir_url(__FILE__) . 'public_custom.js', array('jquery'), rand(0,1000), true);
-	wp_enqueue_script('custom-merchi-script', MERCHI_BASE_URL.'/static/js/dist/merchi-init.js', array(), null, true);
+	wp_enqueue_script(
+		'merchi_sdk_script',
+		plugin_dir_url(__FILE__) . 'dist/js/merchi_sdk.js', array(),
+		null,
+		true
+	);
+	
+	// Add merchi product form script for product pages
+	if (is_product()) {
+		// Debug log to verify we're hitting this condition
+		error_log('Enqueuing merchi scripts for product page: ' . get_the_ID());
+		
+		// Check if the file exists
+		$checkout_init_path = plugin_dir_path(__FILE__) . 'dist/js/merchi_checkout_init.js';
+		$product_form_path = plugin_dir_path(__FILE__) . 'dist/js/merchi_product_form.js';
+		
+		error_log('Checking files - checkout_init exists: ' . (file_exists($checkout_init_path) ? 'yes' : 'no'));
+		error_log('Checking files - product_form exists: ' . (file_exists($product_form_path) ? 'yes' : 'no'));
+		
+		wp_enqueue_script(
+			'merchi_checkout_init',
+			plugin_dir_url(__FILE__) . 'dist/js/merchi_checkout_init.js',
+			[], // Temporarily remove dependencies
+			filemtime(plugin_dir_path(__FILE__) . 'dist/js/merchi_checkout_init.js'), // Use file timestamp for cache busting
+			true
+		);
+		
+		wp_enqueue_script(
+			'merchi_product_form',
+			plugin_dir_url(__FILE__) . 'dist/js/merchi_product_form.js',
+			['jquery'], // Just keep jQuery dependency
+			filemtime(plugin_dir_path(__FILE__) . 'dist/js/merchi_product_form.js'), // Use file timestamp for cache busting
+			true
+		);
+
+		wp_enqueue_script(
+			'woocommerce_cart_checkout',
+			plugin_dir_url(__FILE__) . 'dist/js/woocommerce_cart_checkout.js',
+			['jquery'], // Just keep jQuery dependency
+			filemtime(plugin_dir_path(__FILE__) . 'dist/js/woocommerce_cart_checkout.js'), // Use file timestamp for cache busting
+			true
+		);
+	}
+	
+	wp_enqueue_script(
+		'custom-public-script',
+		plugin_dir_url(__FILE__) . 'dist/js/merchi_public_custom.js',
+		array('jquery'),
+		rand(0,1000),
+		true
+	);
 	
 	$is_single_product = is_product();
 	$stripeSecret = false;
@@ -668,12 +718,49 @@ function enqueue_my_public_script()
 		$resp = json_decode(wp_remote_retrieve_body($response));
 		$stripeSecret = $resp->stripeClientSecret;
 	}
+	
+	// Create merchiConfig for all scripts
+	$staging_mode = get_option('merchi_staging_mode');
+	$merchi_domain = $staging_mode === 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
+	$merchi_url = $staging_mode === 'yes' ? 'https://api.staging.merchi.co/' : 'https://api.merchi.co/';
+	
+	// Add merchiConfig to window for merchi_sdk.js
+	wp_localize_script('merchi_sdk_script', 'merchiConfig', array(
+		'domainId' => $merchi_domain,
+		'apiUrl' => $merchi_url,
+		'stagingMode' => $staging_mode === 'yes',
+		'backendUri' => $merchi_url
+	));
+	
+	// If on product page, add product specific config
+	if (is_product()) {
+		wp_localize_script('merchi_product_form', 'merchiConfig', array(
+			'domainId' => $merchi_domain,
+			'apiUrl' => $merchi_url,
+			'productId' => get_post_meta(get_the_ID(), 'product_id', true),
+			'stagingMode' => $staging_mode === 'yes',
+			'backendUri' => $merchi_url
+		));
+	}
+	
 	wp_localize_script('custom-public-script', 'scriptData', array(
 		'is_single_product' => $is_single_product,
 		'merchi_domain' => MERCHI_DOMAIN,
 		'merchi_stripe_api_key' => MERCHI_STRIPE_API_KEY,
+		'merchi_mode' => MERCHI_MODE,
+		'site_url' => site_url()
 	));
-	wp_localize_script('custom-public-script', 'frontendajax', array('ajaxurl' => admin_url('admin-ajax.php'), 'checkouturl' => wc_get_checkout_url(), 'stripeSecret' => $stripeSecret, 'telephoneInput' => $telephoneInput, 'billing_values'=> $billing_values));
+	wp_localize_script(
+		'custom-public-script',
+		'frontendajax',
+		array(
+			'ajaxurl' => admin_url('admin-ajax.php'),
+		  'checkouturl' => wc_get_checkout_url(),
+	  	'stripeSecret' => $stripeSecret,
+  		'telephoneInput' => $telephoneInput,
+	  	'billing_values'=> $billing_values
+		)
+	);
 }
 add_action('wp_enqueue_scripts', 'enqueue_my_public_script');
 
@@ -2548,4 +2635,36 @@ function send_order_to_merchi($order_id) {
 add_action('wp_footer', function() {
     echo '<style>.wc-block-components-product-details__value { white-space: pre-line !important; }</style>';
 });
+
+// Add debug action to print all scripts
+add_action('wp_footer', 'debug_print_scripts');
+function debug_print_scripts() {
+	if (!is_product()) return;
+	
+	global $wp_scripts;
+	
+	echo "<!-- DEBUG SCRIPTS START -->\n";
+	echo "<!-- Registered Scripts: -->\n";
+	
+	$merchi_scripts = [
+		'merchi_sdk_script', 
+		'merchi_checkout_init', 
+		'merchi_product_form',
+		'woocommerce_cart_checkout'
+	];
+	
+	foreach ($merchi_scripts as $handle) {
+		if (isset($wp_scripts->registered[$handle])) {
+			$script = $wp_scripts->registered[$handle];
+			echo "<!-- Script: $handle -->\n";
+			echo "<!-- Source: {$script->src} -->\n";
+			echo "<!-- Dependencies: " . implode(', ', $script->deps) . " -->\n";
+			echo "<!-- Enqueued: " . (in_array($handle, $wp_scripts->queue) ? 'yes' : 'no') . " -->\n";
+		} else {
+			echo "<!-- Script $handle is not registered -->\n";
+		}
+	}
+	
+	echo "<!-- DEBUG SCRIPTS END -->\n";
+}
 

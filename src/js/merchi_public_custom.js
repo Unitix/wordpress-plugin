@@ -1,6 +1,8 @@
+import { MERCHI_SDK } from './merchi_sdk';
+
 const stripe = Stripe(scriptData.merchi_stripe_api_key);
 let elements;
-const MERCHI = MERCHI_INIT.MERCHI_SDK;
+const merchiSdk = MERCHI_SDK();
 const site_url = scriptData.site_url
 
 const cartShipmentQuote = {
@@ -66,16 +68,16 @@ function makeMerchiCartEnt(data) {
     const entities = data.map((v) => makeMerchiJsEnt("cart", v));
     return entities;
   }
-  return MERCHI.fromJson(new MERCHI.Cart(), data);
+  return merchiSdk.fromJson(new merchiSdk.Cart(), data);
 }
 
 async function createCart() {
   const domainId = scriptData.merchi_domain; // TODO REMOCE THIS WHEN DONE
-  const domain = new MERCHI.Domain().id(domainId);
-  const cart = new MERCHI.Cart().domain(domain);
+  const domain = new merchiSdk.Domain().id(domainId);
+  const cart = new merchiSdk.Cart().domain(domain);
   return cart.create(
     (response) => {
-      const c = MERCHI.toJson(response);
+      const c = merchiSdk.toJson(response);
       // Set cart cookie here
       setCookie("cart-" + scriptData.merchi_domain, c.id + "," + c.token, 1);
       localStorage.setItem("MerchiCart", JSON.stringify(c));
@@ -90,15 +92,15 @@ async function createCart() {
 }
 
 function getCartEnt(id, token, embed) {
-  const cartEnt = new MERCHI.Cart().id(id).token(token);
+  const cartEnt = new merchiSdk.Cart().id(id).token(token);
   return cartEnt;
 }
 
 async function getCart(id, token, embed) {
-  const cartEnt = new MERCHI.Cart().id(id).token(token);
+  const cartEnt = new merchiSdk.Cart().id(id).token(token);
   return cartEnt.get(
     (cart) => {
-      localStorage.setItem("MerchiCart", MERCHI.toJson(cart));
+      localStorage.setItem("MerchiCart", merchiSdk.toJson(cart));
       return cart;
     },
     (error) => {
@@ -137,8 +139,7 @@ async function localStorageGetCartEnt() {
 }
 
 async function localStorageUpdateCartEnt(cartEnd) {
-  const MERCHI = MERCHI_INIT.MERCHI_SDK;
-  localStorage.setItem("MerchiCart", JSON.stringify(MERCHI.toJson(cartEnd)));
+  localStorage.setItem("MerchiCart", JSON.stringify(merchiSdk.toJson(cartEnd)));
 }
 
 function localStorageDeleteCartEnt() {
@@ -147,12 +148,11 @@ function localStorageDeleteCartEnt() {
 }
 
 function makeMerchiJsEnt(entName, data) {
-  const MERCHI = MERCHI_INIT.MERCHI_SDK;
   if (Array.isArray(data)) {
     const entities = data.map((v) => makeMerchiJsEnt(entName, v));
     return entities;
   }
-  const jobEntity = MERCHI.fromJson(new MERCHI[entName](), data);
+  const jobEntity = merchiSdk.fromJson(new merchiSdk[entName](), data);
   return jobEntity;
 }
 
@@ -335,7 +335,7 @@ function captureEmail(input) {
 
 async function addClientToCart(cart, userId) {
   const embed = { client: { emailAddresses: {}, profilePicture: {} } };
-  const user = new MERCHI.User().id(userId);
+  const user = new merchiSdk.User().id(userId);
   cart.client(user);
   cart.patch(
     (response) => {
@@ -363,7 +363,7 @@ async function updateShipmentMethod(index, quoteIndex) {
     token = cookieArray[1].trim();
     id = cookieArray[0].trim();
   }
-  const cart = new MERCHI.Cart();
+  const cart = new merchiSdk.Cart();
   cart.id(id);
   cart.token(token);
   cart.get(
@@ -526,8 +526,7 @@ function navigateStep(step) {
               window.scrollTo({ top: 0, behavior: "smooth" });
               jQuery(".checkout-navigation .button").removeAttr("disabled");
             } else if (resp.resp === "registered" && resp.user_id) {
-              const MERCHI = MERCHI_INIT.MERCHI_SDK;
-              const ccart = new MERCHI.Cart();
+              const ccart = new merchiSdk.Cart();
               const address = {
                 lineOne: billing_address_1,
                 lineTwo: billing_address_2,
@@ -805,12 +804,12 @@ jQuery(document).ready(function ($) {
             const id = cookieValueArray[0].trim();
             const token = cookieValueArray[1].trim();
              // Create a new Cart instance and fetch the cart details
-            const cartEnt = new MERCHI.Cart().id(id).token(token);
+            const cartEnt = new merchiSdk.Cart().id(id).token(token);
             cartEnt.get(
               (cart) => {
                 // Update local storage with cart details
                 localStorageUpdateCartEnt(cart);
-                const cartJson = new MERCHI.toJson(cart);
+                const cartJson = new merchiSdk.toJson(cart);
                 console.log(cartJson);
                 var cartPayload = {};
                 cartPayload["cartId"] = cartJson.id;
@@ -982,8 +981,7 @@ jQuery(document).ready(function ($) {
         const cookieArray = cookieValue.split(",");
         const id = cookieArray[0].trim();
         const token = cookieArray[1].trim();
-        const MERCHI = MERCHI_INIT.MERCHI_SDK;
-        const cart = new MERCHI.Cart();
+        const cart = new merchiSdk.Cart();
         const variationsEmbed = {
           selectedOptions: {},
           variationField: {

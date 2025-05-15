@@ -51,34 +51,12 @@ class ProductPage extends BaseController {
 
 	public function enqueue_merchi_scripts() {
 		if (is_product()) {
-			wp_enqueue_script(
-				'merchi_sdk',
-				plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_sdk.js',
-				array(),
-				'1.0.0',
-				true
-			);
-
-			wp_enqueue_script(
-				'merchi_product_form',
-				plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_product_form.js',
-				['jquery', 'merchi_sdk', 'merchi_checkout_init'],
-				null,
-				true
-			);
-
-			wp_enqueue_script(
-				'merchi_checkout_init',
-				plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_checkout_init.js',
-				['merchi_sdk'],
-				null,
-				true
-			);
-
+			// We're now handling script enqueuing in the main plugin file,
+			// but we'll keep the configuration part here
+			
 			// Get the correct configuration based on staging mode
 			$staging_mode = get_option('merchi_staging_mode');
 			$merchi_domain = $staging_mode === 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
-			$merchi_secret = $staging_mode === 'yes' ? get_option('staging_merchi_api_secret') : get_option('merchi_api_secret');
 			$merchi_url = $staging_mode === 'yes' ? 'https://api.staging.merchi.co/' : 'https://api.merchi.co/';
 
 			// Debug logging
@@ -88,50 +66,13 @@ class ProductPage extends BaseController {
 			error_log('Domain ID: ' . $merchi_domain);
 			error_log('Product ID: ' . get_post_meta(get_the_ID(), 'product_id', true));
 
-			// Add Merchi configuration data
-			wp_localize_script('merchi_product_form', 'merchiConfig', array(
-				'domainId' => $merchi_domain,
-				'apiUrl' => $merchi_url,
-				'productId' => get_post_meta(get_the_ID(), 'product_id', true),
-				'stagingMode' => $staging_mode === 'yes',
-				'backendUri' => $merchi_url
-			));
-
 			// Verify configuration
-			if (empty($merchi_secret)) {
-				error_log('Warning: Merchi API Secret is empty');
-			}
 			if (empty($merchi_domain)) {
 				error_log('Warning: Merchi Domain ID is empty');
 			}
 			if (empty(get_post_meta(get_the_ID(), 'product_id', true))) {
 				error_log('Warning: Merchi Product ID is empty');
 			}
-
-			// Add SDK initialization script
-			$sdk_init_script = sprintf(
-				'<script>
-					document.addEventListener("DOMContentLoaded", function() {
-						// Only initialize if SDK is not already initialized
-						if (typeof merchi !== "undefined" && !merchi.isInitialized) {
-							const sdkConfig = {
-								backendUri: "%s",
-								hasSessionToken: false,
-								hasRequiredMethods: true
-							};
-							
-							// Initialize SDK
-							merchi.init(sdkConfig);
-						}
-					});
-				</script>',
-				esc_js($merchi_url)
-			);
-
-			// Add the SDK initialization script
-			add_action('wp_footer', function() use ($sdk_init_script) {
-				echo $sdk_init_script;
-			});
 		}
 	}
 
