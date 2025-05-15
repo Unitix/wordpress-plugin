@@ -14,6 +14,7 @@ class ProductPage extends BaseController {
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_grouped_attributes' ], 10 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_independent_attributes' ], 20 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_total_price' ], 30 );
+		add_action('woocommerce_after_add_to_cart_button', [ $this, 'display_quote_button' ], 10 );
 		add_action( 'wp', [ $this, 'remove_product_content' ] );
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_merchi_scripts' ] );
 		add_filter( 'woocommerce_quantity_input_args', [ $this, 'remove_quantity_field' ], 10, 2 );
@@ -60,17 +61,17 @@ class ProductPage extends BaseController {
 			);
 
 			wp_enqueue_script(
-				'merchi_product_form',
-				plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_product_form.js',
-				['jquery', 'merchi_sdk', 'merchi_checkout_init'],
+				'merchi_checkout_init',
+				plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_checkout_init.js',
+				['merchi_sdk'],
 				null,
 				true
 			);
 
 			wp_enqueue_script(
-				'merchi_checkout_init',
-				plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_checkout_init.js',
-				['merchi_sdk'],
+				'merchi_product_form',
+				plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_product_form.js',
+				['jquery', 'merchi_sdk', 'merchi_checkout_init'],
 				null,
 				true
 			);
@@ -114,14 +115,19 @@ class ProductPage extends BaseController {
 					document.addEventListener("DOMContentLoaded", function() {
 						// Only initialize if SDK is not already initialized
 						if (typeof merchi !== "undefined" && !merchi.isInitialized) {
-							const sdkConfig = {
-								backendUri: "%s",
-								hasSessionToken: false,
-								hasRequiredMethods: true
-							};
+							// const sdkConfig = {
+							// 	backendUri: "%s",
+							// 	hasSessionToken: false,
+							// 	hasRequiredMethods: true
+							// };
 							
 							// Initialize SDK
-							merchi.init(sdkConfig);
+							// merchi.init(sdkConfig);
+						}
+
+						// Expose initializeCheckout for the Get Quote button
+						if (typeof merchiCheckoutInit !== "undefined" && typeof merchiCheckoutInit.initializeCheckout === "function") {
+							window.initializeCheckout = merchiCheckoutInit.initializeCheckout;
 						}
 					});
 				</script>',
@@ -763,5 +769,63 @@ class ProductPage extends BaseController {
 		}
 		
 		return $button_html;
+	}
+
+	public function display_quote_button() {
+		global $product;
+		
+		// Only run on product pages
+		if (!is_product()) {
+			return;
+		}
+		
+		$product_id = get_the_ID();
+		$merchi_product_id = get_post_meta($product_id, 'product_id', true);
+		
+		if (!$merchi_product_id) {
+			return;
+		}
+		
+		// Get staging mode from options
+		$staging_mode = get_option('merchi_staging_mode');
+		$merchi_url = $staging_mode === 'yes' ? 'https://api.staging.merchi.co/' : 'https://api.merchi.co/';
+		$merchi_secret = $staging_mode === 'yes' ? get_option('staging_merchi_api_secret') : get_option('merchi_api_secret');
+		$merchi_domain = $staging_mode === 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
+		
+		// Get product details to check allowQuotation
+		$product_api_url = $merchi_url . 'v6/products/' . $merchi_product_id . '/?skip_rights=y';
+		$product_response = wp_remote_get($product_api_url, array(
+			'headers' => array(
+				'Content-Type' => 'application/json',
+				'Authorization' => 'ApiKey ' . $merchi_secret,
+				'X-Domain-Id' => $merchi_domain,
+				'Accept' => 'application/json'
+			),
+			'timeout' => 30,
+			'sslverify' => !$staging_mode
+		));
+		
+		if (is_wp_error($product_response)) {
+			return;
+		}
+		
+		$product_data = json_decode(wp_remote_retrieve_body($product_response), true);
+		
+		if (!isset($product_data['product']) || !isset($product_data['product']['allowQuotation'])) {
+			return;
+		}
+		
+		// Check if product allows quotation
+		if ($product_data['product']['allowQuotation']) {
+			// Add CSS styles for the Get Quote button
+			
+			echo '<button type="button" ' .
+				'class="button wp-element-button single_get_quote_button" ' .
+				'id="get-quote-button">' .
+				'Get quote' .
+				'</button>';
+			?>
+			<?php
+		}
 	}
 }

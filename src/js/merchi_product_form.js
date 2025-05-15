@@ -15,7 +15,6 @@ function initializeWhenReady() {
   }
 
   jQuery(document).ready(function($) {
-    // Get the Merchi product ID from the page
     const merchiProductId = merchiConfig.productId;
     let productJson = null;
     let defaultJobJson = null;
@@ -162,45 +161,107 @@ function initializeWhenReady() {
     function initializeFileUploadVariations($container) {
       $container.find('input[type="file"]').each(function() {
         const $input = jQuery(this);
-        // Update name attribute for all group fields
-        let name = $input.attr("name");
-        if (name) {
-          // Replace any group_fields[<number>] with the new group index
-          name = name.replace(/group_fields\[\d+\]/, `group_fields[${newGroupIndex}]`);
-          $input.attr("name", name);
+        const $wrapper = $input.closest('.custom-upload-wrapper');
+        let $previewArea = $wrapper.next('.multi-file-upload-preview');
+        
+        if ($previewArea.length === 0) {
+          $previewArea = jQuery('<div class="multi-file-upload-preview"></div>');
+          $wrapper.after($previewArea);
         }
-        // Handle quantity field
-        if ($input.hasClass('group-quantity')) {
-          $input
-            .attr('data-group-index', newGroupIndex)
-            .val(1); // Reset quantity to 1
-          const unitPrice = parseFloat($input.data('unit-price'));
-          $input.closest('.custom-field')
-            .find('label')
-            .text(`Group (${newGroupIndex}) quantity ($${unitPrice.toFixed(2)} unit price)`);
-        } else {
-          // Reset other inputs
-          if ($input.is(':checkbox, :radio')) {
-            $input.prop('checked', false);
-          } else {
-            $input.val('');
+
+        $input.off('change.file-input').on('change.file-input', function(e) {
+          var files = Array.from(this.files);
+          
+          // --- Maintain a DataTransfer object for this input ---
+          if (!$input[0]._dt) {
+            $input[0]._dt = new DataTransfer();
           }
-        }
+          var dt = $input[0]._dt;
+
+          // Add new files, avoiding duplicates by name+size
+          files.forEach(function(file) {
+            var exists = false;
+            for (var i = 0; i < dt.items.length; i++) {
+              var f = dt.items[i].getAsFile();
+              if (f.name === file.name && f.size === file.size) {
+                exists = true;
+                break;
+              }
+            }
+            if (!exists) dt.items.add(file);
+          });
+          // Update input files
+          $input[0].files = dt.files;
+
+          // --- Render preview ---
+          $previewArea.empty();
+          var dtFiles = Array.from(dt.files);
+          if (dtFiles.length > 0) {
+            dtFiles.forEach(function(file, idx) {
+              var $fileBox = jQuery('<div class="multi-file-box" style="display: flex; align-items: center; margin-bottom: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 8px;"></div>');
+              var $removeBtn = jQuery('<span class="file-upload-remove" style="margin-left: 10px; cursor: pointer; font-size: 20px; color: #d00;">&times;</span>');
+              $removeBtn.on('click', function(e) {
+                e.stopPropagation();
+                var newDT = new DataTransfer();
+                dtFiles.forEach(function(f, i) {
+                  if (i !== idx) newDT.items.add(f);
+                });
+                $input[0]._dt = newDT;
+                $input[0].files = newDT.files;
+                $input.trigger('change');
+              });
+              if (file.type.startsWith('image/')) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                  var $img = jQuery('<img />', {
+                    src: e.target.result,
+                    css: {
+                      'max-width': '60px',
+                      'max-height': '60px',
+                      'object-fit': 'contain',
+                      'margin-right': '10px',
+                      'border-radius': '4px',
+                      'box-shadow': '0 1px 4px rgba(0,0,0,0.08)'
+                    }
+                  });
+                  $fileBox.prepend($img);
+                };
+                reader.readAsDataURL(file);
+              } else {
+                var $fileIcon = jQuery('<span style="font-size: 32px; margin-right: 10px;">📄</span>');
+                $fileBox.prepend($fileIcon);
+              }
+              var $fileName = jQuery('<span style="font-weight: bold; font-size:0.5em; color: #333;">' + file.name + '</span>');
+              var $downloadBtn = jQuery('<a style="margin-left: 10px; font-size: 18px; text-decoration: none;" href="#" download>⬇️</a>');
+              $downloadBtn.on('click', function(ev) {
+                ev.preventDefault();
+                var url = URL.createObjectURL(file);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = file.name;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(function() { URL.revokeObjectURL(url); document.body.removeChild(a); }, 100);
+              });
+              $fileBox.append($fileName).append($downloadBtn).append($removeBtn);
+              $previewArea.append($fileBox);
+            });
+            // Show file count
+            var $count = jQuery('<div style="color: #666; font-size: 14px; font-weight:bold; margin-top: 4px;">' + dtFiles.length + ' file' + (dtFiles.length > 1 ? 's' : '') + ' selected <span style="cursor:pointer;color:#0073aa;" class="toggle-file-list">&#9650;</span></div>');
+            $previewArea.append($count);
+            $count.find('.toggle-file-list').on('click', function() {
+              $previewArea.toggleClass('collapsed');
+              $previewArea.find('.multi-file-box').toggle();
+              jQuery(this).html($previewArea.hasClass('collapsed') ? '&#9660;' : '&#9650;');
+            });
+          } else {
+            $previewArea.empty();
+          }
+          // Always show icon and instruction
+          $wrapper.find('.upload-icon').show();
+          $wrapper.find('.upload-instruction, .upload-types').show();
+        });
       });
-
-      // Show delete button
-      $newGroup.find(".delete-group-button").show();
-      
-      // Add the new group
-      jQuery("#grouped-fields-container").append($newGroup);
-      
-      // Show all delete buttons if more than one group
-      if (jQuery(".group-field-set").length > 1) {
-        jQuery(".delete-group-button").show();
-      }
-
-      // Trigger immediate price calculation
-      calculateAndUpdatePrice();
     }
 
     // Initialize event handlers
@@ -391,6 +452,12 @@ function initializeWhenReady() {
         jQuery('.price-amount').text(renderPrice(0, null));
       }
     }
+
+    // Get the Merchi product ID from the page
+    jQuery('#get-quote-button').on('click', async function() {
+      const formData = await gatherFormData();
+      window.toggleMerchiCheckout(formData);
+    });
 
     // When deleteing a group we update each group index and name
     function updateGroupNumbers() {
@@ -661,19 +728,21 @@ function initializeWhenReady() {
       };
 
       // Process group variations
-      jQuery('.group-field-set').each(function(groupIndex) {
-        const $group = jQuery(this);
-        
-        // Deep clone the variations array for each group
-        formData.variationsGroups.push({
-          quantity: parseInt($group.find('.group-quantity').val()) || 1,
-          variations: JSON.parse(JSON.stringify(defaultJobJson.variationsGroups[0].variations)),
-        });
+      if (groupVariationFields.length > 0) {
+        jQuery('.group-field-set').each(function(groupIndex) {
+          const $group = jQuery(this);
+          
+          // Deep clone the variations array for each group
+          formData.variationsGroups.push({
+            quantity: parseInt($group.find('.group-quantity').val()) || 1,
+            variations: [...defaultJobJson.variationsGroups[0].variations],
+          });
 
           // Process variations within this group
           processVariations($group, formData.variationsGroups[groupIndex].variations);
         });
       } else {
+        // if thee are no groups then we just use the quantity from the quantity input
         formData.quantity = parseInt(jQuery('input.qty').val()) || 1;
       }
 

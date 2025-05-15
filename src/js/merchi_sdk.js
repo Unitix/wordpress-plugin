@@ -10,6 +10,9 @@ const Merchi = merchi(backendUri, websocketServer);
 const StagingMerchi = merchi(stagingBackendUri, stagingWebsocketServer);
 
 export const MERCHI_SDK = () => {
-  const stagingMode = window.merchiConfig.stagingMode;
+  // Add a fallback check for when merchiConfig isn't defined
+  const stagingMode =
+    window.merchiConfig?.stagingMode || 
+    (window.scriptData && window.scriptData.merchi_mode === 'staging');
   return stagingMode ? StagingMerchi : Merchi;
 }
