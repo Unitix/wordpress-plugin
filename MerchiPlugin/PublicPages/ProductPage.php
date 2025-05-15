@@ -20,34 +20,6 @@ class ProductPage extends BaseController {
 		add_filter( 'woocommerce_quantity_input_args', [ $this, 'remove_quantity_field' ], 10, 2 );
 		add_filter( 'woocommerce_loop_add_to_cart_link', [ $this, 'add_loading_spinner_to_button' ], 10, 2 );
 		add_filter( 'woocommerce_single_add_to_cart_button', [ $this, 'add_loading_spinner_to_button' ], 10, 2 );
-		
-		// Register REST API endpoint
-		// add_action('rest_api_init', function () {
-		// 	register_rest_route('merchi/v1', '/price-estimate', array(
-		// 		'methods' => 'POST',
-		// 		'callback' => [ $this, 'proxy_price_estimate' ],
-		// 		'permission_callback' => '__return_true', // Make endpoint public
-		// 		'args' => array(
-		// 			'product_id' => array(
-		// 				'required' => true,
-		// 				'type' => 'string',
-		// 				'sanitize_callback' => 'sanitize_text_field'
-		// 			)
-		// 		)
-		// 	));
-		// });
-
-		// // Add CORS headers for REST API
-		// add_action('rest_api_init', function() {
-		// 	remove_filter('rest_pre_serve_request', 'rest_send_cors_headers');
-		// 	add_filter('rest_pre_serve_request', function($value) {
-		// 		header('Access-Control-Allow-Origin: *');
-		// 		header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
-		// 		header('Access-Control-Allow-Credentials: true');
-		// 		header('Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept');
-		// 		return $value;
-		// 	});
-		// });
 	}
 
 	public function enqueue_merchi_scripts() {
@@ -79,7 +51,6 @@ class ProductPage extends BaseController {
 			// Get the correct configuration based on staging mode
 			$staging_mode = get_option('merchi_staging_mode');
 			$merchi_domain = $staging_mode === 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
-			$merchi_secret = $staging_mode === 'yes' ? get_option('staging_merchi_api_secret') : get_option('merchi_api_secret');
 			$merchi_url = $staging_mode === 'yes' ? 'https://api.staging.merchi.co/' : 'https://api.merchi.co/';
 
 			// Debug logging
@@ -99,9 +70,6 @@ class ProductPage extends BaseController {
 			));
 
 			// Verify configuration
-			if (empty($merchi_secret)) {
-				error_log('Warning: Merchi API Secret is empty');
-			}
 			if (empty($merchi_domain)) {
 				error_log('Warning: Merchi Domain ID is empty');
 			}
@@ -550,179 +518,6 @@ class ProductPage extends BaseController {
 		return $args;
 	}
 
-	public function proxy_price_estimate($request) {
-		// Get the request body
-		$body = $request->get_json_params();
-		
-		// Get Merchi configuration
-		$staging_mode = get_option('merchi_staging_mode');
-		$merchi_url = $staging_mode === 'yes' ? 'https://api.staging.merchi.co/' : 'https://api.merchi.co/';
-		$merchi_secret = $staging_mode === 'yes' ? get_option('staging_merchi_api_secret') : get_option('merchi_api_secret');
-		$merchi_domain = $staging_mode === 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
-
-		// Get product ID from request body or query params
-		$product_id = $body['product_id'] ?? $request->get_param('product_id');
-		if (!$product_id) {
-			return new WP_Error('missing_product_id', 'Product ID is required', array('status' => 400));
-		}
-
-		// Add SDK logging script
-		$sdk_log_script = sprintf(
-			'<script>
-				// Log SDK initialization
-				console.log("Setting backendUri to:", "%s");
-				
-				const sdkConfig = {
-					backendUri: "%s",
-					hasSessionToken: false,
-					hasRequiredMethods: true
-				};
-				
-				console.log("Merchi SDK initialized with config:", sdkConfig);
-				
-				// Log API request details
-				console.group("Merchi API Request");
-				console.log("Product ID:", "%s");
-				console.log("Domain ID:", "%s");
-				console.log("Staging Mode:", %s);
-			</script>',
-			esc_js($merchi_url),
-			esc_js($merchi_url),
-			esc_js($product_id),
-			esc_js($merchi_domain),
-			$staging_mode === 'yes' ? 'true' : 'false'
-		);
-
-		// First, get the product details using the SDK approach
-		$product_api_url = $merchi_url . 'v6/products/' . $product_id . '/?skip_rights=y';
-		$product_response = wp_remote_get($product_api_url, array(
-			'headers' => array(
-				'Content-Type' => 'application/json',
-				'Authorization' => 'ApiKey ' . $merchi_secret,
-				'X-Domain-Id' => $merchi_domain,
-				'Accept' => 'application/json'
-			),
-			'timeout' => 30,
-			'sslverify' => !$staging_mode
-		));
-
-		if (is_wp_error($product_response)) {
-			return new WP_Error('product_fetch_error', $product_response->get_error_message(), array('status' => 500));
-		}
-
-		$product_data = json_decode(wp_remote_retrieve_body($product_response), true);
-		if (!isset($product_data['product'])) {
-			return new WP_Error('no_product_data', 'No product data found in response', array('status' => 500));
-		}
-
-		// Prepare the request body using the SDK's defaultJob structure
-		$request_body = array(
-			'job' => array(
-				'domain' => array('id' => $merchi_domain),
-				'product' => array(
-					'id' => $product_id,
-					'groupVariationFields' => $product_data['product']['groupVariationFields'] ?? [],
-					'independentVariationFields' => $product_data['product']['independentVariationFields'] ?? []
-				),
-				'variations' => array(),
-				'variationsGroups' => array(),
-				'jobType' => 1,
-				'currency' => 'AUD',
-				'costPerUnit' => $product_data['product']['unitPrice'] ?? 0,
-				'limitedStock' => true,
-				'inventoriesStatus' => 3,
-				'inventoryCount' => 0,
-				'inventorySufficient' => false,
-				'items' => array(),
-				'needsGroupBuy' => false,
-				'needsInventory' => false,
-				'needsSupplyChainRequest' => false
-			)
-		);
-
-		// Merge with any existing body data
-		if (isset($body['job'])) {
-			$request_body['job'] = array_merge($request_body['job'], $body['job']);
-		}
-
-		// Define embed parameters matching the SDK structure
-		$embed = array(
-			'component' => new stdClass(),
-			'defaultJob' => new stdClass(),
-			'domain' => array(
-				'activeTheme' => array('mainCss' => new stdClass()),
-				'logo' => new stdClass()
-			),
-			'draftTemplates' => array('file' => new stdClass()),
-			'groupBuyStatus' => new stdClass(),
-			'groupVariationFields' => array(
-				'options' => array(
-					'linkedFile' => new stdClass()
-				)
-			),
-			'images' => new stdClass(),
-			'independentVariationFields' => array(
-				'options' => array(
-					'linkedFile' => new stdClass()
-				)
-			),
-			'publicFiles' => new stdClass(),
-			'variations' => array(),
-			'variationsGroups' => array()
-		);
-
-		// Encode embed parameters
-		$embed_json = json_encode($embed);
-		$embed_encoded = urlencode($embed_json);
-
-		// Construct Merchi API URL with embed parameters
-		$merchi_api_url = $merchi_url . 'v6/specialised-order-estimate/?skip_rights=y&product_id=' . $product_id . '&embed=' . $embed_encoded;
-
-		// Make request to Merchi API
-		$response = wp_remote_post($merchi_api_url, array(
-			'headers' => array(
-				'Content-Type' => 'application/json',
-				'Authorization' => 'ApiKey ' . $merchi_secret,
-				'X-Domain-Id' => $merchi_domain,
-				'Accept' => 'application/json'
-			),
-			'body' => json_encode($request_body),
-			'timeout' => 30,
-			'sslverify' => !$staging_mode
-		));
-
-		// Check for wp_remote_post errors
-		if (is_wp_error($response)) {
-			return new WP_Error('merchi_api_error', $response->get_error_message(), array('status' => 500));
-		}
-
-		// Get response data
-		$response_code = wp_remote_retrieve_response_code($response);
-		$response_body = wp_remote_retrieve_body($response);
-		
-		// Parse response body
-		$data = json_decode($response_body, true);
-
-		// Add SDK logging script to response
-		$data['_sdk_log_script'] = $sdk_log_script;
-
-		// Handle non-200 responses
-		if ($response_code !== 200) {
-			return new WP_Error(
-				'merchi_api_error',
-				'Merchi API returned error: ' . $response_code,
-				array('status' => $response_code)
-			);
-		}
-
-		// Parse and return response
-		if (json_last_error() !== JSON_ERROR_NONE) {
-			return new WP_Error('json_decode_error', 'Failed to decode API response', array('status' => 500));
-		}
-
-		return new WP_REST_Response($data, 200);
-	}
-
 	/**
 	 * Add loading spinner to add to cart button
 	 */
@@ -751,51 +546,19 @@ class ProductPage extends BaseController {
 		
 		$product_id = get_the_ID();
 		$merchi_product_id = get_post_meta($product_id, 'product_id', true);
+		$allow_quotation = get_post_meta($product_id, 'allowQuotation', true);
 		
-		if (!$merchi_product_id) {
+		if (!$merchi_product_id || !$allow_quotation) {
 			return;
 		}
 		
-		// Get staging mode from options
-		$staging_mode = get_option('merchi_staging_mode');
-		$merchi_url = $staging_mode === 'yes' ? 'https://api.staging.merchi.co/' : 'https://api.merchi.co/';
-		$merchi_secret = $staging_mode === 'yes' ? get_option('staging_merchi_api_secret') : get_option('merchi_api_secret');
-		$merchi_domain = $staging_mode === 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
-		
-		// Get product details to check allowQuotation
-		$product_api_url = $merchi_url . 'v6/products/' . $merchi_product_id . '/?skip_rights=y';
-		$product_response = wp_remote_get($product_api_url, array(
-			'headers' => array(
-				'Content-Type' => 'application/json',
-				'Authorization' => 'ApiKey ' . $merchi_secret,
-				'X-Domain-Id' => $merchi_domain,
-				'Accept' => 'application/json'
-			),
-			'timeout' => 30,
-			'sslverify' => !$staging_mode
-		));
-		
-		if (is_wp_error($product_response)) {
-			return;
-		}
-		
-		$product_data = json_decode(wp_remote_retrieve_body($product_response), true);
-		
-		if (!isset($product_data['product']) || !isset($product_data['product']['allowQuotation'])) {
-			return;
-		}
-		
-		// Check if product allows quotation
-		if ($product_data['product']['allowQuotation']) {
-			// Add CSS styles for the Get Quote button
-			
-			echo '<button type="button" ' .
-				'class="button wp-element-button single_get_quote_button" ' .
-				'id="get-quote-button">' .
-				'Get quote' .
-				'</button>';
-			?>
-			<?php
-		}
+		// Add the Get Quote button
+		echo '<button type="button" ' .
+			'class="button wp-element-button single_get_quote_button" ' .
+			'id="get-quote-button">' .
+			'Get quote' .
+			'</button>';
+		?>
+		<?php
 	}
 }

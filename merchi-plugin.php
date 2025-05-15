@@ -1795,6 +1795,12 @@ function fetch_merchi_product_callback() {
 		
 	$response = wp_remote_get($api_url);
 	$data = json_decode(wp_remote_retrieve_body($response), true);
+	
+	// Save allowQuotation to product meta
+	if (isset($data['product']['allowQuotation'])) {
+		$allow_quotation = $data['product']['allowQuotation'];
+		update_post_meta($woo_product_id, 'allowQuotation', $allow_quotation);
+	}
 
 	create_variations_for_product($woo_product_id, $data);
 	
@@ -2196,6 +2202,7 @@ function edit_taxonomy_image_field($term) {
 	</tr>
 	<?php
 }
+
 add_action('admin_init', function () {
 	$taxonomies = get_taxonomies([], 'names');
 	foreach ($taxonomies as $taxonomy) {
