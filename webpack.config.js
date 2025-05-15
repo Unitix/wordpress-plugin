@@ -6,7 +6,9 @@ module.exports = {
     'merchi_product_form': './src/js/merchi_product_form.js',
     'create_merchi_products': './src/js/create_merchi_products.js',
     'export_products': './src/js/export_products.js',
-    'merchi_checkout_init': './src/js/merchi_checkout_init.js'
+    'merchi_checkout_init': './src/js/merchi_checkout_init.js',
+    'merchi_public_custom': './src/js/merchi_public_custom.js',
+    'woocommerce_cart_checkout': './src/js/woocommerce_cart_checkout.js'
   },
   output: {
     filename: '[name].js',

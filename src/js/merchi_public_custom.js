@@ -1,6 +1,8 @@
+import { MERCHI_SDK } from './merchi_sdk';
+
 const stripe = Stripe(scriptData.merchi_stripe_api_key);
 let elements;
-const MERCHI = MERCHI_INIT.MERCHI_SDK;
+const MERCHI = MERCHI_SDK();
 const site_url = scriptData.site_url
 
 const cartShipmentQuote = {

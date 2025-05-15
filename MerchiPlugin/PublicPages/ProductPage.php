@@ -538,20 +538,20 @@ class ProductPage extends BaseController {
 
 	public function display_quote_button() {
 		global $product;
-		
+
 		// Only run on product pages
 		if (!is_product()) {
 			return;
 		}
-		
+
 		$product_id = get_the_ID();
 		$merchi_product_id = get_post_meta($product_id, 'product_id', true);
 		$allow_quotation = get_post_meta($product_id, 'allowQuotation', true);
-		
+
 		if (!$merchi_product_id || !$allow_quotation) {
 			return;
 		}
-		
+
 		// Add the Get Quote button
 		echo '<button type="button" ' .
 			'class="button wp-element-button single_get_quote_button" ' .
