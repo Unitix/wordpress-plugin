@@ -28,7 +28,6 @@ const MerchiCheckout = React.forwardRef((props, ref) => {
     ? stagingBackendUri
     : backendUri;
 
-  console.log(apiUrl, 'what is the api url here?>');
   return (
     <CheckoutModal
       apiUrl={`${apiUrl}v6/`}
