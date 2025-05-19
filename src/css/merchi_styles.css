@@ -1162,3 +1162,66 @@ ul.cst-breadcrumb > li.cst-breadcrumb-li i.cst-delimiter {
   margin: 0;
   padding-right: 30px;
 }
+
+.merchi-modal-content .tab-content {
+  border: none;
+  box-shadow: none;
+}
+
+.merchi-modal-content .tab-content > .tab-pane {
+  display: none;
+}
+
+.merchi-modal-content .tab-content > .active {
+  display: block;
+}
+
+.merchi-checkout-footer-actions-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.merchi-checkout-subtitle {
+  font-size: 22px;
+  font-weight: 1000;
+  margin-bottom: 10px;
+}
+
+.modal-merchi-checkout-shipment-option {
+  margin: 2rem 0;
+}
+
+.modal-merchi-checkout-shipment-option .list-group-item {
+  font-family: inherit;
+  font-weight: 400;
+  letter-spacing: normal;
+  padding: .5em;
+  display: block;
+  background-color: var(--wc-form-color-background, #fff);
+  border: var(--wc-form-border-width) solid var(--wc-form-border-color);
+  border-radius: var(--wc-form-border-radius);
+  color: var(--wc-form-color-text, #000);
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  line-height: normal;
+  margin-bottom: 1rem;
+}
+
+.modal-merchi-checkout-shipment-option .list-group-item:last-child {
+  margin-bottom: 0;
+}
+
+.modal-merchi-checkout-customer-card {
+  margin-bottom: 2rem;
+}
+.modal-merchi-checkout-customer-card button {
+  display: block;
+  float: none !important;
+}
+.merchi-checkout-confirm-info-panel {
+  display: flex;
+  margin-bottom: 2rem;
+}

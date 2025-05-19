@@ -7,7 +7,7 @@
     "dev": "webpack --mode development --watch"
   },
   "dependencies": {
-    "merchi_checkout": "latest",
+    "merchi_checkout": "1.0.19",
     "merchi_sdk_js": "latest"
   },
   "devDependencies": {

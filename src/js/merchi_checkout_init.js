@@ -28,9 +28,10 @@ const MerchiCheckout = React.forwardRef((props, ref) => {
     ? stagingBackendUri
     : backendUri;
 
+  console.log(apiUrl, 'what is the api url here?>');
   return (
     <CheckoutModal
-      apiUrl={apiUrl}
+      apiUrl={`${apiUrl}v6/`}
       isOpen={isOpen}
       setIsOpen={setIsOpen}
       product={product}
@@ -51,10 +52,6 @@ export function initializeCheckout(product, job) {
     container.id = 'merchi-checkout-container';
     document.body.appendChild(container);
   }
-
-  const apiUrl = window.merchiConfig.stagingMode
-    ? stagingBackendUri
-    : backendUri;
 
   // Create a ref to access the component's methods
   const checkoutRef = React.createRef();

@@ -25,9 +25,21 @@ const CheckoutModal = ({ apiUrl, isOpen, setIsOpen, job, setJob, product }) => {
           <h2 className="merchi-modal-title">Request a Quote</h2>
         </div>
         <MerchiCheckout
-          apiUrl={apiUrl}
+          classNameMerchiCheckoutButtonPrimary='button wp-element-button'
+          classNameMerchiCheckoutButtonPrimaryBlock='button wp-element-button'
+          classNameMerchiCheckoutButtonSecondary='button alt wp-element-button'
+          classNameMerchiCheckoutButtonSecondaryBlock='button alt wp-element-button'
+          classNameMerchiCheckoutFooterActionsContainer='merchi-checkout-footer-actions-container'
+          classNameMerchiCheckoutConfirmInfoPanel='merchi-checkout-confirm-info-panel'
+          classNameMerchiCheckoutFormGroup='form-row'
+          classNameMerchiCheckoutFormInput='input-text form-control'
+          classNameMerchiCheckoutFormSelect='select form-control'
+          discountClassNameButton='button wp-element-button'
+          discountClassNameInput='input-text form-control'
+          discountClassNameButtonItemRemove='button wp-element-button'
+          urlApi={apiUrl}
           isOpen={isOpen}
-          onClose={onClose}
+          toggleMerchiCheckout={onClose}
           job={job}
           product={product}
           setJob={setJob}
