@@ -1098,3 +1098,130 @@ ul.cst-breadcrumb > li.cst-breadcrumb-li i.cst-delimiter {
   display: table;
   clear: both;
 }
+
+.single_get_quote_button {
+  float: none !important;
+}
+
+/* Merchi Modal Styles */
+.merchi-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+.merchi-modal-content {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  max-width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  width: 800px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+.merchi-modal-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  z-index: 10;
+  color: #333;
+  line-height: 1;
+  padding: 0;
+  margin: 0;
+  height: 30px;
+  width: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+.merchi-modal-close:hover {
+  color: #000;
+}
+.merchi-modal-header {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eee;
+}
+.merchi-modal-title {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+  padding-right: 30px;
+}
+
+.merchi-modal-content .tab-content {
+  border: none;
+  box-shadow: none;
+}
+
+.merchi-modal-content .tab-content > .tab-pane {
+  display: none;
+}
+
+.merchi-modal-content .tab-content > .active {
+  display: block;
+}
+
+.merchi-checkout-footer-actions-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.merchi-checkout-subtitle {
+  font-size: 22px;
+  font-weight: 1000;
+  margin-bottom: 10px;
+}
+
+.modal-merchi-checkout-shipment-option {
+  margin: 2rem 0;
+}
+
+.modal-merchi-checkout-shipment-option .list-group-item {
+  font-family: inherit;
+  font-weight: 400;
+  letter-spacing: normal;
+  padding: .5em;
+  display: block;
+  background-color: var(--wc-form-color-background, #fff);
+  border: var(--wc-form-border-width) solid var(--wc-form-border-color);
+  border-radius: var(--wc-form-border-radius);
+  color: var(--wc-form-color-text, #000);
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  line-height: normal;
+  margin-bottom: 1rem;
+}
+
+.modal-merchi-checkout-shipment-option .list-group-item:last-child {
+  margin-bottom: 0;
+}
+
+.modal-merchi-checkout-customer-card {
+  margin-bottom: 2rem;
+}
+.modal-merchi-checkout-customer-card button {
+  display: block;
+  float: none !important;
+}
+.merchi-checkout-confirm-info-panel {
+  display: flex;
+  margin-bottom: 2rem;
+}

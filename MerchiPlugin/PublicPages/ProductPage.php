@@ -14,55 +14,43 @@ class ProductPage extends BaseController {
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_grouped_attributes' ], 10 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_independent_attributes' ], 20 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_total_price' ], 30 );
+		add_action('woocommerce_after_add_to_cart_button', [ $this, 'display_quote_button' ], 10 );
 		add_action( 'wp', [ $this, 'remove_product_content' ] );
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_merchi_scripts' ] );
 		add_filter( 'woocommerce_quantity_input_args', [ $this, 'remove_quantity_field' ], 10, 2 );
 		add_filter( 'woocommerce_loop_add_to_cart_link', [ $this, 'add_loading_spinner_to_button' ], 10, 2 );
 		add_filter( 'woocommerce_single_add_to_cart_button', [ $this, 'add_loading_spinner_to_button' ], 10, 2 );
-		
-		// Register REST API endpoint
-		add_action('rest_api_init', function () {
-			register_rest_route('merchi/v1', '/price-estimate', array(
-				'methods' => 'POST',
-				'callback' => [ $this, 'proxy_price_estimate' ],
-				'permission_callback' => '__return_true', // Make endpoint public
-				'args' => array(
-					'product_id' => array(
-						'required' => true,
-						'type' => 'string',
-						'sanitize_callback' => 'sanitize_text_field'
-					)
-				)
-			));
-		});
-
-		// Add CORS headers for REST API
-		add_action('rest_api_init', function() {
-			remove_filter('rest_pre_serve_request', 'rest_send_cors_headers');
-			add_filter('rest_pre_serve_request', function($value) {
-				header('Access-Control-Allow-Origin: *');
-				header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
-				header('Access-Control-Allow-Credentials: true');
-				header('Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept');
-				return $value;
-			});
-		});
 	}
 
 	public function enqueue_merchi_scripts() {
 		if (is_product()) {
 			wp_enqueue_script(
-				'merchi-product-form',
-				plugin_dir_url(dirname(dirname(__FILE__))) . 'assets/merchi-product-form.js',
-				array('jquery'),
+				'merchi_sdk',
+				plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_sdk.js',
+				array(),
 				'1.0.0',
+				true
+			);
+
+			wp_enqueue_script(
+				'merchi_checkout_init',
+				plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_checkout_init.js',
+				['merchi_sdk'],
+				null,
+				true
+			);
+
+			wp_enqueue_script(
+				'merchi_product_form',
+				plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_product_form.js',
+				['jquery', 'merchi_sdk', 'merchi_checkout_init'],
+				null,
 				true
 			);
 
 			// Get the correct configuration based on staging mode
 			$staging_mode = get_option('merchi_staging_mode');
 			$merchi_domain = $staging_mode === 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
-			$merchi_secret = $staging_mode === 'yes' ? get_option('staging_merchi_api_secret') : get_option('merchi_api_secret');
 			$merchi_url = $staging_mode === 'yes' ? 'https://api.staging.merchi.co/' : 'https://api.merchi.co/';
 
 			// Debug logging
@@ -73,49 +61,21 @@ class ProductPage extends BaseController {
 			error_log('Product ID: ' . get_post_meta(get_the_ID(), 'product_id', true));
 
 			// Add Merchi configuration data
-			wp_localize_script('merchi-product-form', 'merchiConfig', array(
+			wp_localize_script('merchi_product_form', 'merchiConfig', array(
 				'domainId' => $merchi_domain,
 				'apiUrl' => $merchi_url,
 				'productId' => get_post_meta(get_the_ID(), 'product_id', true),
 				'stagingMode' => $staging_mode === 'yes',
-				'apiKey' => $merchi_secret
+				'backendUri' => $merchi_url
 			));
 
 			// Verify configuration
-			if (empty($merchi_secret)) {
-				error_log('Warning: Merchi API Secret is empty');
-			}
 			if (empty($merchi_domain)) {
 				error_log('Warning: Merchi Domain ID is empty');
 			}
 			if (empty(get_post_meta(get_the_ID(), 'product_id', true))) {
 				error_log('Warning: Merchi Product ID is empty');
 			}
-
-			// Add SDK initialization script
-			$sdk_init_script = sprintf(
-				'<script>
-					document.addEventListener("DOMContentLoaded", function() {
-						// Only initialize if SDK is not already initialized
-						if (typeof merchi !== "undefined" && !merchi.isInitialized) {
-							const sdkConfig = {
-								backendUri: "%s",
-								hasSessionToken: false,
-								hasRequiredMethods: true
-							};
-							
-							// Initialize SDK
-							merchi.init(sdkConfig);
-						}
-					});
-				</script>',
-				esc_js($merchi_url)
-			);
-
-			// Add the SDK initialization script
-			add_action('wp_footer', function() use ($sdk_init_script) {
-				echo $sdk_init_script;
-			});
 		}
 	}
 
@@ -132,7 +92,7 @@ class ProductPage extends BaseController {
         return ($a['position'] ?? 0) <=> ($b['position'] ?? 0);
     });
 
-    echo '<div class="custom-variation-options merchi-product-form">';
+    echo '<div class="custom-variation-options merchi_product_form">';
 
     foreach ($fields as $field) {
         if ($field['type'] === 'attribute') {
@@ -143,6 +103,9 @@ class ProductPage extends BaseController {
     }
 
     echo '</div>';
+
+    // Add the checkout container
+    echo '<div id="merchi-checkout-container"></div>';
 	}
 
 	public function custom_display_grouped_attributes() {
@@ -159,7 +122,7 @@ class ProductPage extends BaseController {
 			return ($a['position'] ?? 0) <=> ($b['position'] ?? 0);
 		});
 
-		echo '<div id="grouped-fields-container" class="merchi-product-form">';
+		echo '<div id="grouped-fields-container" class="merchi_product_form">';
 		echo '<h3>Grouped Options</h3>';
 
 		echo '<div class="group-field-set" data-group-index="1">';
@@ -168,7 +131,7 @@ class ProductPage extends BaseController {
 		// Add group quantity field inside the group container
 		echo '<div class="custom-field">';
 		echo '<label>Group (1) quantity ($' . number_format((float)$unit_price, 2) . ' unit price)</label>';
-		echo '<input type="number" class="group-quantity" name="group_fields[1][quantity]" value="1" min="1" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="1">';
+		echo '<input type="number" class="qty group-quantity" name="group_fields[1][quantity]" value="1" min="1" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="1">';
 		echo '</div>';
 
 		foreach ($group_fields_template as $field) {
@@ -304,7 +267,7 @@ class ProductPage extends BaseController {
 			if ($field_type === 2) {
 					$html .= "<label for='{$slug}'>{$label}</label>";
 					if ($is_multiple) {
-							$html .= '<select multiple name="' . $name_prefix . '[' . $slug . '][]"' . $common_data_attrs . ' data-calculate="' . ($has_cost ? 'true' : 'false') . '">';
+							$html .= '<select multiple name="' . $name_prefix . '[' . $slug . '][]"' . $common_data_attrs . ' data-calculate="' . ($has_cost ? 'true' : 'false') . '" class="select">';
 							foreach ($terms as $term) {
 									$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
 									$variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
@@ -318,7 +281,7 @@ class ProductPage extends BaseController {
 							}
 							$html .= '</select>';
 					} else {
-							$html .= '<select name="' . $name_prefix . '[' . $slug . ']"' . $common_data_attrs . ' data-calculate="' . ($has_cost ? 'true' : 'false') . '">';
+							$html .= '<select name="' . $name_prefix . '[' . $slug . ']"' . $common_data_attrs . ' data-calculate="' . ($has_cost ? 'true' : 'false') . '" class="select">';
 							foreach ($terms as $index => $term) {
 									$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
 									$variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
@@ -346,7 +309,7 @@ class ProductPage extends BaseController {
 							$variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
 							$html .= '<div class="checkbox-option">';
 							$html .= '<label class="checkbox-label">';
-							$html .= '<input type="checkbox" name="' . $name_prefix . '[' . $slug . '][]" value="' .esc_attr($variation_option_id) . '"' . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '"/>';
+							$html .= '<input type="checkbox" name="' . $name_prefix . '[' . $slug . '][]" value="' .esc_attr($variation_option_id) . '"' . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '" class="input-checkbox"/>';
 							$html .= '<span class="option-label">' . esc_html($term->name) 
 									. $this->cost_label_content($variation_unit_cost, $variation_cost)
 									. '</span>';
@@ -368,7 +331,7 @@ class ProductPage extends BaseController {
 							$is_checked = $index === 0 ? 'checked' : '';
 							$html .= '<div class="radio-option">';
 							$html .= '<label class="radio-label">';
-							$html .= '<input type="radio" name="' . $name_prefix . '[' . $slug . ']" value="' . esc_attr($variation_option_id) . '" ' . $is_checked . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '" />';
+							$html .= '<input type="radio" name="' . $name_prefix . '[' . $slug . ']" value="' . esc_attr($variation_option_id) . '" ' . $is_checked . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '" class="input-radio" />';
 							$html .= '<span class="option-label">' . esc_html($term->name) 
 									. $this->cost_label_content($variation_unit_cost, $variation_cost)
 									. '</span>';
@@ -502,13 +465,13 @@ class ProductPage extends BaseController {
 			$html .= "</select>";
 		} else {
 			switch ($fieldType) {
-				case 1: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' />"; break;
-				case 3: $html .= "<label class='custom-upload-wrapper'><div class='upload-icon'>📎</div><div class='upload-instruction'>Drop file here or click to browse</div><div class='upload-types'>.jpeg, .jpg, .gif, .png, .pdf</div><input type='file' name='{$name_prefix}[{$slug}][]' multiple {$required} accept='.jpeg,.jpg,.gif,.png,.pdf' data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "'/></label>"; break;
-				case 4: $html .= "<textarea name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "'></textarea>"; break;
-				case 5: $html .= "<input type='number' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' />"; break;
-				case 10: $html .= "<input type='color' name='{$name_prefix}[{$slug}]' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' />"; break;
+				case 1: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-text'/>"; break;
+				case 3: $html .= "<label class='custom-upload-wrapper'><div class='upload-icon'>📎</div><div class='upload-instruction'>Drop file here or click to browse</div><div class='upload-types'>.jpeg, .jpg, .gif, .png, .pdf</div><input type='file' name='{$name_prefix}[{$slug}][]' multiple {$required} accept='.jpeg,.jpg,.gif,.png,.pdf' data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-file'/></label>"; break;
+				case 4: $html .= "<textarea name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-textarea'></textarea>"; break;
+				case 5: $html .= "<input type='number' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-number'/>"; break;
+				case 10: $html .= "<input type='color' name='{$name_prefix}[{$slug}]' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-color'/>"; break;
 				case 8: $html .= "<p class='field-instructions'>{$instructions}</p>"; break;
-				default: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' />"; break;
+				default: $html .= "<input type='text' name='{$name_prefix}[{$slug}]' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-text'/>"; break;
 			}
 		}
 
@@ -555,179 +518,6 @@ class ProductPage extends BaseController {
 		return $args;
 	}
 
-	public function proxy_price_estimate($request) {
-		// Get the request body
-		$body = $request->get_json_params();
-		
-		// Get Merchi configuration
-		$staging_mode = get_option('merchi_staging_mode');
-		$merchi_url = $staging_mode === 'yes' ? 'https://api.staging.merchi.co/' : 'https://api.merchi.co/';
-		$merchi_secret = $staging_mode === 'yes' ? get_option('staging_merchi_api_secret') : get_option('merchi_api_secret');
-		$merchi_domain = $staging_mode === 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
-
-		// Get product ID from request body or query params
-		$product_id = $body['product_id'] ?? $request->get_param('product_id');
-		if (!$product_id) {
-			return new WP_Error('missing_product_id', 'Product ID is required', array('status' => 400));
-		}
-
-		// Add SDK logging script
-		$sdk_log_script = sprintf(
-			'<script>
-				// Log SDK initialization
-				console.log("Setting backendUri to:", "%s");
-				
-				const sdkConfig = {
-					backendUri: "%s",
-					hasSessionToken: false,
-					hasRequiredMethods: true
-				};
-				
-				console.log("Merchi SDK initialized with config:", sdkConfig);
-				
-				// Log API request details
-				console.group("Merchi API Request");
-				console.log("Product ID:", "%s");
-				console.log("Domain ID:", "%s");
-				console.log("Staging Mode:", %s);
-			</script>',
-			esc_js($merchi_url),
-			esc_js($merchi_url),
-			esc_js($product_id),
-			esc_js($merchi_domain),
-			$staging_mode === 'yes' ? 'true' : 'false'
-		);
-
-		// First, get the product details using the SDK approach
-		$product_api_url = $merchi_url . 'v6/products/' . $product_id . '/?skip_rights=y';
-		$product_response = wp_remote_get($product_api_url, array(
-			'headers' => array(
-				'Content-Type' => 'application/json',
-				'Authorization' => 'ApiKey ' . $merchi_secret,
-				'X-Domain-Id' => $merchi_domain,
-				'Accept' => 'application/json'
-			),
-			'timeout' => 30,
-			'sslverify' => !$staging_mode
-		));
-
-		if (is_wp_error($product_response)) {
-			return new WP_Error('product_fetch_error', $product_response->get_error_message(), array('status' => 500));
-		}
-
-		$product_data = json_decode(wp_remote_retrieve_body($product_response), true);
-		if (!isset($product_data['product'])) {
-			return new WP_Error('no_product_data', 'No product data found in response', array('status' => 500));
-		}
-
-		// Prepare the request body using the SDK's defaultJob structure
-		$request_body = array(
-			'job' => array(
-				'domain' => array('id' => $merchi_domain),
-				'product' => array(
-					'id' => $product_id,
-					'groupVariationFields' => $product_data['product']['groupVariationFields'] ?? [],
-					'independentVariationFields' => $product_data['product']['independentVariationFields'] ?? []
-				),
-				'variations' => array(),
-				'variationsGroups' => array(),
-				'jobType' => 1,
-				'currency' => 'AUD',
-				'costPerUnit' => $product_data['product']['unitPrice'] ?? 0,
-				'limitedStock' => true,
-				'inventoriesStatus' => 3,
-				'inventoryCount' => 0,
-				'inventorySufficient' => false,
-				'items' => array(),
-				'needsGroupBuy' => false,
-				'needsInventory' => false,
-				'needsSupplyChainRequest' => false
-			)
-		);
-
-		// Merge with any existing body data
-		if (isset($body['job'])) {
-			$request_body['job'] = array_merge($request_body['job'], $body['job']);
-		}
-
-		// Define embed parameters matching the SDK structure
-		$embed = array(
-			'component' => new stdClass(),
-			'defaultJob' => new stdClass(),
-			'domain' => array(
-				'activeTheme' => array('mainCss' => new stdClass()),
-				'logo' => new stdClass()
-			),
-			'draftTemplates' => array('file' => new stdClass()),
-			'groupBuyStatus' => new stdClass(),
-			'groupVariationFields' => array(
-				'options' => array(
-					'linkedFile' => new stdClass()
-				)
-			),
-			'images' => new stdClass(),
-			'independentVariationFields' => array(
-				'options' => array(
-					'linkedFile' => new stdClass()
-				)
-			),
-			'publicFiles' => new stdClass(),
-			'variations' => array(),
-			'variationsGroups' => array()
-		);
-
-		// Encode embed parameters
-		$embed_json = json_encode($embed);
-		$embed_encoded = urlencode($embed_json);
-
-		// Construct Merchi API URL with embed parameters
-		$merchi_api_url = $merchi_url . 'v6/specialised-order-estimate/?skip_rights=y&product_id=' . $product_id . '&embed=' . $embed_encoded;
-
-		// Make request to Merchi API
-		$response = wp_remote_post($merchi_api_url, array(
-			'headers' => array(
-				'Content-Type' => 'application/json',
-				'Authorization' => 'ApiKey ' . $merchi_secret,
-				'X-Domain-Id' => $merchi_domain,
-				'Accept' => 'application/json'
-			),
-			'body' => json_encode($request_body),
-			'timeout' => 30,
-			'sslverify' => !$staging_mode
-		));
-
-		// Check for wp_remote_post errors
-		if (is_wp_error($response)) {
-			return new WP_Error('merchi_api_error', $response->get_error_message(), array('status' => 500));
-		}
-
-		// Get response data
-		$response_code = wp_remote_retrieve_response_code($response);
-		$response_body = wp_remote_retrieve_body($response);
-		
-		// Parse response body
-		$data = json_decode($response_body, true);
-
-		// Add SDK logging script to response
-		$data['_sdk_log_script'] = $sdk_log_script;
-
-		// Handle non-200 responses
-		if ($response_code !== 200) {
-			return new WP_Error(
-				'merchi_api_error',
-				'Merchi API returned error: ' . $response_code,
-				array('status' => $response_code)
-			);
-		}
-
-		// Parse and return response
-		if (json_last_error() !== JSON_ERROR_NONE) {
-			return new WP_Error('json_decode_error', 'Failed to decode API response', array('status' => 500));
-		}
-
-		return new WP_REST_Response($data, 200);
-	}
-
 	/**
 	 * Add loading spinner to add to cart button
 	 */
@@ -744,5 +534,31 @@ class ProductPage extends BaseController {
 		}
 		
 		return $button_html;
+	}
+
+	public function display_quote_button() {
+		global $product;
+
+		// Only run on product pages
+		if (!is_product()) {
+			return;
+		}
+
+		$product_id = get_the_ID();
+		$merchi_product_id = get_post_meta($product_id, 'product_id', true);
+		$allow_quotation = get_post_meta($product_id, 'allowQuotation', true);
+
+		if (!$merchi_product_id || !$allow_quotation) {
+			return;
+		}
+
+		// Add the Get Quote button
+		echo '<button type="button" ' .
+			'class="button wp-element-button single_get_quote_button" ' .
+			'id="get-quote-button">' .
+			'Get quote' .
+			'</button>';
+		?>
+		<?php
 	}
 }

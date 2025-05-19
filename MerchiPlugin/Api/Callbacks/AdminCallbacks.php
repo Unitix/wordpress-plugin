@@ -17,7 +17,7 @@ class AdminCallbacks extends BaseController {
 
 
 	public function adminCpt() {
-		if( get_option( 'merchi_staging_mode' ) == 'yes' ) {
+		if ( get_option( 'merchi_staging_mode' ) == 'yes' ) {
 			$merchi_url = 'https://api.staging.merchi.co/';
 		}
 		else {

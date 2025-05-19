@@ -1,65 +1,24 @@
+import { MERCHI_SDK } from './merchi_sdk';
+import {
+  cartShipmentQuote,
+  cartEmbed,
+  getCookieByName,
+} from './utils';
+
 const stripe = Stripe(scriptData.merchi_stripe_api_key);
 let elements;
-const MERCHI = MERCHI_INIT.MERCHI_SDK;
+const MERCHI = MERCHI_SDK();
 const site_url = scriptData.site_url
 
-const cartShipmentQuote = {
-  shipmentMethod: { originAddress: {}, taxType: {} },
-};
-
-const optionsEmbed = {
-  options: {
-    linkedFile: {},
-    variationCostDiscountGroup: {},
-    variationUnitCostDiscountGroup: {},
-  },
-  variationCostDiscountGroup: {},
-  variationUnitCostDiscountGroup: {},
-};
-
-const variationsEmbed = {
-  selectedOptions: {},
-  variationField: optionsEmbed,
-  variationFiles: {},
-};
-
-const variationsGroupsEmbed = {
-  variations: variationsEmbed,
-};
-
-const productWithImagesEmbed = {
-  domain: { company: { defaultTaxType: {}, taxTypes: {} } },
-  featureImage: {},
-  groupVariationFields: { options: { linkedFile: {} } },
-  images: {},
-  independentVariationFields: { options: { linkedFile: {} } },
-  taxType: {},
-};
-
-const cartEmbed = {
-  cartItems: {
-    product: productWithImagesEmbed,
-    taxType: {},
-    variations: variationsEmbed,
-    variationsGroups: variationsGroupsEmbed,
-  },
-  client: { emailAddresses: {}, profilePicture: {} },
-  clientCompany: {},
-  domain: {
-    company: {
-      defaultTaxType: {},
-      isStripeAccountEnabled: {},
-      taxTypes: {},
-    },
-  },
-  invoice: {},
-  receiverAddress: {},
-  shipmentGroups: {
-    cartItems: { product: {} },
-    quotes: cartShipmentQuote,
-    selectedQuote: cartShipmentQuote,
-  },
-};
+function makeMerchiJsEnt(entName, data) {
+  const MERCHI = MERCHI_INIT.MERCHI_SDK;
+  if (Array.isArray(data)) {
+    const entities = data.map((v) => makeMerchiJsEnt(entName, v));
+    return entities;
+  }
+  const jobEntity = MERCHI.fromJson(new MERCHI[entName](), data);
+  return jobEntity;
+}
 
 function makeMerchiCartEnt(data) {
   if (Array.isArray(data)) {
@@ -146,16 +105,6 @@ function localStorageDeleteCartEnt() {
   localStorage.removeItem("MerchiCart");
 }
 
-function makeMerchiJsEnt(entName, data) {
-  const MERCHI = MERCHI_INIT.MERCHI_SDK;
-  if (Array.isArray(data)) {
-    const entities = data.map((v) => makeMerchiJsEnt(entName, v));
-    return entities;
-  }
-  const jobEntity = MERCHI.fromJson(new MERCHI[entName](), data);
-  return jobEntity;
-}
-
 async function patchRecieverAddress(cart, address, step) {
   address = makeMerchiJsEnt("Address", address);
   const cartEnt = await localStorageGetCartEnt();
@@ -201,6 +150,7 @@ function initializeStripe() {
   const paymentElement = elements.create("payment", paymentElementOptions);
   paymentElement.mount("#payment-element");
 }
+
 async function handleSubmit(e) {
   e.preventDefault();
   setLoading(true);
@@ -313,24 +263,6 @@ function setLoading(isLoading) {
     document.querySelector("#spinner").classList.add("hidden");
     document.querySelector("#button-text").classList.remove("hidden");
   }
-}
-
-function getCookieByName(name) {
-  const cookies = document.cookie.split(";");
-
-  for (let i = 0; i < cookies.length; i++) {
-    const cookie = cookies[i].trim();
-    if (cookie.startsWith(name + "=")) {
-      return cookie.substring(name.length + 1);
-    }
-  }
-
-  return null; // Cookie not found
-}
-
-function captureEmail(input) {
-  var email = input.value;
-  document.querySelector(".captured-email").value = email;
 }
 
 async function addClientToCart(cart, userId) {
