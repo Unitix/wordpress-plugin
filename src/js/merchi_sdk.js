@@ -13,10 +13,10 @@ export const MERCHI_SDK = () => {
   const isStaging =
     window.merchiConfig?.stagingMode || 
     (window.scriptData && window.scriptData.merchi_mode === 'staging');
-  // if (isStaging) {
-  //   window.merchiBackendUri = stagingBackendUri;
-  // } else {
-  //   window.merchiBackendUri = backendUri;
-  // }
+  if (isStaging) {
+    window.merchiBackendUri = stagingBackendUri;
+  } else {
+    window.merchiBackendUri = backendUri;
+  }
   return isStaging ? StagingMerchi : Merchi;
 }
