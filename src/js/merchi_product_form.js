@@ -800,16 +800,15 @@ function initializeWhenReady() {
           cartId = 'js-cart-' + Math.random().toString(36).substr(2, 9);
         }
         // Build cartItems from formData (detailed version)
-        const cartItems = {
-          0: {
-            productID: formData.product?.id || formData.product_id || '',
-            quantity: formData.totalQuantity || formData.quantity || 1,
-            subTotal: formData.totalCost || 0,
-            totalCost: formData.totalCost || 0,
-            variations: [],
-            objExtras: []
-          }
-        };
+        const cartItems = [];
+        cartItems.push({
+          productID: formData.product?.id || formData.product_id || '',
+          quantity: formData.totalQuantity || formData.quantity || 1,
+          subTotal: formData.totalCost || 0,
+          totalCost: formData.totalCost || 0,
+          variations: [],
+          objExtras: []
+        });
 
         // Map group variations (variationsGroups)
         if (Array.isArray(formData.variationsGroups) && formData.variationsGroups.length > 0) {

@@ -1049,99 +1049,130 @@ add_action('wp_ajax_send_id_for_add_cart', 'send_id_for_add_cart');
 add_action('wp_ajax_nopriv_send_id_for_add_cart', 'send_id_for_add_cart');
 
 function send_id_for_add_cart(){
-	if (class_exists('WooCommerce')) {
-		try {
-			$item_count = count( WC()->cart->get_cart() ) ;
-			$cart = $_POST['item'];
-			$cartId = $cart['cartId'];
-			$taxAmount = $cart['taxAmount'];
-			if(!isset($cart['cartItems'])){
-				echo 0;
-				exit;
-			}
+    if (class_exists('WooCommerce')) {
+        try {
+            $item_count = count( WC()->cart->get_cart() ) ;
+            $cart = $_POST['item'];
+            $cartId = $cart['cartId'];
+            $taxAmount = $cart['taxAmount'];
+            if(!isset($cart['cartItems'])){
+                echo 0;
+                exit;
+            }
 
-			$cartItems = $cart['cartItems'];
-		
-			setcookie('cstCartId', $cartId, time() + (86400 * 30), "/");
-			$_COOKIE['cstCartId'] = $cartId;
-			
-			$products = array();
-			$productsAdded = array();
-			foreach( $cartItems as $itemKey => $cartItem ){
-				$sku = $cartItem['productID'];
-				if(!in_array($sku, $products)){
-					$params = array(
-						'post_type' => 'product',
-						'meta_query' => array(
-							array(
-								'key' => '_sku',
-								'value' => $sku,
-								'compare' => '='
-							)
-						),
-						'posts_per_page' => 12, 
-					);
+            $cartItems = $cart['cartItems'];
+        
+            setcookie('cstCartId', $cartId, time() + (86400 * 30), "/");
+            $_COOKIE['cstCartId'] = $cartId;
+            
+            $products = array();
+            $productsAdded = array();
+            foreach( $cartItems as $itemKey => $cartItem ){
+                $sku = $cartItem['productID'];
+                if(!in_array($sku, $products)){
+                    $params = array(
+                        'post_type' => 'product',
+                        'meta_query' => array(
+                            array(
+                                'key' => '_sku',
+                                'value' => $sku,
+                                'compare' => '='
+                            )
+                        ),
+                        'posts_per_page' => 12, 
+                    );
 
-					$wc_query = new WP_Query($params);
-					if ($wc_query->have_posts()) {
-						$product = wc_get_product($wc_query->posts[0]);
-						$product_id = $product->get_id();
-						$products[$product_id] = $sku;
-					}
-				}else{
-					$product_id = array_search($sku, $products, true);
-				}
-				
-				$variationGroups = array();
-				$color_key = 'color';
-				$printColor_key = 'print_color';
-				$printLocation_key = 'print_location';
-				$groupQuantity_key = 'group_quantity';
-				$cart_item_data = array('selection'=>array());
-				$quantity = 0;
-				if(isset($cartItem['variations'])){
-					foreach( $cartItem['variations'] as $varGroup ){
-						foreach( $varGroup as $varKey=>$variationGroup ){
-							foreach($variationGroup as $varG){
-								$cart_item_data['selection'][] = $varG;
-							}
-						}
-					}
-				}
-				
-				$quantity = $cartItem['quantity'];
-				
-				$cart_item_key = WC()->cart->find_product_in_cart( WC()->cart->generate_cart_id( $product_id, 0, array(), $cart_item_data ) );
-				$currentCartItem = array();
-				if( $cart_item_key && array_key_exists($cart_item_key, $productsAdded) ) {
-					$current_quantity = $productsAdded[$cart_item_key]['quantity'];
-					$current_subTotal = $productsAdded[$cart_item_key]['subtotal'];
-					$newQuantity = intval($current_quantity) + intval($quantity);
-					WC()->cart->remove_cart_item( $cart_item_key );
-					$cart_item_key = WC()->cart->add_to_cart($product_id, $newQuantity, 0, array(), $cart_item_data);
-					$currentCartItem['quantity'] = $newQuantity;
-					$currentCartItem['subtotalCost'] = floatval($current_subTotal) + floatval($cartItem['subTotal']);
-					$productsAdded[$cart_item_key] = array( 'subtotal' => $currentCartItem['subtotalCost'], 'quantity' => $newQuantity );
-				}else if( !$cart_item_key ){
-					$cart_item_key = WC()->cart->add_to_cart($product_id, $quantity, 0, array(), $cart_item_data);
-					$currentCartItem['quantity'] = $quantity;
-					$currentCartItem['subtotalCost'] = $cartItem['subTotal'];
-				}else{
-					$productsAdded[$cart_item_key] = array( 'subtotal' => $cartItem['subTotal'], 'quantity' => $quantity );
-					continue;
-				}
-				$currentCartItem['product_id'] = $product_id;
-				$currentCartItem['totalCost'] = $cartItem['totalCost'];
-				$currentCartItem['taxAmount'] = $taxAmount;
-				update_option("get_cart_myItems_".$cartId."_".$cart_item_key, $currentCartItem);
-				$productsAdded[] = $cart_item_key;
-			}
-			echo json_encode(array('success' => true));
-		}catch(Exception $e) {
-		  echo 'Message: ' .$e->getMessage();
-		}
-	}
-	wp_die();
+                    $wc_query = new WP_Query($params);
+                    if ($wc_query->have_posts()) {
+                        $product = wc_get_product($wc_query->posts[0]);
+                        $product_id = $product->get_id();
+                        $products[$product_id] = $sku;
+                    }
+                }else{
+                    $product_id = array_search($sku, $products, true);
+                }
+                
+                $cart_item_data = array('selection'=>array());
+                // Build the selection array as in the reference
+                if (isset($cartItem['variations']) && isset($cartItem['objExtras'])) {
+                    $merchi_product_data = get_post_meta($product_id, '_merchi_product_data', true);
+                    if (!is_array($merchi_product_data)) {
+                        $merchi_product_data = array();
+                    }
+                    $ordered_field_ids = array();
+                    if (!empty($merchi_product_data['product']['groupVariationFields']) && is_array($merchi_product_data['product']['groupVariationFields'])) {
+                        foreach ($merchi_product_data['product']['groupVariationFields'] as $field) {
+                            if (isset($field['id'])) {
+                                $ordered_field_ids[] = $field['id'];
+                            }
+                        }
+                    }
+                    if (!empty($merchi_product_data['product']['independentVariationFields']) && is_array($merchi_product_data['product']['independentVariationFields'])) {
+                        foreach ($merchi_product_data['product']['independentVariationFields'] as $field) {
+                            if (isset($field['id'])) {
+                                $ordered_field_ids[] = $field['id'];
+                            }
+                        }
+                    }
+                    if (is_array($cartItem['variations'])) {
+                        foreach ($cartItem['variations'] as $i => $variationGroup) {
+                            $group = array();
+                            if (is_array($variationGroup)) {
+                                $j = 0;
+                                foreach ($variationGroup as $varValue) {
+                                    $field_id = isset($ordered_field_ids[$j]) ? $ordered_field_ids[$j] : $j;
+                                    $group[$field_id] = $varValue;
+                                    $j++;
+                                }
+                            }
+                            if (isset($cartItem['objExtras'][$i]) && is_array($cartItem['objExtras'][$i])) {
+                                $k = 0;
+                                foreach ($cartItem['objExtras'][$i] as $extraKey => $extraValue) {
+                                    if ($extraKey === 'quantity') {
+                                        $group['quantity'] = $extraValue;
+                                    } else {
+                                        $field_id = isset($ordered_field_ids[$j + $k]) ? $ordered_field_ids[$j + $k] : ($j + $k);
+                                        $group[$field_id] = $extraValue;
+                                        $k++;
+                                    }
+                                }
+                            }
+                            $cart_item_data['selection'][] = $group;
+                        }
+                    }
+                }
+                $quantity = $cartItem['quantity'];
+                $cart_item_key = WC()->cart->find_product_in_cart( WC()->cart->generate_cart_id( $product_id, 0, array(), $cart_item_data ) );
+                $currentCartItem = array();
+                if( $cart_item_key && array_key_exists($cart_item_key, $productsAdded) ) {
+                    $current_quantity = $productsAdded[$cart_item_key]['quantity'];
+                    $current_subTotal = $productsAdded[$cart_item_key]['subtotal'];
+                    $newQuantity = intval($current_quantity) + intval($quantity);
+                    WC()->cart->remove_cart_item( $cart_item_key );
+                    $cart_item_key = WC()->cart->add_to_cart($product_id, $newQuantity, 0, array(), $cart_item_data);
+                    $currentCartItem['quantity'] = $newQuantity;
+                    $currentCartItem['subtotalCost'] = floatval($current_subTotal) + floatval($cartItem['subTotal']);
+                    $productsAdded[$cart_item_key] = array( 'subtotal' => $currentCartItem['subtotalCost'], 'quantity' => $newQuantity );
+                }else if( !$cart_item_key ){
+                    $cart_item_key = WC()->cart->add_to_cart($product_id, $quantity, 0, array(), $cart_item_data);
+                    $currentCartItem['quantity'] = $quantity;
+                    $currentCartItem['subtotalCost'] = $cartItem['subTotal'];
+                }else{
+                    $productsAdded[$cart_item_key] = array( 'subtotal' => $cartItem['subTotal'], 'quantity' => $quantity );
+                    continue;
+                }
+                $currentCartItem['product_id'] = $product_id;
+                $currentCartItem['totalCost'] = $cartItem['totalCost'];
+                $currentCartItem['taxAmount'] = $taxAmount;
+                update_option("get_cart_myItems_".$cartId."_".$cart_item_key, $currentCartItem);
+                $productsAdded[] = $cart_item_key;
+            }
+            echo json_encode(array('success' => true));
+        }catch(Exception $e) {
+          echo 'Message: ' .$e->getMessage();
+        }
+    }
+    wp_die();
 }
 
 add_filter( 'woocommerce_cart_item_quantity', 'wc_cart_item_quantity', 10, 3 );
@@ -1173,22 +1204,71 @@ function cst_cart_item_after_remove() {
 }
 
 function filter_woocommerce_get_item_data( $cart_data, $cart_item = null ) {
-    // Add a test field to verify the filter is working
-    $cart_data[] = array(
-        'name'  => 'Test Field',
-        'value' => 'Test Value',
-    );
-    // Existing logic for custom form data
+    if ( !$cart_item ) {
+        return $cart_data;
+    }
+
+    $cart_data = array();
+
+    // Try to get the WooCommerce product ID from the cart item
+    $product_id = null;
+    if (isset($cart_item['product_id'])) {
+        $product_id = $cart_item['product_id'];
+    } elseif (isset($cart_item['data']) && is_object($cart_item['data']) && method_exists($cart_item['data'], 'get_id')) {
+        $product_id = $cart_item['data']->get_id();
+    }
+
+    // Get field labels and product meta
+    $field_labels = $product_id ? get_post_meta($product_id, '_merchi_field_labels', true) : array();
+    $merchi_product_data = $product_id ? get_post_meta($product_id, '_merchi_product_data', true) : array();
+
+    // Build option value maps for select/radio fields
+    $option_value_map = array();
+    if (!empty($merchi_product_data['product'])) {
+        $product = $merchi_product_data['product'];
+        $fields = array();
+        if (!empty($product['groupVariationFields'])) {
+            $fields = array_merge($fields, $product['groupVariationFields']);
+        }
+        if (!empty($product['independentVariationFields'])) {
+            $fields = array_merge($fields, $product['independentVariationFields']);
+        }
+        foreach ($fields as $field) {
+            if (!empty($field['options'])) {
+                foreach ($field['options'] as $option) {
+                    if (isset($option['id']) && isset($option['value'])) {
+                        $option_value_map[$option['id']] = $option['value'];
+                    }
+                }
+            }
+        }
+    }
+
     if (isset($cart_item['selection']) && is_array($cart_item['selection'])) {
         $group_count = 1;
         foreach ($cart_item['selection'] as $group) {
             if (is_array($group)) {
-                $group_label = count($cart_item['selection']) > 1 ? 'Group ' . $group_count . ' Details' : 'Details';
-                $fields_html = '';
+                $group_label = count($cart_item['selection']) > 1 ? 'Group ' . $group_count : null;
+                if ($group_label) {
+                    $cart_data[] = array(
+                        'name' => $group_label,
+                        'value' => '',
+                        'display' => '',
+                    );
+                }
                 foreach ($group as $field_label => $field_value) {
-                    $label = ucfirst(str_replace('_', ' ', $field_label));
+                    // Skip empty values except for '0'
+                    if ((is_array($field_value) && empty($field_value)) || (!is_array($field_value) && trim((string)$field_value) === '' && $field_value !== '0')) {
+                        continue;
+                    }
+                    $field_label_str = is_string($field_label) ? $field_label : (string)$field_label;
+                    // Use field label from mapping if available
+                    $label = isset($field_labels[$field_label_str]) ? $field_labels[$field_label_str] : ucfirst(str_replace('_', ' ', $field_label_str));
+                    // If value is an option ID, use the mapped value
                     if (is_array($field_value)) {
                         $value = implode(', ', $field_value);
+                    } elseif (isset($option_value_map[$field_value])) {
+                        $value = esc_html($option_value_map[$field_value]);
                     } elseif (preg_match('/^#([A-Fa-f0-9]{6})$/', $field_value)) {
                         $value = '<span style="display:inline-block;width:16px;height:16px;background:' . esc_attr($field_value) . ';border:1px solid #ccc;vertical-align:middle;margin-right:4px;"></span> ' . esc_html($field_value);
                     } elseif (filter_var($field_value, FILTER_VALIDATE_URL)) {
@@ -1196,15 +1276,17 @@ function filter_woocommerce_get_item_data( $cart_data, $cart_item = null ) {
                     } else {
                         $value = esc_html($field_value);
                     }
-                    $fields_html .= '<div style="margin-bottom:2px;"><strong>' . esc_html($label) . ':</strong> ' . $value . '</div>';
+                    $cart_data[] = array(
+                        'name' => $label,
+                        'value' => $value,
+                        'display' => '',
+                    );
                 }
-                $cart_data[] = array(
-                    'name' => $group_label,
-                    'value' => '<div style="margin-left:8px;">' . $fields_html . '</div>',
-                    'display' => '',
-                );
                 $group_count++;
             } else {
+                if (trim((string)$group) === '' && $group !== '0') {
+                    continue;
+                }
                 $cart_data[] = array(
                     'name' => 'Field',
                     'value' => esc_html($group),
@@ -1231,46 +1313,67 @@ function cart_count_fragments_wp( $fragments ) {
 add_action( 'woocommerce_before_calculate_totals', 'bbloomer_alter_price_cart', 9999 );
  
 function bbloomer_alter_price_cart( $cart ) {
- 
     if ( is_admin() && ! defined( 'DOING_AJAX' ) ) return;
-	
-	$cart_id = $_COOKIE['cstCartId'];
-	
-	$options = get_option_extended('get_cart_myItems_'.$cart_id."_");
- 
-    //LOOP THROUGH CART ITEMS & APPLY 20% DISCOUNT
-    foreach ( $cart->get_cart() as $cart_item_key => $cart_item ) {
-		$itemData = $options['get_cart_myItems_'.$cart_id.'_'.$cart_item_key];
-        $product = $cart_item['data'];
-		$quantity = intval($itemData['quantity']);
-		$subtotalCost = floatval($itemData['subtotalCost']);
-
-		if ($quantity > 0) {
-			$cart_item['data']->set_price($subtotalCost / $quantity);
-		}
-        //$cart_item['data']->set_price( floatval($itemData['subtotalCost'])/intval($itemData['quantity']) );
+    
+    if (!isset($_COOKIE['cstCartId'])) {
+        return;
     }
+    
+    $cart_id = $_COOKIE['cstCartId'];
+    $options = get_option_extended('get_cart_myItems_'.$cart_id."_");
  
+    //LOOP THROUGH CART ITEMS & APPLY PRICE
+    foreach ( $cart->get_cart() as $cart_item_key => $cart_item ) {
+        $option_key = 'get_cart_myItems_'.$cart_id.'_'.$cart_item_key;
+        if (!isset($options[$option_key])) {
+            continue;
+        }
+        
+        $itemData = $options[$option_key];
+        if (!isset($itemData['quantity']) || !isset($itemData['subtotalCost'])) {
+            continue;
+        }
+        
+        $product = $cart_item['data'];
+        $quantity = intval($itemData['quantity']);
+        $subtotalCost = floatval($itemData['subtotalCost']);
+
+        if ($quantity > 0) {
+            $cart_item['data']->set_price($subtotalCost / $quantity);
+        }
+    }
 }
 
 function woo_add_cart_fee( $cart ) {
-
-    if ( is_admin() && ! defined( 'DOING_AJAX' ) )
+    if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
         return;
-
-    $item_fee = 0;
-	$cart_id = $_COOKIE['cstCartId'];
-	
-	$options = get_option_extended('get_cart_myItems_'.$cart_id."_");
-
-    foreach ( $cart->get_cart() as $cart_item_key => $cart_item ) {
-		$itemData = $options['get_cart_myItems_'.$cart_id.'_'.$cart_item_key];
-        $item_fee = $itemData['taxAmount'];
     }
 
-    // add_fee method (TAX will NOT be applied here)
-    $cart->add_fee( 'Tax: ', $item_fee, false );
+    if (!isset($_COOKIE['cstCartId'])) {
+        return;
+    }
 
+    $item_fee = 0;
+    $cart_id = $_COOKIE['cstCartId'];
+    $options = get_option_extended('get_cart_myItems_'.$cart_id."_");
+
+    foreach ( $cart->get_cart() as $cart_item_key => $cart_item ) {
+        $option_key = 'get_cart_myItems_'.$cart_id.'_'.$cart_item_key;
+        if (!isset($options[$option_key])) {
+            continue;
+        }
+        
+        $itemData = $options[$option_key];
+        if (isset($itemData['taxAmount'])) {
+            $item_fee = floatval($itemData['taxAmount']);
+            break; // We only need the first valid tax amount
+        }
+    }
+
+    if ($item_fee > 0) {
+        // add_fee method (TAX will NOT be applied here)
+        $cart->add_fee( 'Tax: ', $item_fee, false );
+    }
 }
 add_action( 'woocommerce_cart_calculate_fees','woo_add_cart_fee' );
 
@@ -1791,19 +1894,30 @@ function fetch_merchi_product_callback() {
     $embed_json = json_encode($productEmbed);
     $embed_encoded = urlencode($embed_json);
     $api_url = $api_url_base . "&embed=" . $embed_encoded;
-		
-	$response = wp_remote_get($api_url);
-	$data = json_decode(wp_remote_retrieve_body($response), true);
-	
-	// Save allowQuotation to product meta
-	if (isset($data['product']['allowQuotation'])) {
-		$allow_quotation = $data['product']['allowQuotation'];
-		update_post_meta($woo_product_id, 'allowQuotation', $allow_quotation);
-	}
+    
+    $response = wp_remote_get($api_url);
+    $data = json_decode(wp_remote_retrieve_body($response), true);
 
-	create_variations_for_product($woo_product_id, $data);
-	
-	wp_send_json_success(['message' => 'Variations created for WooCommerce Product ID: ' . $woo_product_id]);
+    // Store the complete product data
+    update_post_meta($woo_product_id, '_merchi_product_data', $data);
+
+    // Store field labels mapping
+    $field_labels = [];
+    if (!empty($data['product']['groupVariationFields'])) {
+        foreach ($data['product']['groupVariationFields'] as $field) {
+            $field_labels[$field['id']] = $field['name'];
+        }
+    }
+    if (!empty($data['product']['independentVariationFields'])) {
+        foreach ($data['product']['independentVariationFields'] as $field) {
+            $field_labels[$field['id']] = $field['name'];
+        }
+    }
+    update_post_meta($woo_product_id, '_merchi_field_labels', $field_labels);
+
+    create_variations_for_product($woo_product_id, $data);
+    
+    wp_send_json_success(['message' => 'Variations created for WooCommerce Product ID: ' . $woo_product_id]);
 }
 
 function create_variations_for_product($woo_product_id, $merchi_product_data) {
