@@ -2,6 +2,7 @@
 import { MERCHI_SDK } from './merchi_sdk';
 import { getCookieByName } from './utils';
 import { initializeCheckout } from './merchi_checkout_init';
+import { patchCart } from './merchi_public_custom';
 
 function initializeWhenReady() {
   const merchiSdk = MERCHI_SDK();
@@ -786,6 +787,13 @@ function initializeWhenReady() {
       try {
         // Gather form data and log it
         const formData = await gatherFormData();
+        // update cart in local storage here by adding the form data as a cartItem
+        const localCart = localStorage.getItem('MerchiCart');
+        if (localCart) {
+          const cartJson = JSON.parse(localCart);
+          cartJson.cartItems.push(formData);
+          await patchCart(cartJson);
+        }
         console.log('Merchi Product Form Data being sent to cart:', formData);
         // Log the group data specifically
         console.log('DEBUG: variationsGroups (all groups):', formData.variationsGroups);

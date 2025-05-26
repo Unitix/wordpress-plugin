@@ -247,433 +247,433 @@ const successCallback = function () {
   checkoutForm.submit();
 };
 
-jQuery(document).ready(function ($) {
+// jQuery(document).ready(function ($) {
 
-    var groupIndex = 1;
+//     var groupIndex = 1;
 
-    $("#add-group-button").on('click', function() {
-        groupIndex++;
-        var newGroup = $(".group-field-set").first().clone();
-        newGroup.attr("data-group-index", groupIndex);
-        newGroup.find(".group-number").text(groupIndex);
+//     $("#add-group-button").on('click', function() {
+//         groupIndex++;
+//         var newGroup = $(".group-field-set").first().clone();
+//         newGroup.attr("data-group-index", groupIndex);
+//         newGroup.find(".group-number").text(groupIndex);
 
-        newGroup.find("input, select, textarea").each(function() {
-            var name = $(this).attr("name");
-            if (name) {
-                name = name.replace("group_fields[1]", "group_fields[" + groupIndex + "]");
-                $(this).attr("name", name);
-            }
-        });
-        newGroup.find(".delete-group-button").show();
-        $("#grouped-fields-container").append(newGroup);
-    });
+//         newGroup.find("input, select, textarea").each(function() {
+//             var name = $(this).attr("name");
+//             if (name) {
+//                 name = name.replace("group_fields[1]", "group_fields[" + groupIndex + "]");
+//                 $(this).attr("name", name);
+//             }
+//         });
+//         newGroup.find(".delete-group-button").show();
+//         $("#grouped-fields-container").append(newGroup);
+//     });
 
-    $(document).on("click", ".delete-group-button", function() {
-        $(this).closest(".group-field-set").remove();
-        updateGroupNumbers();
-    });
+//     $(document).on("click", ".delete-group-button", function() {
+//         $(this).closest(".group-field-set").remove();
+//         updateGroupNumbers();
+//     });
 
-    function updateGroupNumbers() {
-        $(".group-field-set").each(function(index) {
-            var newIndex = index + 1;
-            $(this).attr("data-group-index", newIndex);
-            $(this).find(".group-number").text(newIndex);
-            $(this).find("input, select, textarea").each(function() {
-                var name = $(this).attr("name");
-                if (name) {
-                    name = name.replace(/group_fields\[\d+\]/, "group_fields[" + newIndex + "]");
-                    $(this).attr("name", name);
-                }
-            });
-        });
+//     function updateGroupNumbers() {
+//         $(".group-field-set").each(function(index) {
+//             var newIndex = index + 1;
+//             $(this).attr("data-group-index", newIndex);
+//             $(this).find(".group-number").text(newIndex);
+//             $(this).find("input, select, textarea").each(function() {
+//                 var name = $(this).attr("name");
+//                 if (name) {
+//                     name = name.replace(/group_fields\[\d+\]/, "group_fields[" + newIndex + "]");
+//                     $(this).attr("name", name);
+//                 }
+//             });
+//         });
 
-        if ($(".group-field-set").length === 1) {
-            $(".group-field-set .delete-group-button").hide();
-        } else {
-            $(".group-field-set .delete-group-button").show();
-        }
-    }
+//         if ($(".group-field-set").length === 1) {
+//             $(".group-field-set .delete-group-button").hide();
+//         } else {
+//             $(".group-field-set .delete-group-button").show();
+//         }
+//     }
 
 
-  jQuery('.custom-attribute-option').on('click', function () {
-    var parent = jQuery(this).closest('.custom-attribute-options');
-    parent.find('input').prop('checked', false); // Uncheck all
-    parent.find('.custom-checkmark').hide(); // Hide all checkmarks
+//   jQuery('.custom-attribute-option').on('click', function () {
+//     var parent = jQuery(this).closest('.custom-attribute-options');
+//     parent.find('input').prop('checked', false); // Uncheck all
+//     parent.find('.custom-checkmark').hide(); // Hide all checkmarks
 
-    jQuery(this).find('input').prop('checked', true).trigger('change'); // Check the clicked input
-    jQuery(this).find('.custom-checkmark').show(); // Show checkmark
-  });
+//     jQuery(this).find('input').prop('checked', true).trigger('change'); // Check the clicked input
+//     jQuery(this).find('.custom-checkmark').show(); // Show checkmark
+//   });
 
-  if (1 == getQueryStringParameter("step")) {
-    jQuery("#billing_email").trigger("blur");
-  }
+//   if (1 == getQueryStringParameter("step")) {
+//     jQuery("#billing_email").trigger("blur");
+//   }
 
-  jQuery(document).on("cst_clear_cart", function () {
-    //console.log("Cart Cleared!!!");
-  });
+//   jQuery(document).on("cst_clear_cart", function () {
+//     //console.log("Cart Cleared!!!");
+//   });
 
-  // Disable button using JavaScript
-  jQuery(document).on("click", ".cst-disabled-btn-parent", function (event) {
-    event.preventDefault(); // Prevents the default click action
-    return false;
-  });
+//   // Disable button using JavaScript
+//   jQuery(document).on("click", ".cst-disabled-btn-parent", function (event) {
+//     event.preventDefault(); // Prevents the default click action
+//     return false;
+//   });
 
-  const cookieSet = getCookieByName("cart-" + scriptData.merchi_domain);
-  if (!cookieSet) {
-    createCart();
-  }
+//   const cookieSet = getCookieByName("cart-" + scriptData.merchi_domain);
+//   if (!cookieSet) {
+//     createCart();
+//   }
 
-  var notice = document.createElement("div"),
-      noticeUl = document.createElement("ul");
+//   var notice = document.createElement("div"),
+//       noticeUl = document.createElement("ul");
 
-  noticeUl.classList.add("woocommerce-error");
-  noticeUl.setAttribute("role", "alert");
-  notice.classList.add("woocommerce-NoticeGroup");
-  notice.classList.add("woocommerce-NoticeGroup-checkout");
-  jQuery(document).on("click", ".cst-order-place-button", function (e) {
-    e.preventDefault();
-    var isValid = true;
-    var errors = [];
-    // Validate each billing field
-    jQuery('input[name^="billing_"]').each(function () {
-      if (jQuery(this).parents("p.form-row").hasClass("validate-required")) {
-        if (jQuery(this).val() === "") {
-          // Show error message for empty field
-          var fieldName = jQuery(this).attr("data-cstname");
-          errors.push(fieldName);
-          isValid = false;
-        } else {
-          // Clear error message if field is filled
-          var fieldName = jQuery(this).attr("name");
-          var index = errors.indexOf(fieldName);
-          if (index !== -1) {
-            errors.splice(index, 1); // Remove error message from array
-          }
-        }
-      }
-    });
-    if (!isValid && errors.length > 0) {
-      errors.forEach(function (error) {
-        var noticeLi = document.createElement("li");
-        var noticeStrong = document.createElement("strong");
-        noticeLi.append(noticeStrong);
-        noticeStrong.innerHTML = error;
-        noticeLi.append(" is a required field");
-        noticeUl.append(noticeLi);
-      });
-      notice.append(noticeUl);
-      document.querySelector(".woocommerce-notices-wrapper").prepend(notice);
-    } else {
-      jQuery(".cst-stripe-payment-button").trigger("click");
-      return false;
-    }
-  });
+//   noticeUl.classList.add("woocommerce-error");
+//   noticeUl.setAttribute("role", "alert");
+//   notice.classList.add("woocommerce-NoticeGroup");
+//   notice.classList.add("woocommerce-NoticeGroup-checkout");
+//   jQuery(document).on("click", ".cst-order-place-button", function (e) {
+//     e.preventDefault();
+//     var isValid = true;
+//     var errors = [];
+//     // Validate each billing field
+//     jQuery('input[name^="billing_"]').each(function () {
+//       if (jQuery(this).parents("p.form-row").hasClass("validate-required")) {
+//         if (jQuery(this).val() === "") {
+//           // Show error message for empty field
+//           var fieldName = jQuery(this).attr("data-cstname");
+//           errors.push(fieldName);
+//           isValid = false;
+//         } else {
+//           // Clear error message if field is filled
+//           var fieldName = jQuery(this).attr("name");
+//           var index = errors.indexOf(fieldName);
+//           if (index !== -1) {
+//             errors.splice(index, 1); // Remove error message from array
+//           }
+//         }
+//       }
+//     });
+//     if (!isValid && errors.length > 0) {
+//       errors.forEach(function (error) {
+//         var noticeLi = document.createElement("li");
+//         var noticeStrong = document.createElement("strong");
+//         noticeLi.append(noticeStrong);
+//         noticeStrong.innerHTML = error;
+//         noticeLi.append(" is a required field");
+//         noticeUl.append(noticeLi);
+//       });
+//       notice.append(noticeUl);
+//       document.querySelector(".woocommerce-notices-wrapper").prepend(notice);
+//     } else {
+//       jQuery(".cst-stripe-payment-button").trigger("click");
+//       return false;
+//     }
+//   });
 
-  jQuery(document.body).on("updated_checkout", function () {
-    var paymentForm = document.querySelector("#payment-form");
-    if (paymentForm) {
-      initializeStripe();
-      checkStatus();
-      paymentForm.addEventListener("submit", handleSubmit);
-    }
-  });
+//   jQuery(document.body).on("updated_checkout", function () {
+//     var paymentForm = document.querySelector("#payment-form");
+//     if (paymentForm) {
+//       initializeStripe();
+//       checkStatus();
+//       paymentForm.addEventListener("submit", handleSubmit);
+//     }
+//   });
 
-  var ccode = false;
-  $(document.body).on("updated_checkout", function (data) {
-    var ajax_url = frontendajax.ajaxurl,
-        ajax_data = {
-          action: "append_country_prefix_in_billing_phone",
-          country_code: $("#billing_country").val(),
-        };
-    $.post(ajax_url, ajax_data, function (response) {
-      ccode = response;
-      $("#billing_phone").val(response);
-      $("#billing_phone").keydown(function (e) {
-        var oldvalue = frontendajax.telephoneInput
-          ? frontendajax.telephoneInput
-          : $(this).val();
-        var field = this;
-        setTimeout(function () {
-          if (field.value.indexOf(ccode) !== 0) {
-            $(field).val(oldvalue);
-          }
-        }, 1);
-      });
-    });
-  }); 
+//   var ccode = false;
+//   $(document.body).on("updated_checkout", function (data) {
+//     var ajax_url = frontendajax.ajaxurl,
+//         ajax_data = {
+//           action: "append_country_prefix_in_billing_phone",
+//           country_code: $("#billing_country").val(),
+//         };
+//     $.post(ajax_url, ajax_data, function (response) {
+//       ccode = response;
+//       $("#billing_phone").val(response);
+//       $("#billing_phone").keydown(function (e) {
+//         var oldvalue = frontendajax.telephoneInput
+//           ? frontendajax.telephoneInput
+//           : $(this).val();
+//         var field = this;
+//         setTimeout(function () {
+//           if (field.value.indexOf(ccode) !== 0) {
+//             $(field).val(oldvalue);
+//           }
+//         }, 1);
+//       });
+//     });
+//   }); 
 
-  document.addEventListener("click", function (event) {
-    var target = event.target;
-    const $button = jQuery('.product-button-add-to-cart');
-    // the observer is used to watch the cart button for a state change on the
-    // disabled attr. We need this because if we mutate the DOM element while
-    // react is in the middle of a state change, the page will crash.
-    const observer = new MutationObserver((mutationsList) => {
-      for (const mutation of mutationsList) {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'disabled') {
-          // Check if 'disabled' attribute has been removed
-          const isDisabled = mutation.target.hasAttribute('disabled');
-          // When the disabled attr is removed from the button this means that react
-          // has finished with the element; it's now save to use jQuery to change the button
-          if (!isDisabled) {
-            $button.text('Loading...');
-            $button.prop('disabled', true);
-          }
-        }
-      }
-    });
+//   document.addEventListener("click", function (event) {
+//     var target = event.target;
+//     const $button = jQuery('.product-button-add-to-cart');
+//     // the observer is used to watch the cart button for a state change on the
+//     // disabled attr. We need this because if we mutate the DOM element while
+//     // react is in the middle of a state change, the page will crash.
+//     const observer = new MutationObserver((mutationsList) => {
+//       for (const mutation of mutationsList) {
+//         if (mutation.type === 'attributes' && mutation.attributeName === 'disabled') {
+//           // Check if 'disabled' attribute has been removed
+//           const isDisabled = mutation.target.hasAttribute('disabled');
+//           // When the disabled attr is removed from the button this means that react
+//           // has finished with the element; it's now save to use jQuery to change the button
+//           if (!isDisabled) {
+//             $button.text('Loading...');
+//             $button.prop('disabled', true);
+//           }
+//         }
+//       }
+//     });
 
-    if (target?.classList?.contains("product-button-add-to-cart")) {
-      // Ensure target is a valid DOM node before observing
-      if (target instanceof Element) {
-        try {
-          observer.observe(target, { attributes: true });
-        } catch (error) {
-          console.warn('Failed to observe target element:', error);
-          return;
-        }
-      } else {
-        console.warn('Target element is not a valid DOM node');
-        return;
-      }
-      try {
-        setTimeout(function () {
-          // Check if the current page is a single product page
-          if (scriptData.is_single_product) {
-            // Retrieve the cart cookie to get cart details
-            const cookie = getCookieByName("cart-" + scriptData.merchi_domain);
-           // Parse the cart cookie value
-            const cookieValueArray = cookie.split(",");
-            const id = cookieValueArray[0].trim();
-            const token = cookieValueArray[1].trim();
-             // Create a new Cart instance and fetch the cart details
-            const cartEnt = new MERCHI.Cart().id(id).token(token);
-            cartEnt.get(
-              (cart) => {
-                // Update local storage with cart details
-                localStorageUpdateCartEnt(cart);
-                const cartJson = new MERCHI.toJson(cart);
-                console.log(cartJson);
-                var cartPayload = {};
-                cartPayload["cartId"] = cartJson.id;
-                cartPayload["taxAmount"] = cartJson.taxAmount;
-                cartPayload["cartItems"] = {};
-                // Process each cart item of responce
-                cartJson.cartItems.forEach(function (item, itemIndex) {
-                  cartPayload["cartItems"][itemIndex] = {
-                    productID: item.product.id,
-                    quantity: item.quantity,
-                    subTotal: item.subtotalCost,
-                    totalCost: item.totalCost,
-                  };
-                  var obj = {};
-                  var objExtras = {};
-                  var count = 0;
-                   // Process item variations groups if present
-                  // Get the selected value of responce and assing in cartPayload array
-                  if (
-                    Array.isArray(item.variationsGroups) &&
-                    item.variationsGroups.length > 0
-                  ) {
-                    item.variationsGroups.forEach(function (group, gi) {
-                      cartPayload["cartItems"][itemIndex]["variations"] = [];
-                      cartPayload["cartItems"][itemIndex]["objExtras"] = [];
-                      obj[count] = {};
-                      objExtras[count] = {};
-                      var loopcount = 0;
-                      var varQuant = false;
-                      group.variations.forEach(function (variation, vi) {
-                        if (variation.selectedOptions.length) {
-                          obj[count][vi] = variation.selectedOptions[0].value;
-                        } else if (variation.hasOwnProperty("value")) {
-                          obj[count][vi] = variation.value;
-                        }
-                        varQuant = variation.quantity;
-                        loopcount = vi + 1;
-                      });
-                      objExtras[count][loopcount] = varQuant;
-                      objExtras[count]["quantity"] = varQuant;
-                      count++;
-                      cartPayload["cartItems"][itemIndex]["variations"].push(obj);
-                      cartPayload["cartItems"][itemIndex]["objExtras"].push(
-                        objExtras
-                      );
-                    });
-                  } 
-                  // Process item variations if present
-                  // Get the selected value of responce and assing in cartPayload array
-                  if (
-                    Array.isArray(item.variations) &&
-                    item.variations.length > 0
-                  ) {
-                    cartPayload["cartItems"][itemIndex]["variations"] = [];
-                    cartPayload["cartItems"][itemIndex]["objExtras"] = [];
-                    obj[count] = {};
-                    objExtras[count] = {};
-                    var loopcount = 0;
-                    var varQuant = false;
-                    item.variations.forEach(function (variation, vi) {
-                      if (variation.selectedOptions.length) {
-                        obj[count][vi] = variation.selectedOptions[0].value;
-                      } else if (variation.hasOwnProperty("value")) {
-                        obj[count][vi] = variation.value;
-                      }
-                      varQuant = variation.quantity;
-                      loopcount = vi + 1;
-                    });
-                    objExtras[count][loopcount] = varQuant;
-                    objExtras[count]["quantity"] = varQuant;
-                    cartPayload["cartItems"][itemIndex]["variations"].push(obj);
-                    cartPayload["cartItems"][itemIndex]["objExtras"].push(
-                      objExtras
-                    );
-                  }
-                });
-                // Check if the cart has items
-                if (
-                  cartJson.hasOwnProperty("cartItems") &&
-                  Array.isArray(cartJson.cartItems) &&
-                  cartJson.cartItems.length !== 0
-                ) {
-                  //$('#overlay').show(); // Show overlay
-                  //$('#product-loader').show(); // Show loader
-                  // Send cart data to the server using AJAX
-                  jQuery.ajax({
-                    method: "POST",
-                    url: frontendajax.ajaxurl,
-                    data: {
-                      action: "send_id_for_add_cart",
-                      item: cartPayload,
-                    },
-                    success: function (response) {
-                      window.location.href = site_url + '/cart/';
-                      // On success, restore the original button state
-                      target.parentElement.classList.remove(
-                        "cst-disabled-btn-parent"
-                      );
-                      target.style.display = "block";
-                      clonedElement.remove();
-                      // Trigger a refresh of the cart fragments
-                      jQuery(document.body).trigger("wc_fragment_refresh");
-                      setTimeout(function () {
-                        // Redirect to the cart page after a short delay
-                        jQuery(document.body).trigger("wc_fragment_refresh");
-                        window.location.href = site_url + '/cart/';
-                      }, 500);
-                      //$('#overlay').hide(); // Show overlay
-                      //$('#product-loader').hide(); // Show loader
-                    },
-                    error: function (error) {
-                      // On error, show an alert to the user
-                      //$('#overlay').hide(); // Show overlay
-                      //$('#product-loader').hide(); // Show loader
-                      alert("Something went wrong, Please try again later");
-                    },
-                  });
-                } else {
-                  // If the cart is empty, restore the button state
-                  target.parentElement.classList.remove(
-                    "cst-disabled-btn-parent"
-                  );
-                  target.style.display = "block";
-                  target.innerHTML = "Add To Cart";
-                  clonedElement.remove();
-                }
-              },
-              (error) => {
-                // Handle errors from fetching cart details
-                console.log(error);
-                return null;
-              },
-              cartEmbed
-            );
-          }
-        }, 500); // Simulate a delay
-      } catch (e) {
-        console.error(e)
-      }
-    }
-  });
+//     if (target?.classList?.contains("product-button-add-to-cart")) {
+//       // Ensure target is a valid DOM node before observing
+//       if (target instanceof Element) {
+//         try {
+//           observer.observe(target, { attributes: true });
+//         } catch (error) {
+//           console.warn('Failed to observe target element:', error);
+//           return;
+//         }
+//       } else {
+//         console.warn('Target element is not a valid DOM node');
+//         return;
+//       }
+//       try {
+//         setTimeout(function () {
+//           // Check if the current page is a single product page
+//           if (scriptData.is_single_product) {
+//             // Retrieve the cart cookie to get cart details
+//             const cookie = getCookieByName("cart-" + scriptData.merchi_domain);
+//            // Parse the cart cookie value
+//             const cookieValueArray = cookie.split(",");
+//             const id = cookieValueArray[0].trim();
+//             const token = cookieValueArray[1].trim();
+//              // Create a new Cart instance and fetch the cart details
+//             const cartEnt = new MERCHI.Cart().id(id).token(token);
+//             cartEnt.get(
+//               (cart) => {
+//                 // Update local storage with cart details
+//                 localStorageUpdateCartEnt(cart);
+//                 const cartJson = new MERCHI.toJson(cart);
+//                 console.log(cartJson);
+//                 var cartPayload = {};
+//                 cartPayload["cartId"] = cartJson.id;
+//                 cartPayload["taxAmount"] = cartJson.taxAmount;
+//                 cartPayload["cartItems"] = {};
+//                 // Process each cart item of responce
+//                 cartJson.cartItems.forEach(function (item, itemIndex) {
+//                   cartPayload["cartItems"][itemIndex] = {
+//                     productID: item.product.id,
+//                     quantity: item.quantity,
+//                     subTotal: item.subtotalCost,
+//                     totalCost: item.totalCost,
+//                   };
+//                   var obj = {};
+//                   var objExtras = {};
+//                   var count = 0;
+//                    // Process item variations groups if present
+//                   // Get the selected value of responce and assing in cartPayload array
+//                   if (
+//                     Array.isArray(item.variationsGroups) &&
+//                     item.variationsGroups.length > 0
+//                   ) {
+//                     item.variationsGroups.forEach(function (group, gi) {
+//                       cartPayload["cartItems"][itemIndex]["variations"] = [];
+//                       cartPayload["cartItems"][itemIndex]["objExtras"] = [];
+//                       obj[count] = {};
+//                       objExtras[count] = {};
+//                       var loopcount = 0;
+//                       var varQuant = false;
+//                       group.variations.forEach(function (variation, vi) {
+//                         if (variation.selectedOptions.length) {
+//                           obj[count][vi] = variation.selectedOptions[0].value;
+//                         } else if (variation.hasOwnProperty("value")) {
+//                           obj[count][vi] = variation.value;
+//                         }
+//                         varQuant = variation.quantity;
+//                         loopcount = vi + 1;
+//                       });
+//                       objExtras[count][loopcount] = varQuant;
+//                       objExtras[count]["quantity"] = varQuant;
+//                       count++;
+//                       cartPayload["cartItems"][itemIndex]["variations"].push(obj);
+//                       cartPayload["cartItems"][itemIndex]["objExtras"].push(
+//                         objExtras
+//                       );
+//                     });
+//                   } 
+//                   // Process item variations if present
+//                   // Get the selected value of responce and assing in cartPayload array
+//                   if (
+//                     Array.isArray(item.variations) &&
+//                     item.variations.length > 0
+//                   ) {
+//                     cartPayload["cartItems"][itemIndex]["variations"] = [];
+//                     cartPayload["cartItems"][itemIndex]["objExtras"] = [];
+//                     obj[count] = {};
+//                     objExtras[count] = {};
+//                     var loopcount = 0;
+//                     var varQuant = false;
+//                     item.variations.forEach(function (variation, vi) {
+//                       if (variation.selectedOptions.length) {
+//                         obj[count][vi] = variation.selectedOptions[0].value;
+//                       } else if (variation.hasOwnProperty("value")) {
+//                         obj[count][vi] = variation.value;
+//                       }
+//                       varQuant = variation.quantity;
+//                       loopcount = vi + 1;
+//                     });
+//                     objExtras[count][loopcount] = varQuant;
+//                     objExtras[count]["quantity"] = varQuant;
+//                     cartPayload["cartItems"][itemIndex]["variations"].push(obj);
+//                     cartPayload["cartItems"][itemIndex]["objExtras"].push(
+//                       objExtras
+//                     );
+//                   }
+//                 });
+//                 // Check if the cart has items
+//                 if (
+//                   cartJson.hasOwnProperty("cartItems") &&
+//                   Array.isArray(cartJson.cartItems) &&
+//                   cartJson.cartItems.length !== 0
+//                 ) {
+//                   //$('#overlay').show(); // Show overlay
+//                   //$('#product-loader').show(); // Show loader
+//                   // Send cart data to the server using AJAX
+//                   jQuery.ajax({
+//                     method: "POST",
+//                     url: frontendajax.ajaxurl,
+//                     data: {
+//                       action: "send_id_for_add_cart",
+//                       item: cartPayload,
+//                     },
+//                     success: function (response) {
+//                       window.location.href = site_url + '/cart/';
+//                       // On success, restore the original button state
+//                       target.parentElement.classList.remove(
+//                         "cst-disabled-btn-parent"
+//                       );
+//                       target.style.display = "block";
+//                       clonedElement.remove();
+//                       // Trigger a refresh of the cart fragments
+//                       jQuery(document.body).trigger("wc_fragment_refresh");
+//                       setTimeout(function () {
+//                         // Redirect to the cart page after a short delay
+//                         jQuery(document.body).trigger("wc_fragment_refresh");
+//                         window.location.href = site_url + '/cart/';
+//                       }, 500);
+//                       //$('#overlay').hide(); // Show overlay
+//                       //$('#product-loader').hide(); // Show loader
+//                     },
+//                     error: function (error) {
+//                       // On error, show an alert to the user
+//                       //$('#overlay').hide(); // Show overlay
+//                       //$('#product-loader').hide(); // Show loader
+//                       alert("Something went wrong, Please try again later");
+//                     },
+//                   });
+//                 } else {
+//                   // If the cart is empty, restore the button state
+//                   target.parentElement.classList.remove(
+//                     "cst-disabled-btn-parent"
+//                   );
+//                   target.style.display = "block";
+//                   target.innerHTML = "Add To Cart";
+//                   clonedElement.remove();
+//                 }
+//               },
+//               (error) => {
+//                 // Handle errors from fetching cart details
+//                 console.log(error);
+//                 return null;
+//               },
+//               cartEmbed
+//             );
+//           }
+//         }, 500); // Simulate a delay
+//       } catch (e) {
+//         console.error(e)
+//       }
+//     }
+//   });
 
-  jQuery(document).on("click", ".remove.remove-product", function (e) {
-    e.preventDefault();
-    var $this = jQuery(this);
-    var item_id = $this.data("cart_id");
-    var classes = $this.parents(".cart_item").attr("class");
-    classes = classes.split(" ");
-    classes = classes[2].split("_");
-    var actual_pos = parseInt(classes[2]);
-    $this.closest("li").find(".ajax-loading").show();
-    const cookieValue = getCookieByName("cart-" + scriptData.merchi_domain);
-    jQuery.ajax({
-      type: "POST",
-      dataType: "json",
-      url: theme.ajax_url,
-      data: {
-        action: "cst_cart_item_after_remove",
-        item_id: item_id,
-        cart_length: jQuery(".cst_cart_item").length,
-      },
-      success: function (response) {
-        if (
-          1 == jQuery(".cst_cart_item").length ||
-          0 == jQuery(".cst_cart_item").length
-        ) {
-          localStorageDeleteCartEnt();
-        }
-        const cookieArray = cookieValue.split(",");
-        const id = cookieArray[0].trim();
-        const token = cookieArray[1].trim();
-        const MERCHI = MERCHI_INIT.MERCHI_SDK;
-        const cart = new MERCHI.Cart();
-        const variationsEmbed = {
-          selectedOptions: {},
-          variationField: {
-            options: {
-              linkedFile: {},
-              variationCostDiscountGroup: {},
-              variationUnitCostDiscountGroup: {},
-            },
-            variationCostDiscountGroup: {},
-            variationUnitCostDiscountGroup: {},
-          },
-          variationFiles: {},
-        };
+//   jQuery(document).on("click", ".remove.remove-product", function (e) {
+//     e.preventDefault();
+//     var $this = jQuery(this);
+//     var item_id = $this.data("cart_id");
+//     var classes = $this.parents(".cart_item").attr("class");
+//     classes = classes.split(" ");
+//     classes = classes[2].split("_");
+//     var actual_pos = parseInt(classes[2]);
+//     $this.closest("li").find(".ajax-loading").show();
+//     const cookieValue = getCookieByName("cart-" + scriptData.merchi_domain);
+//     jQuery.ajax({
+//       type: "POST",
+//       dataType: "json",
+//       url: theme.ajax_url,
+//       data: {
+//         action: "cst_cart_item_after_remove",
+//         item_id: item_id,
+//         cart_length: jQuery(".cst_cart_item").length,
+//       },
+//       success: function (response) {
+//         if (
+//           1 == jQuery(".cst_cart_item").length ||
+//           0 == jQuery(".cst_cart_item").length
+//         ) {
+//           localStorageDeleteCartEnt();
+//         }
+//         const cookieArray = cookieValue.split(",");
+//         const id = cookieArray[0].trim();
+//         const token = cookieArray[1].trim();
+//         const MERCHI = MERCHI_INIT.MERCHI_SDK;
+//         const cart = new MERCHI.Cart();
+//         const variationsEmbed = {
+//           selectedOptions: {},
+//           variationField: {
+//             options: {
+//               linkedFile: {},
+//               variationCostDiscountGroup: {},
+//               variationUnitCostDiscountGroup: {},
+//             },
+//             variationCostDiscountGroup: {},
+//             variationUnitCostDiscountGroup: {},
+//           },
+//           variationFiles: {},
+//         };
 
-        const variationsGroupsEmbed = {
-          variations: variationsEmbed,
-        };
-        const embedd = {
-          receiverAddress: {},
-          client: {},
-          cartItems: {
-            product: {},
-            variations: variationsEmbed,
-            variationsGroups: variationsGroupsEmbed,
-          },
-        };
-        cart.id(id);
-        cart.token(token);
-        cart.get(
-          (data) => {
-            var ccart = data;
-            var cartItems = ccart.cartItems();
-            cartItems.splice(actual_pos, 1);
-            ccart.cartItems(cartItems);
-            ccart.patch(
-              (response) => {},
-              (status, data) => console.log(`Error ${status}: ${data}`),
-              undefined,
-              5
-            );
-          },
-          (error) => console.log(JSON.stringify(error)),
-          embedd
-        );
-      },
-    });
-  });
-});
+//         const variationsGroupsEmbed = {
+//           variations: variationsEmbed,
+//         };
+//         const embedd = {
+//           receiverAddress: {},
+//           client: {},
+//           cartItems: {
+//             product: {},
+//             variations: variationsEmbed,
+//             variationsGroups: variationsGroupsEmbed,
+//           },
+//         };
+//         cart.id(id);
+//         cart.token(token);
+//         cart.get(
+//           (data) => {
+//             var ccart = data;
+//             var cartItems = ccart.cartItems();
+//             cartItems.splice(actual_pos, 1);
+//             ccart.cartItems(cartItems);
+//             ccart.patch(
+//               (response) => {},
+//               (status, data) => console.log(`Error ${status}: ${data}`),
+//               undefined,
+//               5
+//             );
+//           },
+//           (error) => console.log(JSON.stringify(error)),
+//           embedd
+//         );
+//       },
+//     });
+//   });
+// });
 
 
 async function createCart() {
@@ -708,8 +708,16 @@ export async function patchCart(cartJson, embed = cartEmbed) {
   const cleanedCartJson = {
     ...cartJson,
     domain: {id: cartJson.domain.id},
+    cartItems: cartJson.cartItems.map(item => ({
+      ...item,
+      product: {id: item.product.id},
+      taxType: item.taxType ? {id: item.taxType.id} : undefined,
+      variations: item.variations,
+      variationsGroups: item.variationsGroups,
+    })),
   }
   const cartEnt = MERCHI.fromJson(new MERCHI.Cart(), cleanedCartJson);
+  cartEnt.token(cartJson.token);
   return new Promise((resolve, reject) => {
     cartEnt.patch((cartEnt) => {
       const _cartJson = MERCHI.toJson(cartEnt);

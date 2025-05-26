@@ -76,7 +76,6 @@ const WoocommerceCheckoutForm = () => {
 
     if (token) {
       const requestOptions = { method: 'GET', redirect: 'follow' };
-
       try {
         const response = await fetch(
           `${merchi_api_url}v6/generate-cart-shipment-quotes/${id}/?cart_token=${token}`,
@@ -97,7 +96,11 @@ const WoocommerceCheckoutForm = () => {
     setShipmentOptionsLoading(true);
     const c = country?.iso2 || '';
     const s = state?.iso2 || '';
-    const cartJson = {...cart, receiverAddress: {...cart.receiverAddress, country: c, state: s}};
+    const cartJson = {
+      ...cart,
+      receiverAddress: {...cart.receiverAddress, country: c, state: s},
+      shipmentGroups: [],
+    };
     try {
       const cartEnt = await patchCart(cartJson);
       const _cartJson = MERCHI.toJson(cartEnt);
