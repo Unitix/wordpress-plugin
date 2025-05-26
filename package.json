@@ -7,8 +7,15 @@
     "dev": "webpack --mode development --watch"
   },
   "dependencies": {
+    "@stripe/react-stripe-js": "^3.7.0",
+    "@stripe/stripe-js": "^7.3.0",
     "merchi_checkout": "1.0.19",
-    "merchi_sdk_js": "latest"
+    "merchi_sdk_js": "latest",
+    "react": "^18.3.1",
+    "react-country-state-city": "^1.1.12",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.56.4",
+    "react-phone-input-2": "^2.15.1"
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",

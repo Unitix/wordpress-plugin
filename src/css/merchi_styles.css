@@ -1225,3 +1225,42 @@ ul.cst-breadcrumb > li.cst-breadcrumb-li i.cst-delimiter {
   display: flex;
   margin-bottom: 2rem;
 }
+
+.stdropdown-container {
+  font-family: inherit;
+  font-weight: 400;
+  letter-spacing: normal;
+  padding: .25em;
+  display: block;
+  background-color: var(--wc-form-color-background, #fff);
+  border: var(--wc-form-border-width) solid var(--wc-form-border-color) !important;
+  border-radius: var(--wc-form-border-radius);
+  color: var(--wc-form-color-text, #000);
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  line-height: normal;
+  height: auto;
+  position: relative;
+}
+
+.stsearch-box input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px;
+  border: none !important;
+  border-radius: 0px !important;
+}
+
+.stdropdown-menu {
+  position: absolute;
+  transform: translateY(4px);
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  overflow: auto;
+  max-height: 150px;
+  background-color: #fff;
+  z-index: 99;
+  left: -1px;
+}

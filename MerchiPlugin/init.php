@@ -17,11 +17,11 @@ final class Init {
 		return [
 			Pages\Admin::class,
 			PublicPages\ProductPage::class,
-			ShoppingCart\ShoppingCartInject::class,
 			Base\Enqueue::class,
 			Base\SettingsLinks::class,
 			Api\CreateMerchiProducts::class,
 			Api\ExportProducts::class,
+			CartPages\CartCheckoutPage::class,
 		];
 	}
 

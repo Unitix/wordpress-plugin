@@ -776,6 +776,7 @@ function initializeWhenReady() {
 
     // Move the click handler here so gatherFormData is in scope
     $(document).on('click', '.single_add_to_cart_button', async function(e) {
+      console.log('did this shoot');
       e.preventDefault();
       e.stopImmediatePropagation(); // Ensure only this handler runs
       // Validate form before proceeding
