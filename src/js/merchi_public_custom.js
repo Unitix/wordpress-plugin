@@ -5,7 +5,6 @@ import {
   getCookieByName,
 } from './utils';
 
-// const stripe = Stripe(scriptData.merchi_stripe_api_key);
 const stripe = '';
 let elements;
 const MERCHI = MERCHI_SDK();

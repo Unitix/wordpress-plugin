@@ -73,7 +73,7 @@ const StripePaymentForm = ({ clientSecret, onPaymentSuccess, onPaymentError }) =
   useEffect(() => {
     // Initialize Stripe with your publishable key
     const initializeStripe = async () => {
-      const stripe = await loadStripe(window.scriptData.merchi_stripe_api_key);
+      const stripe = await loadStripe(scriptData.merchi_stripe_api_key);
       setStripePromise(stripe);
     };
 
