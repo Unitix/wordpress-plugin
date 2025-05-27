@@ -227,7 +227,7 @@ class Admin extends BaseController {
 					'class'     => 'example-class',
 				],
 			],
-                        [
+      [
 				'id'       => 'merchi_api_secret',
 				'title'    => 'Merchi Domain API Secret',
 				'callback' => [

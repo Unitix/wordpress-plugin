@@ -17,7 +17,7 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.js$/,
+        test: /\.(js|jsx)$/,
         exclude: /node_modules/,
         use: {
           loader: 'babel-loader',
@@ -43,7 +43,8 @@ module.exports = {
     extensions: ['.js', '.jsx'],
     alias: {
       'react': path.resolve('./node_modules/react'),
-      'react-dom': path.resolve('./node_modules/react-dom')
+      'react-dom': path.resolve('./node_modules/react-dom'),
+      'react-dom/client': path.resolve('./node_modules/react-dom/client')
     }
   }
 };

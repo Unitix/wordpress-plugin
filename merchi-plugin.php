@@ -141,9 +141,9 @@ function custom_override_woocommerce_template($template, $template_name, $templa
     if ($template_name === 'checkout/form-checkout.php') {
         // Path to your custom template inside the plugin
         return plugin_dir_path(__FILE__) . 'woocommerce/checkout/form-checkout.php';
-    }else if ($template_name === 'checkout/thankyou.php') {
-		return plugin_dir_path(__FILE__) . 'woocommerce/checkout/thankyou.php';
-	}
+    } else if ($template_name === 'checkout/thankyou.php') {
+	    	return plugin_dir_path(__FILE__) . 'woocommerce/checkout/thankyou.php';
+	  }
     return $template;
 }
 add_filter('woocommerce_locate_template', 'custom_override_woocommerce_template', 10, 3);
@@ -669,7 +669,16 @@ function enqueue_my_public_script()
 	}
 	wp_localize_script('custom-public-script', 'scriptData', array(
 		'is_single_product' => $is_single_product,
+		'merchi_mode' => MERCHI_MODE,
+		'merchi_url' => MERCHI_URL,
 		'merchi_domain' => MERCHI_DOMAIN,
+		'merchi_stripe_api_key' => MERCHI_STRIPE_API_KEY,
+	));
+	wp_localize_script('custom-checkout-scrip', 'scriptData', array(
+		'is_single_product' => $is_single_product,
+		'merchi_domain' => MERCHI_DOMAIN,
+		'merchi_mode' => MERCHI_MODE,
+		'merchi_url' => MERCHI_URL,
 		'merchi_stripe_api_key' => MERCHI_STRIPE_API_KEY,
 	));
 	wp_localize_script('custom-public-script', 'frontendajax', array('ajaxurl' => admin_url('admin-ajax.php'), 'checkouturl' => wc_get_checkout_url(), 'stripeSecret' => $stripeSecret, 'telephoneInput' => $telephoneInput, 'billing_values'=> $billing_values));
@@ -1357,7 +1366,8 @@ function woo_add_cart_fee( $cart ) {
 
     $item_fee = 0;
     $cart_id = $_COOKIE['cstCartId'];
-    $options = get_option_extended('get_cart_myItems_'.$cart_id."_");
+	
+	  $options = get_option_extended('get_cart_myItems_'.$cart_id."_");
 
     foreach ( $cart->get_cart() as $cart_item_key => $cart_item ) {
         $option_key = 'get_cart_myItems_'.$cart_id.'_'.$cart_item_key;
@@ -1770,7 +1780,7 @@ function my_submenu_page_callback() {
     
     echo '<h1>Submenu Page</h1>';
     
-	echo '<button class="clickme" type="button">Click Me!</button>';
+	  echo '<button class="clickme" type="button">Click Me!</button>';
 	
 }
 
