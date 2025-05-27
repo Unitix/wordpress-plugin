@@ -373,6 +373,7 @@ class ProductPage extends BaseController {
 													data-calculate="' . ($has_cost ? 'true' : 'false') . '"
 													' . ($index === 0 && !$is_multiple ? 'checked' : '') . ' />';
 							$html .= '<label class="image-select-label">';
+							$html .= '<span class="image-select-checkmark"></span>';
 							if ($image_url) {
 									$html .= '<img src="' . esc_url($image_url) . '" alt="' . esc_attr($term->name) . '" />';
 							}

@@ -1264,9 +1264,11 @@ function filter_woocommerce_get_item_data( $cart_data, $cart_item = null ) {
                     $field_label_str = is_string($field_label) ? $field_label : (string)$field_label;
                     // Use field label from mapping if available
                     $label = isset($field_labels[$field_label_str]) ? $field_labels[$field_label_str] : ucfirst(str_replace('_', ' ', $field_label_str));
-                    // If value is an option ID, use the mapped value
+                    // If value is an option ID or array of IDs, use the mapped value(s)
                     if (is_array($field_value)) {
-                        $value = implode(', ', $field_value);
+                        $value = implode(', ', array_map(function($v) use ($option_value_map) {
+                            return isset($option_value_map[$v]) ? esc_html($option_value_map[$v]) : esc_html($v);
+                        }, $field_value));
                     } elseif (isset($option_value_map[$field_value])) {
                         $value = esc_html($option_value_map[$field_value]);
                     } elseif (preg_match('/^#([A-Fa-f0-9]{6})$/', $field_value)) {
