@@ -110,7 +110,21 @@ function fetchProducts() {
               },
               success: function (response) {
                 if (response.success) {
-                  console.log("Product meta saved successfully");
+                  jQuery.ajax({
+                      url: frontendajax.ajaxurl,
+                      type: "POST",
+                      data: {
+                          action: "fetch_merchi_product",
+                          wooProductId: wooProductId
+                      },
+                      success: function (response) {
+                          if (response.success) {
+                              console.log("Variations created successfully:", response.message);
+                          } else {
+                              console.error("Error:", response.message);
+                          }
+                      }
+                  });
                 } else {
                   console.error(
                     "Failed to save product meta:",
@@ -250,6 +264,41 @@ function spinner() {
 
 //gc code start here
 jQuery(document).ready(function ($) {
+
+  function setImageUpload(inputField, preview, removeBtn) {
+    var fileFrame;
+    $('.upload_image_button').click(function(e) {
+        e.preventDefault();
+        if (fileFrame) {
+            fileFrame.open();
+            return;
+        }
+        fileFrame = wp.media.frames.fileFrame = wp.media({
+            title: 'Select Image',
+            button: { text: 'Use Image' },
+            multiple: false
+        });
+
+        fileFrame.on('select', function() {
+            var attachment = fileFrame.state().get('selection').first().toJSON();
+            preview.attr('src', attachment.url).show();
+            inputField.val(attachment.id);
+            removeBtn.show();
+        });
+
+        fileFrame.open();
+    });
+
+    $('.remove_image_button').click(function(e) {
+        e.preventDefault();
+        preview.hide().attr('src', '');
+        inputField.val('');
+        $(this).hide();
+    });
+}
+
+setImageUpload($('#taxonomy_image'), $('#taxonomy-image-preview'), $('.remove_image_button'));
+
   $("#remove_selected_value").on("click", function () {
     // Hide the 'selected_value_display' element
     $("#selected_value_display").hide();

@@ -28,7 +28,7 @@ jQuery(document).ready(function ($) {
             error: onError});
   }
 
-  button.click(function () {
+  button.on('click', function () {
     button.html("Exporting...");
     button.prop("disabled", true);
     exportProducts();

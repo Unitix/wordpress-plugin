@@ -274,3 +274,272 @@ input[type="checkbox"] {
 #mini-cart .remove-product {
   display: none !important;
 }
+
+/* -------------------------------
+ Custom product attributes styling
+ ------------------------------- */
+
+/* Price display */
+#custom-price-display {
+  margin-top: 15px;
+  font-size: 20px;
+  font-weight: bold;
+  color: #222;
+  text-align: center;
+  background: #e6f7ff;
+  padding: 12px;
+  border-radius: 6px;
+  display: inline-block;
+  width: 100%;
+}
+
+/* Make price value standout */
+#custom-price {
+  color: #0753d7;
+  font-size: 24px;
+}
+
+button#add-group-button, button.delete-group-button {
+  padding: 11px 20px;
+  margin: 10px 0;
+  background-color: #0753d7;
+  appearance: none;
+  border: none;
+  color: #fff;
+  border-radius: 6px;
+}
+
+
+.custom-attribute-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  flex-direction: row;
+  align-content: flex-start;
+  align-items: flex-start;
+}
+
+label.custom-attribute-option {
+  padding: 10px 9px;
+  border: 1px dashed #ddd;
+}
+
+.wp-block-woocommerce-add-to-cart-form form.cart {
+  display: block !important;
+}
+
+.custom-attribute-option {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 10px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.custom-attribute-option:hover {
+  border-color: #007cba;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.custom-attribute-option img {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.custom-attribute-option input[type="radio"],
+.custom-attribute-option input[type="checkbox"] {
+  display: none;
+}
+
+.custom-attribute-option input[type="radio"]:checked + img,
+.custom-attribute-option input[type="checkbox"]:checked + img {
+  border: 2px solid #007cba;
+  box-shadow: 0 0 0 2px #007cba;
+}
+
+.custom-attribute-option .option-label {
+  font-size: 14px;
+  color: #333;
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* ✅ Checkmark styling */
+.custom-checkmark {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 24px;
+  height: 24px;
+  background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Checkmark_green.svg/1024px-Checkmark_green.svg.png') no-repeat center center / contain;
+  display: none;
+}
+
+/* 🎯 Highlight selected option */
+.custom-attribute-option input:checked + img {
+  border: 3px solid #0073aa;
+}
+
+.custom-attribute-option input:checked ~ .custom-checkmark {
+  display: block;
+}
+
+/* Color Selector Styles */
+.color-options-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 5px;
+    margin-top: 5px;
+    max-width: 465px;
+}
+
+.color-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    margin-bottom: 5px;
+    width: 45px; /* Fixed width for the entire option */
+    margin: 0 auto; /* Center the option in its grid cell */
+}
+
+.color-option input[type="radio"] {
+    display: none;
+}
+
+.color-option-inner {
+    position: relative;
+    width: 35px;
+    height: 35px;
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: center;
+}
+
+.color-indicator {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid #ddd;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.color-name {
+    font-size: 11px;
+    color: #666;
+    width: 45px; /* Match parent width */
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0;
+}
+
+.checkmark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 14px;
+    text-shadow: 0 0 2px rgba(0,0,0,0.5);
+    pointer-events: none;
+    opacity: 0; /* Hide by default */
+    transition: opacity 0.2s ease; /* Smooth transition */
+}
+
+.color-option input[type="radio"]:checked + .color-option-inner .checkmark {
+    opacity: 1; /* Show when selected */
+}
+
+.color-option input[type="radio"]:checked + .color-option-inner .color-indicator {
+    border-color: #000;
+}
+
+@media (max-width: 768px) {
+    .color-options-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* Add to Cart Button Loading State */
+.product-button-add-to-cart {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.product-button-add-to-cart.loading {
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+.product-button-add-to-cart .loading-spinner {
+    display: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+}
+
+.product-button-add-to-cart.loading .loading-spinner {
+    display: inline-block;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Form Validation Styles */
+.form-error {
+    color: #dc3545;
+    font-size: 14px;
+    margin-top: 5px;
+}
+
+.field-error {
+    border-color: #dc3545 !important;
+}
+
+.field-error-message {
+    color: #dc3545;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* Add space after each group in WooCommerce Blocks cart */
+li[class*="wc-block-components-product-details__group-"] {
+    margin-bottom: 18px !important;
+}
+/* Style the + New Group button to match Add to cart but smaller */
+.merchi-product-form #add-group-button, #add-group-button, .add-group-button {
+    background: #111;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 7px 18px;
+    font-size: 15px;
+    font-weight: 500;
+    margin-bottom: 12px;
+    margin-top: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    display: inline-block;
+}
+.merchi-product-form #add-group-button:hover, #add-group-button:hover, .add-group-button:hover {
+    background: #222;
+}

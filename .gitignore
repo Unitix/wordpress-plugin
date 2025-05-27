@@ -2,3 +2,11 @@ vendor
 wc-api-php-master
 *.DS_Store
 *.swp
+
+init.php
+.wp-evn.json
+-wp-env.json
+
+# Build output directory
+/dist/
+/node_modules/

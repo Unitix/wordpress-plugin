@@ -1,65 +1,24 @@
+import { MERCHI_SDK } from './merchi_sdk';
+import {
+  cartShipmentQuote,
+  cartEmbed,
+  getCookieByName,
+} from './utils';
+
 const stripe = Stripe(scriptData.merchi_stripe_api_key);
 let elements;
-const MERCHI = MERCHI_INIT.MERCHI_SDK;
+const MERCHI = MERCHI_SDK();
 const site_url = scriptData.site_url
 
-const cartShipmentQuote = {
-  shipmentMethod: { originAddress: {}, taxType: {} },
-};
-
-const optionsEmbed = {
-  options: {
-    linkedFile: {},
-    variationCostDiscountGroup: {},
-    variationUnitCostDiscountGroup: {},
-  },
-  variationCostDiscountGroup: {},
-  variationUnitCostDiscountGroup: {},
-};
-
-const variationsEmbed = {
-  selectedOptions: {},
-  variationField: optionsEmbed,
-  variationFiles: {},
-};
-
-const variationsGroupsEmbed = {
-  variations: variationsEmbed,
-};
-
-const productWithImagesEmbed = {
-  domain: { company: { defaultTaxType: {}, taxTypes: {} } },
-  featureImage: {},
-  groupVariationFields: { options: { linkedFile: {} } },
-  images: {},
-  independentVariationFields: { options: { linkedFile: {} } },
-  taxType: {},
-};
-
-const cartEmbed = {
-  cartItems: {
-    product: productWithImagesEmbed,
-    taxType: {},
-    variations: variationsEmbed,
-    variationsGroups: variationsGroupsEmbed,
-  },
-  client: { emailAddresses: {}, profilePicture: {} },
-  clientCompany: {},
-  domain: {
-    company: {
-      defaultTaxType: {},
-      isStripeAccountEnabled: {},
-      taxTypes: {},
-    },
-  },
-  invoice: {},
-  receiverAddress: {},
-  shipmentGroups: {
-    cartItems: { product: {} },
-    quotes: cartShipmentQuote,
-    selectedQuote: cartShipmentQuote,
-  },
-};
+function makeMerchiJsEnt(entName, data) {
+  const MERCHI = MERCHI_INIT.MERCHI_SDK;
+  if (Array.isArray(data)) {
+    const entities = data.map((v) => makeMerchiJsEnt(entName, v));
+    return entities;
+  }
+  const jobEntity = MERCHI.fromJson(new MERCHI[entName](), data);
+  return jobEntity;
+}
 
 function makeMerchiCartEnt(data) {
   if (Array.isArray(data)) {
@@ -146,16 +105,6 @@ function localStorageDeleteCartEnt() {
   localStorage.removeItem("MerchiCart");
 }
 
-function makeMerchiJsEnt(entName, data) {
-  const MERCHI = MERCHI_INIT.MERCHI_SDK;
-  if (Array.isArray(data)) {
-    const entities = data.map((v) => makeMerchiJsEnt(entName, v));
-    return entities;
-  }
-  const jobEntity = MERCHI.fromJson(new MERCHI[entName](), data);
-  return jobEntity;
-}
-
 async function patchRecieverAddress(cart, address, step) {
   address = makeMerchiJsEnt("Address", address);
   const cartEnt = await localStorageGetCartEnt();
@@ -201,6 +150,7 @@ function initializeStripe() {
   const paymentElement = elements.create("payment", paymentElementOptions);
   paymentElement.mount("#payment-element");
 }
+
 async function handleSubmit(e) {
   e.preventDefault();
   setLoading(true);
@@ -313,24 +263,6 @@ function setLoading(isLoading) {
     document.querySelector("#spinner").classList.add("hidden");
     document.querySelector("#button-text").classList.remove("hidden");
   }
-}
-
-function getCookieByName(name) {
-  const cookies = document.cookie.split(";");
-
-  for (let i = 0; i < cookies.length; i++) {
-    const cookie = cookies[i].trim();
-    if (cookie.startsWith(name + "=")) {
-      return cookie.substring(name.length + 1);
-    }
-  }
-
-  return null; // Cookie not found
-}
-
-function captureEmail(input) {
-  var email = input.value;
-  document.querySelector(".captured-email").value = email;
 }
 
 async function addClientToCart(cart, userId) {
@@ -606,6 +538,62 @@ function getButtonByText(buttons, text) {
 }
 
 jQuery(document).ready(function ($) {
+
+    var groupIndex = 1;
+
+    $("#add-group-button").on('click', function() {
+        groupIndex++;
+        var newGroup = $(".group-field-set").first().clone();
+        newGroup.attr("data-group-index", groupIndex);
+        newGroup.find(".group-number").text(groupIndex);
+
+        newGroup.find("input, select, textarea").each(function() {
+            var name = $(this).attr("name");
+            if (name) {
+                name = name.replace("group_fields[1]", "group_fields[" + groupIndex + "]");
+                $(this).attr("name", name);
+            }
+        });
+        newGroup.find(".delete-group-button").show();
+        $("#grouped-fields-container").append(newGroup);
+    });
+
+    $(document).on("click", ".delete-group-button", function() {
+        $(this).closest(".group-field-set").remove();
+        updateGroupNumbers();
+    });
+
+    function updateGroupNumbers() {
+        $(".group-field-set").each(function(index) {
+            var newIndex = index + 1;
+            $(this).attr("data-group-index", newIndex);
+            $(this).find(".group-number").text(newIndex);
+            $(this).find("input, select, textarea").each(function() {
+                var name = $(this).attr("name");
+                if (name) {
+                    name = name.replace(/group_fields\[\d+\]/, "group_fields[" + newIndex + "]");
+                    $(this).attr("name", name);
+                }
+            });
+        });
+
+        if ($(".group-field-set").length === 1) {
+            $(".group-field-set .delete-group-button").hide();
+        } else {
+            $(".group-field-set .delete-group-button").show();
+        }
+    }
+
+
+  jQuery('.custom-attribute-option').on('click', function () {
+    var parent = jQuery(this).closest('.custom-attribute-options');
+    parent.find('input').prop('checked', false); // Uncheck all
+    parent.find('.custom-checkmark').hide(); // Hide all checkmarks
+
+    jQuery(this).find('input').prop('checked', true).trigger('change'); // Check the clicked input
+    jQuery(this).find('.custom-checkmark').show(); // Show checkmark
+  });
+
   if (1 == getQueryStringParameter("step")) {
     jQuery("#billing_email").trigger("blur");
   }
@@ -724,9 +712,20 @@ jQuery(document).ready(function ($) {
         }
       }
     });
-    if (target?.classList?.contains("product-button-add-to-cart")){
-      // Start observing the target node
-      observer.observe(target, { attributes: true });
+
+    if (target?.classList?.contains("product-button-add-to-cart")) {
+      // Ensure target is a valid DOM node before observing
+      if (target instanceof Element) {
+        try {
+          observer.observe(target, { attributes: true });
+        } catch (error) {
+          console.warn('Failed to observe target element:', error);
+          return;
+        }
+      } else {
+        console.warn('Target element is not a valid DOM node');
+        return;
+      }
       try {
         setTimeout(function () {
           // Check if the current page is a single product page

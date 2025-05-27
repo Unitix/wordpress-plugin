@@ -1,0 +1,13 @@
+{
+  "plugins": [ 
+    ".",
+    "https://downloads.wordpress.org/plugin/woocommerce.latest-stable.zip"
+  ],
+  "config": {
+    "WP_DEBUG": true,
+    "WP_DEBUG_LOG": "/var/www/html/wp-content/debug.log",
+    "WP_DEBUG_DISPLAY": true
+  },
+  "port": 3002,
+  "testsPort": 3003
+} 
