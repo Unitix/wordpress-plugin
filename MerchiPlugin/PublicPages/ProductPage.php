@@ -125,13 +125,13 @@ class ProductPage extends BaseController {
 		echo '<div id="grouped-fields-container" class="merchi_product_form">';
 		echo '<h3>Grouped Options</h3>';
 
-		echo '<div class="group-field-set" data-group-index="1">';
+		echo '<div class="group-field-set" data-group-index="0">';
 		echo '<h4>Group <span class="group-number">1</span></h4>';
 		
 		// Add group quantity field inside the group container
 		echo '<div class="custom-field">';
 		echo '<label>Group (1) quantity ($' . number_format((float)$unit_price, 2) . ' unit price)</label>';
-		echo '<input type="number" class="qty group-quantity" name="group_fields[1][quantity]" value="1" min="1" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="1">';
+		echo '<input type="number" class="qty group-quantity" name="group_fields[1][quantity]" value="1" min="1" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="0">';
 		echo '</div>';
 
 		foreach ($group_fields_template as $field) {
@@ -141,7 +141,7 @@ class ProductPage extends BaseController {
 				echo $this->render_meta_field($field, "group_fields[1]");
 			}
 		}
-		echo '<div class="group-cost-display" data-group-index="1"></div>';
+		echo '<div class="group-cost-display" data-group-index="0"></div>';
 		echo '<button type="button" class="delete-group-button" style="display: none;">Delete Group</button>';
 		echo '</div>';
 
