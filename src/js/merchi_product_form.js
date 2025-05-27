@@ -689,6 +689,7 @@ function initializeWhenReady() {
 
         if (!variationFieldId) return;
 
+
         // Use DOM data-group-index for correct group index
         const groupIndex = parseInt($fieldContainer.closest('.group-field-set').attr('data-group-index'), 10) - 1;
         const uniqueVariationFieldId = variationFieldId.toString().replace(/_group\\d+$/, '') + '_group' + groupIndex;
@@ -780,11 +781,7 @@ function initializeWhenReady() {
           const groupIndex = parseInt($group.attr('data-group-index'), 10) - 1;
           // Deep clone the variations array for each group
           const groupVariations = JSON.parse(JSON.stringify(defaultJobJson.product.groupVariationFields.map(f => ({ variationField: { ...f }, value: null }))));
-          for (let v of groupVariations) {
-            if (v.variationField && v.variationField.id !== undefined) {
-              v.variationField.id = v.variationField.id.toString().replace(/_group\\d+$/, '') + '_group' + groupIndex;
-            }
-          }
+
           $group.find('[data-variation-field]').each(function() {
             const $input = jQuery(this);
             let fieldData = $input.data('variation-field');
@@ -809,14 +806,6 @@ function initializeWhenReady() {
 
       // Process standalone variations
       processVariations(jQuery('.custom-variation-options'), formData.variations);
-
-      // Store form data in localStorage
-      try {
-        localStorage.setItem('merchiProductFormData', JSON.stringify(formData));
-        console.log('Form data stored in localStorage:', formData);
-      } catch (error) {
-        console.error('Error storing form data in localStorage:', error);
-      }
 
       return formData;
     }
