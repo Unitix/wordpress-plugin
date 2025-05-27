@@ -166,54 +166,83 @@ function setLoading(isLoading) {
   }
 }
 
-async function updateShipmentMethod(index, quoteIndex) {
-  jQuery(".checkout-navigation .button").attr("disabled", "disabled");
-  const embed = {
-    shipmentGroups: {
-      cartItems: { product: {} },
-      quotes: cartShipmentQuote,
-      selectedQuote: cartShipmentQuote,
-    },
-  };
-  var token = false;
-  var id = false;
-  const cookieValue = getCookieByName("cart-" + scriptData.merchi_domain);
-  if (cookieValue) {
-    const cookieArray = cookieValue.split(",");
-    token = cookieArray[1].trim();
-    id = cookieArray[0].trim();
-  }
-  const cart = new MERCHI.Cart();
-  cart.id(id);
-  cart.token(token);
-  cart.get(
-    (cartEnt) => {
-      const qEnt = cartEnt.shipmentGroups()[index].quotes()[quoteIndex];
-      cartEnt.shipmentGroups()[index].selectedQuote(qEnt, {});
-      cartEnt.patch(
-        (response) => {
-          localStorageUpdateCartEnt(cartEnt);
-          jQuery.ajax({
-            type: "POST",
-            url: frontendajax.ajaxurl,
-            data: {
-              action: "cst_add_shipping",
-              shippingCost: qEnt._totalCost,
-            },
-            success: function (response) {
-              jQuery("body").trigger("update_checkout");
-              jQuery(".checkout-navigation .button").removeAttr("disabled");
-            },
-          });
-        },
-        (error) => console.log(JSON.stringify(error)),
-        embed
-      );
-    },
-    (error) => console.log(JSON.stringify(error)),
-    embed
-  );
-}
+// --- DISABLED: All direct PATCH requests to Merchi API must go through backend ---
+// The following code is commented out to prevent direct PATCH from browser:
+//
+// async function updateShipmentMethod(index, quoteIndex) {
+//   jQuery(".checkout-navigation .button").attr("disabled", "disabled");
+//   const embed = {
+//     shipmentGroups: {
+//       cartItems: { product: {} },
+//       quotes: cartShipmentQuote,
+//       selectedQuote: cartShipmentQuote,
+//     },
+//   };
+//   var token = false;
+//   var id = false;
+//   const cookieValue = getCookieByName("cart-" + scriptData.merchi_domain);
+//   if (cookieValue) {
+//     const cookieArray = cookieValue.split(",");
+//     token = cookieArray[1].trim();
+//     id = cookieArray[0].trim();
+//   }
+//   const cart = new MERCHI.Cart();
+//   cart.id(id);
+//   cart.token(token);
+//   cart.get(
+//     (cartEnt) => {
+//       const qEnt = cartEnt.shipmentGroups()[index].quotes()[quoteIndex];
+//       cartEnt.shipmentGroups()[index].selectedQuote(qEnt, {});
+//       cartEnt.patch(
+//         (response) => {
+//           localStorageUpdateCartEnt(cartEnt);
+//           jQuery.ajax({
+//             type: "POST",
+//             url: frontendajax.ajaxurl,
+//             data: {
+//               action: "cst_add_shipping",
+//               shippingCost: qEnt._totalCost,
+//             },
+//             success: function (response) {
+//               jQuery("body").trigger("update_checkout");
+//               jQuery(".checkout-navigation .button").removeAttr("disabled");
+//             },
+//           });
+//         },
+//         (error) => console.log(JSON.stringify(error)),
+//         embed
+//       );
+//     },
+//     (error) => console.log(JSON.stringify(error)),
+//     embed
+//   );
+// }
+//
+// export async function patchCart(cartJson, embed = cartEmbed) {
+//   const cleanedCartJson = {
+//     ...cartJson,
+//     domain: {id: cartJson.domain.id},
+//     cartItems: cartJson.cartItems.map(item => ({
+//       ...item,
+//       product: {id: item.product.id},
+//       taxType: item.taxType ? {id: item.taxType.id} : undefined,
+//       variations: item.variations,
+//       variationsGroups: item.variationsGroups,
+//     })),
+//   }
+//   const cartEnt = MERCHI.fromJson(new MERCHI.Cart(), cleanedCartJson);
+//   cartEnt.token(cartJson.token);
+//   return new Promise((resolve, reject) => {
+//     cartEnt.patch((cartEnt) => {
+//       const _cartJson = MERCHI.toJson(cartEnt);
+//       // save the patched cart to local storage
+//       localStorage.setItem("MerchiCart", JSON.stringify(_cartJson));
+//       resolve(cartEnt);
+//     }, (status, data) => reject(data), embed);
+//   });
+// }
+//
+// All PATCH requests should now be handled by the backend via send_id_for_add_cart.
 
 function getQueryStringParameter(name) {
   name = name.replace(/[\[\]]/g, "\\$&");
@@ -292,7 +321,7 @@ const successCallback = function () {
 //         } else {
 //             $(".group-field-set .delete-group-button").show();
 //         }
-//     }
+//     });
 
 
 //   jQuery('.custom-attribute-option').on('click', function () {
@@ -704,30 +733,6 @@ export async function getCart(id, token, embed = cartEmbed) {
   });
 }
 
-export async function patchCart(cartJson, embed = cartEmbed) {
-  const cleanedCartJson = {
-    ...cartJson,
-    domain: {id: cartJson.domain.id},
-    cartItems: cartJson.cartItems.map(item => ({
-      ...item,
-      product: {id: item.product.id},
-      taxType: item.taxType ? {id: item.taxType.id} : undefined,
-      variations: item.variations,
-      variationsGroups: item.variationsGroups,
-    })),
-  }
-  const cartEnt = MERCHI.fromJson(new MERCHI.Cart(), cleanedCartJson);
-  cartEnt.token(cartJson.token);
-  return new Promise((resolve, reject) => {
-    cartEnt.patch((cartEnt) => {
-      const _cartJson = MERCHI.toJson(cartEnt);
-      // save the patched cart to local storage
-      localStorage.setItem("MerchiCart", JSON.stringify(_cartJson));
-      resolve(cartEnt);
-    }, (status, data) => reject(data), embed);
-  });
-}
-
 /**
  * Initializes or synchronizes the Merchi cart.
  * This function assumes that `MERCHI`, `createCart`, `getCart`,
@@ -854,5 +859,132 @@ jQuery(document).ready(function ($) {
     console.error('MERCHI_LOG: initOrSyncCart function not defined.');
   }
 });
+
+// UI handler for updating shipment method via AJAX to backend
+export function updateShipmentMethod(index, quoteIndex) {
+  showCartLoader();
+  const data = {
+    action: "update_shipment_method",
+    shipment_group_index: index,
+    quote_index: quoteIndex
+  };
+  
+  jQuery.ajax({
+    type: "POST",
+    url: frontendajax.ajaxurl,
+    data: data,
+    success: function(response) {
+      hideCartLoader();
+      if (response.success) {
+        // Update UI with new cart data
+        if (response.cart) {
+          updateCartDisplay(response.cart);
+          // Trigger WooCommerce update if needed
+          jQuery("body").trigger("update_checkout");
+        }
+      } else {
+        console.error("Failed to update shipment method:", response.error);
+        alert("Failed to update shipment method. Please try again.");
+      }
+    },
+    error: function(xhr, status, error) {
+      hideCartLoader();
+      console.error("Error updating shipment method:", error);
+      alert("Error updating shipment method. Please try again.");
+    }
+  });
+}
+
+// UI handler for patching the cart via AJAX to backend
+export function patchCartAJAX(cartPayload) {
+  showCartLoader();
+  
+  // Ensure payload matches Merchi's structure
+  const merchiPayload = {
+    cartItems: cartPayload.cartItems ? cartPayload.cartItems.map(item => ({
+      id: item.id,
+      productID: item.product.id,
+      quantity: item.quantity,
+      variations: item.variations || [],
+      objExtras: item.objExtras || []
+    })) : [],
+    shipmentGroups: cartPayload.shipmentGroups || []
+  };
+  
+  jQuery.ajax({
+    type: "POST",
+    url: frontendajax.ajaxurl,
+    data: {
+      action: "patch_merchi_cart",
+      cart: merchiPayload
+    },
+    success: function(response) {
+      hideCartLoader();
+      if (response.success) {
+        // Update UI with new cart data
+        if (response.cart) {
+          updateCartDisplay(response.cart);
+          // Save to localStorage if needed
+          localStorage.setItem("MerchiCart", JSON.stringify(response.cart));
+        }
+      } else {
+        console.error("Failed to update cart:", response.error);
+        alert("Failed to update cart. Please try again.");
+      }
+    },
+    error: function(xhr, status, error) {
+      hideCartLoader();
+      console.error("Error updating cart:", error);
+      alert("Error updating cart. Please try again.");
+    }
+  });
+}
+
+// Helper function to update cart display
+function updateCartDisplay(cart) {
+  // Update cart count
+  const cartCount = document.getElementById('cart-count');
+  if (cartCount && cart.cartItems) {
+    const totalItems = cart.cartItems.reduce((sum, item) => sum + item.quantity, 0);
+    cartCount.textContent = totalItems;
+  }
+  
+  // Update cart items list if it exists
+  const cartItemsList = document.getElementById('cart-items-list');
+  if (cartItemsList && cart.cartItems) {
+    // Clear existing items
+    cartItemsList.innerHTML = '';
+    
+    // Add new items
+    cart.cartItems.forEach(item => {
+      const itemElement = document.createElement('div');
+      itemElement.className = 'cart-item';
+      itemElement.innerHTML = `
+        <span class="item-name">${item.product.name || 'Product'}</span>
+        <span class="item-quantity">x${item.quantity}</span>
+        <span class="item-price">$${item.totalCost.toFixed(2)}</span>
+      `;
+      cartItemsList.appendChild(itemElement);
+    });
+  }
+  
+  // Update total cost if element exists
+  const totalCost = document.getElementById('cart-total-cost');
+  if (totalCost && cart.totalCost !== undefined) {
+    totalCost.textContent = `$${cart.totalCost.toFixed(2)}`;
+  }
+}
+
+// Helper functions for loader and cart display (implement as needed)
+function showCartLoader() {
+  // Show a loader/spinner with id 'cart-loader'
+  const loader = document.getElementById('cart-loader');
+  if (loader) loader.style.display = 'block';
+}
+function hideCartLoader() {
+  // Hide the loader/spinner with id 'cart-loader'
+  const loader = document.getElementById('cart-loader');
+  if (loader) loader.style.display = 'none';
+}
 
 

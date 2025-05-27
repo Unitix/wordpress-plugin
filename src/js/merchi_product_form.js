@@ -21,6 +21,19 @@ function initializeWhenReady() {
     let productJson = null;
     let defaultJobJson = null;
 
+    // Add cart-loader and cart-count elements if not present
+    if ($('#cart-loader').length === 0) {
+      $('body').prepend('<div id="cart-loader" style="display:none;position:fixed;top:20px;right:20px;z-index:9999;"><div style="width:32px;height:32px;border:4px solid #eee;border-top:4px solid #3498db;border-radius:50%;animation:spin 1s linear infinite;"></div></div>');
+    }
+    if ($('#cart-count').length === 0) {
+      // Add to header if exists, else to body
+      if ($('header').length > 0) {
+        $('header').append('<span id="cart-count" style="margin-left:16px;font-weight:bold;">0</span>');
+      } else {
+        $('body').prepend('<span id="cart-count" style="position:fixed;top:20px;left:20px;z-index:9999;font-weight:bold;">0</span>');
+      }
+    }
+
     // Function to fetch product details
     function fetchProductDetails() {
       return new Promise((resolve) => {
@@ -541,64 +554,55 @@ function initializeWhenReady() {
   
     // Function to add a new group
     function addNewGroup() {
-      // Get the first group as template
-      const $firstGroup = jQuery(".group-field-set").first();
-      const newGroupIndex = jQuery(".group-field-set").length + 1;
-
+      console.log('addNewGroup called. Current group count:', jQuery('.group-field-set').length);
+      // Always use the first fully structured group as the template
+      const $firstGroup = jQuery('.group-field-set').filter(function() {
+        return jQuery(this).find('.custom-field').length > 0;
+      }).first();
+      if ($firstGroup.length === 0) {
+        console.error('No valid group template found for cloning.');
+        return;
+      }
+      const newGroupIndex = jQuery('.group-field-set').length + 1;
       // Clone the group
       const $newGroup = $firstGroup.clone();
 
-      // Reset and update the new group
-      $newGroup
-        .attr("data-group-index", newGroupIndex)
-        .find(".group-number")
-        .text(newGroupIndex);
+      // Defensive: Remove any direct text nodes that are just numbers
+      $newGroup.contents().filter(function() {
+        return this.nodeType === 3 && /^\d+$/.test(this.nodeValue.trim());
+      }).remove();
 
-      // After cloning $firstGroup as $newGroup
-      $newGroup.find('input, select, textarea').each(function() {
-        const $input = jQuery(this);
-        // Remove value and checked state
-        if ($input.is(':checkbox, :radio')) {
-          $input.prop('checked', false);
-        } else {
-          $input.val('');
-        }
-        // Remove unique IDs
-        $input.removeAttr('id');
-        // Remove any previous event handlers
-        $input.off();
-        // Reset data-variation-field to base field id (remove _groupN)
-        let fieldData = $input.data('variation-field');
-        if (fieldData && fieldData.id !== undefined) {
-          fieldData = typeof fieldData === 'string' ? JSON.parse(fieldData) : fieldData;
-          fieldData.id = fieldData.id.toString().replace(/_group\d+$/, '') + '_group' + (newGroupIndex-1);
-          $input.attr('data-variation-field', JSON.stringify(fieldData));
-        }
-        // Update name attribute for group_fields
-        let name = $input.attr("name");
-        if (name && name.match(/^group_fields\[\d+\]/)) {
-          name = name.replace(/group_fields\[\d+\]/, `group_fields[${newGroupIndex}]`);
-          $input.attr("name", name);
-        }
+      // Defensive: Check if the clone is valid
+      if ($newGroup.find('.custom-field').length === 0) {
+        console.error('Attempted to clone a malformed group. Aborting.');
+        console.log('Malformed group HTML:', $newGroup.html());
+        return;
+      }
+
+      // Reset and update the new group
+      $newGroup.attr("data-group-index", newGroupIndex);
+      $newGroup.find(".group-number").text(newGroupIndex);
+
+      // in the new group find all the data-group-index + 1
+      $newGroup.find('[data-group-index]').each(function() {
+        const $element = jQuery(this);
+        $element.attr('data-group-index', newGroupIndex);
       });
-      
       // Also update the group-cost-display's data-group-index
       $newGroup.find('.group-cost-display').attr('data-group-index', newGroupIndex).text('');
-      
       // Update all form elements in the new group
       $newGroup.find("input, select, textarea").each(function() {
         const $input = jQuery(this);
-        // Handle quantity field
+        let name = $input.attr("name");
+        if (name) {
+          name = name.replace(/group_fields\[\d+\]/, `group_fields[${newGroupIndex}]`);
+          $input.attr("name", name);
+        }
         if ($input.hasClass('group-quantity')) {
-          $input
-            .attr('data-group-index', newGroupIndex)
-            .val(1); // Reset quantity to 1
+          $input.attr('data-group-index', newGroupIndex).val(1);
           const unitPrice = parseFloat($input.data('unit-price'));
-          $input.closest('.custom-field')
-            .find('label')
-            .text(`Group (${newGroupIndex}) quantity ($${unitPrice.toFixed(2)} unit price)`);
+          $input.closest('.custom-field').find('label').text(`Group (${newGroupIndex}) quantity ($${unitPrice.toFixed(2)} unit price)`);
         } else {
-          // Reset other inputs
           if ($input.is(':checkbox, :radio')) {
             $input.prop('checked', false);
           } else {
@@ -606,22 +610,20 @@ function initializeWhenReady() {
           }
         }
       });
-
       // Show delete button
       $newGroup.find(".delete-group-button").show();
-      
-      // Add the new group
+      // Final check before appending
+      if ($newGroup.find('.custom-field').length === 0) {
+        console.error('Clone lost its fields before appending. Aborting.');
+        console.log('Malformed group HTML before append:', $newGroup.html());
+        return;
+      }
       jQuery("#grouped-fields-container").append($newGroup);
-
       // Initialize handlers for this new group only
       initializeGroupVariationHandlers($newGroup);
-      
-      // Show all delete buttons if more than one group
       if (jQuery(".group-field-set").length > 1) {
         jQuery(".delete-group-button").show();
       }
-
-      // Trigger immediate price calculation
       calculateAndUpdatePrice();
     }
 
@@ -688,11 +690,8 @@ function initializeWhenReady() {
         const variationFieldId = variationFieldData?.id;
 
         if (!variationFieldId) return;
-
-        // Use DOM data-group-index for correct group index
-        const groupIndex = parseInt($fieldContainer.closest('.group-field-set').attr('data-group-index'), 10) - 1;
-        const uniqueVariationFieldId = variationFieldId.toString().replace(/_group\\d+$/, '') + '_group' + groupIndex;
-        const variationIndex = variationsArray.findIndex(v => v.variationField.id == uniqueVariationFieldId);
+        // Find the index of the variation by matching the variationFieldId
+        const variationIndex = variationsArray.findIndex(v => v.variationField.id === variationFieldId);
 
         if (variationIndex === -1) return;
 
@@ -728,35 +727,6 @@ function initializeWhenReady() {
           }
         }
 
-        // After getting value, map it to label(s) if options are available
-        let options = [];
-        // Try to find options in groupVariationFields or independentVariationFields
-        if (defaultJobJson && defaultJobJson.product) {
-          const allFields = [
-            ...(defaultJobJson.product.groupVariationFields || []),
-            ...(defaultJobJson.product.independentVariationFields || [])
-          ];
-          // Remove _groupN suffix for matching
-          const baseVariationFieldId = variationFieldId ? variationFieldId.toString().replace(/_group\d+$/, '') : '';
-          const field = allFields.find(f => f.id == baseVariationFieldId);
-          if (field && Array.isArray(field.options)) {
-            options = field.options;
-          }
-        }
-        if (options.length > 0 && value != null) {
-          if (Array.isArray(value)) {
-            // Multi-select: map each ID to label
-            value = value.map(val => {
-              const opt = options.find(o => o.id == val || o.value == val);
-              return opt ? (opt.label || opt.value || val) : val;
-            }).join(', ');
-          } else {
-            // Single select: map ID to label
-            const opt = options.find(o => o.id == value || o.value == value);
-            value = opt ? (opt.label || opt.value || value) : value;
-          }
-        }
-
         // Update the value of the variation
         variationsArray[variationIndex].value = value;
       });
@@ -775,32 +745,16 @@ function initializeWhenReady() {
 
       // Process group variations
       if (groupVariationFields.length > 0) {
-        jQuery('.group-field-set').each(function() {
+          jQuery('.group-field-set').each(function(groupIndex) {
           const $group = jQuery(this);
-          const groupIndex = parseInt($group.attr('data-group-index'), 10) - 1;
           // Deep clone the variations array for each group
-          const groupVariations = JSON.parse(JSON.stringify(defaultJobJson.product.groupVariationFields.map(f => ({ variationField: { ...f }, value: null }))));
-          for (let v of groupVariations) {
-            if (v.variationField && v.variationField.id !== undefined) {
-              v.variationField.id = v.variationField.id.toString().replace(/_group\\d+$/, '') + '_group' + groupIndex;
-            }
-          }
-          $group.find('[data-variation-field]').each(function() {
-            const $input = jQuery(this);
-            let fieldData = $input.data('variation-field');
-            if (fieldData && fieldData.id !== undefined) {
-              fieldData = typeof fieldData === 'string' ? JSON.parse(fieldData) : fieldData;
-              fieldData.id = fieldData.id.toString().replace(/_group\\d+$/, '') + '_group' + groupIndex;
-              $input.attr('data-variation-field', JSON.stringify(fieldData));
-            }
+            formData.variationsGroups.push({
+            quantity: parseInt($group.find('.group-quantity').val()) || 1,
+            variations: [...defaultJobJson.variationsGroups[0].variations],
           });
 
           // Process variations within this group
-          processVariations($group, groupVariations);
-          formData.variationsGroups.push({
-            quantity: parseInt($group.find('.group-quantity').val()) || 1,
-            variations: groupVariations,
-          });
+          processVariations($group, formData.variationsGroups[groupIndex].variations);
         });
       } else {
         // if thee are no groups then we just use the quantity from the quantity input
@@ -809,14 +763,6 @@ function initializeWhenReady() {
 
       // Process standalone variations
       processVariations(jQuery('.custom-variation-options'), formData.variations);
-
-      // Store form data in localStorage
-      try {
-        localStorage.setItem('merchiProductFormData', JSON.stringify(formData));
-        console.log('Form data stored in localStorage:', formData);
-      } catch (error) {
-        console.error('Error storing form data in localStorage:', error);
-      }
 
       return formData;
     }
@@ -854,13 +800,6 @@ function initializeWhenReady() {
       try {
         // Gather form data and log it
         const formData = await gatherFormData();
-        // update cart in local storage here by adding the form data as a cartItem
-        const localCart = localStorage.getItem('MerchiCart');
-        if (localCart) {
-          const cartJson = JSON.parse(localCart);
-          cartJson.cartItems.push(formData);
-          await patchCart(cartJson);
-        }
         console.log('Merchi Product Form Data being sent to cart:', formData);
         // Log the group data specifically
         console.log('DEBUG: variationsGroups (all groups):', formData.variationsGroups);
@@ -935,20 +874,6 @@ function initializeWhenReady() {
           cartItems: cartItems
         };
 
-        // Store cart payload in localStorage
-        try {
-          localStorage.setItem('merchiCartPayload', JSON.stringify(cartPayload));
-          console.log('Cart payload stored in localStorage:', cartPayload);
-        } catch (error) {
-          console.error('Error storing cart payload in localStorage:', error);
-        }
-
-        // Log all stored data for debugging
-        console.log('=== LOCAL STORAGE DATA ===');
-        console.log('Form Data:', JSON.parse(localStorage.getItem('merchiProductFormData')));
-        console.log('Cart Payload:', JSON.parse(localStorage.getItem('merchiCartPayload')));
-        console.log('========================');
-
         console.log('cartPayload being sent to send_id_for_add_cart:', cartPayload);
         if (scriptData.is_single_product) {
           console.log('AJAX: About to send data to send_id_for_add_cart');
@@ -1011,6 +936,30 @@ function initializeWhenReady() {
       });
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+
+    // Remove malformed group-field-set elements on page load (run ASAP)
+    jQuery(function() {
+      jQuery('.group-field-set').each(function() {
+        if (jQuery(this).find('.custom-field').length === 0) {
+          jQuery(this).remove();
+        }
+      });
+    });
+
+    // Debug: Log whenever a new .group-field-set is added to the DOM
+    jQuery(function() {
+      const observer = new MutationObserver(mutations => {
+        mutations.forEach(mutation => {
+          mutation.addedNodes.forEach(node => {
+            if (node.nodeType === 1 && node.classList.contains('group-field-set')) {
+              console.log('A .group-field-set was added:', node, node.innerHTML);
+              console.trace('Call stack for .group-field-set addition');
+            }
+          });
+        });
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    });
   });
 }
 

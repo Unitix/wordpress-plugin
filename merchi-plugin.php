@@ -1057,6 +1057,61 @@ function generateRandomString($length = 10) {
 add_action('wp_ajax_send_id_for_add_cart', 'send_id_for_add_cart');
 add_action('wp_ajax_nopriv_send_id_for_add_cart', 'send_id_for_add_cart');
 
+/**
+ * Send a PATCH request to the Merchi API to update a cart.
+ * @param string $cart_id The Merchi cart ID.
+ * @param string $cart_token The Merchi cart token.
+ * @param array $payload The data to PATCH to the cart.
+ * @return array|WP_Error The response from the Merchi API.
+ */
+function patch_merchi_cart($cart_id, $cart_token, $payload) {
+    $url = MERCHI_URL . 'v6/carts/' . urlencode($cart_id) . '/?cart_token=' . urlencode($cart_token);
+    
+    // Ensure payload matches Merchi's expected structure
+    $merchi_payload = array();
+    
+    // Handle cart items update
+    if (isset($payload['cartItems'])) {
+        $merchi_payload['cartItems'] = array_map(function($item) {
+            return array(
+                'id' => isset($item['id']) ? $item['id'] : null,
+                'product' => array('id' => $item['productID']),
+                'quantity' => $item['quantity'],
+                'variations' => isset($item['variations']) ? $item['variations'] : array(),
+                'objExtras' => isset($item['objExtras']) ? $item['objExtras'] : array()
+            );
+        }, $payload['cartItems']);
+    }
+    
+    // Handle shipment updates
+    if (isset($payload['shipmentGroupIndex']) && isset($payload['quoteIndex'])) {
+        $merchi_payload['shipmentGroups'] = array(
+            array(
+                'selectedQuote' => array(
+                    'index' => $payload['quoteIndex']
+                )
+            )
+        );
+    }
+    
+    $args = array(
+        'method'    => 'PATCH',
+        'headers'   => array(
+            'Content-Type' => 'application/json',
+        ),
+        'body'      => wp_json_encode($merchi_payload),
+        'timeout'   => 30,
+    );
+    
+    $response = wp_remote_request($url, $args);
+    if (is_wp_error($response)) {
+        error_log('Merchi PATCH error: ' . $response->get_error_message());
+        return $response;
+    }
+    error_log('Merchi PATCH response: ' . print_r($response, true));
+    return $response;
+}
+
 function send_id_for_add_cart(){
     if (class_exists('WooCommerce')) {
         try {
@@ -1177,6 +1232,26 @@ function send_id_for_add_cart(){
                 $productsAdded[] = $cart_item_key;
             }
             echo json_encode(array('success' => true));
+            // --- Merchi PATCH integration ---
+            // Build Merchi cart payload (example: you may need to adjust this structure)
+            $merchi_cart_payload = array(
+                'cartItems' => $cartItems,
+                // Add other fields as needed
+            );
+            // Get cart token from cookie (or wherever it is stored)
+            $cart_token = null;
+            if (isset($_COOKIE['cart-'.MERCHI_DOMAIN])) {
+                $cookie_parts = explode(',', $_COOKIE['cart-'.MERCHI_DOMAIN]);
+                if (count($cookie_parts) > 1) {
+                    $cart_token = trim($cookie_parts[1]);
+                }
+            }
+            if ($cart_token) {
+                $patch_response = patch_merchi_cart($cartId, $cart_token, $merchi_cart_payload);
+                // Optionally, handle/log the response or errors
+            } else {
+                error_log('Merchi PATCH skipped: cart_token not found');
+            }
         }catch(Exception $e) {
           echo 'Message: ' .$e->getMessage();
         }
@@ -2445,4 +2520,83 @@ function wc_get_product_variation_id($product_id, $attributes) {
 			}
 	}
 	return false;
+}
+
+// AJAX handler for updating shipment method
+add_action('wp_ajax_update_shipment_method', 'ajax_update_shipment_method');
+add_action('wp_ajax_nopriv_update_shipment_method', 'ajax_update_shipment_method');
+function ajax_update_shipment_method() {
+    $cart_id = null;
+    $cart_token = null;
+    if (isset($_COOKIE['cart-'.MERCHI_DOMAIN])) {
+        $cookie_parts = explode(',', $_COOKIE['cart-'.MERCHI_DOMAIN]);
+        if (count($cookie_parts) > 1) {
+            $cart_id = trim($cookie_parts[0]);
+            $cart_token = trim($cookie_parts[1]);
+        }
+    }
+    
+    $shipment_group_index = isset($_POST['shipment_group_index']) ? intval($_POST['shipment_group_index']) : 0;
+    $quote_index = isset($_POST['quote_index']) ? intval($_POST['quote_index']) : 0;
+    
+    // Build payload matching Merchi's expected structure
+    $payload = array(
+        'shipmentGroupIndex' => $shipment_group_index,
+        'quoteIndex' => $quote_index
+    );
+    
+    if ($cart_id && $cart_token) {
+        $patch_response = patch_merchi_cart($cart_id, $cart_token, $payload);
+        if (is_wp_error($patch_response)) {
+            wp_send_json_error([
+                'message' => 'Merchi PATCH error',
+                'error' => $patch_response->get_error_message()
+            ]);
+        } else {
+            $response_body = json_decode(wp_remote_retrieve_body($patch_response), true);
+            wp_send_json_success(['cart' => $response_body]);
+        }
+    } else {
+        wp_send_json_error(['message' => 'Cart ID or token not found']);
+    }
+    wp_die();
+}
+
+// AJAX handler for patching the cart
+add_action('wp_ajax_patch_merchi_cart', 'ajax_patch_merchi_cart');
+add_action('wp_ajax_nopriv_patch_merchi_cart', 'ajax_patch_merchi_cart');
+function ajax_patch_merchi_cart() {
+    $cart = isset($_POST['cart']) ? $_POST['cart'] : null;
+    $cart_id = null;
+    $cart_token = null;
+    
+    if (isset($_COOKIE['cart-'.MERCHI_DOMAIN])) {
+        $cookie_parts = explode(',', $_COOKIE['cart-'.MERCHI_DOMAIN]);
+        if (count($cookie_parts) > 1) {
+            $cart_id = trim($cookie_parts[0]);
+            $cart_token = trim($cookie_parts[1]);
+        }
+    }
+    
+    if ($cart_id && $cart_token && $cart) {
+        // Ensure cart payload matches Merchi's structure
+        $payload = array(
+            'cartItems' => isset($cart['cartItems']) ? $cart['cartItems'] : array(),
+            'shipmentGroups' => isset($cart['shipmentGroups']) ? $cart['shipmentGroups'] : array()
+        );
+        
+        $patch_response = patch_merchi_cart($cart_id, $cart_token, $payload);
+        if (is_wp_error($patch_response)) {
+            wp_send_json_error([
+                'message' => 'Merchi PATCH error',
+                'error' => $patch_response->get_error_message()
+            ]);
+        } else {
+            $response_body = json_decode(wp_remote_retrieve_body($patch_response), true);
+            wp_send_json_success(['cart' => $response_body]);
+        }
+    } else {
+        wp_send_json_error(['message' => 'Cart ID, token, or cart data not found']);
+    }
+    wp_die();
 }
