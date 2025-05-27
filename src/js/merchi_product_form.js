@@ -554,11 +554,32 @@ function initializeWhenReady() {
         .find(".group-number")
         .text(newGroupIndex);
 
-      // in the new group find all the data-group-index + 1
-      $newGroup.find('[data-group-index]').each(function() {
-        const $element = jQuery(this);
-        const currentIndex = parseInt($element.data('group-index'));
-        $element.attr('data-group-index', newGroupIndex);
+      // After cloning $firstGroup as $newGroup
+      $newGroup.find('input, select, textarea').each(function() {
+        const $input = jQuery(this);
+        // Remove value and checked state
+        if ($input.is(':checkbox, :radio')) {
+          $input.prop('checked', false);
+        } else {
+          $input.val('');
+        }
+        // Remove unique IDs
+        $input.removeAttr('id');
+        // Remove any previous event handlers
+        $input.off();
+        // Reset data-variation-field to base field id (remove _groupN)
+        let fieldData = $input.data('variation-field');
+        if (fieldData && fieldData.id !== undefined) {
+          fieldData = typeof fieldData === 'string' ? JSON.parse(fieldData) : fieldData;
+          fieldData.id = fieldData.id.toString().replace(/_group\d+$/, '') + '_group' + (newGroupIndex-1);
+          $input.attr('data-variation-field', JSON.stringify(fieldData));
+        }
+        // Update name attribute for group_fields
+        let name = $input.attr("name");
+        if (name && name.match(/^group_fields\[\d+\]/)) {
+          name = name.replace(/group_fields\[\d+\]/, `group_fields[${newGroupIndex}]`);
+          $input.attr("name", name);
+        }
       });
       
       // Also update the group-cost-display's data-group-index
@@ -567,20 +588,11 @@ function initializeWhenReady() {
       // Update all form elements in the new group
       $newGroup.find("input, select, textarea").each(function() {
         const $input = jQuery(this);
-        
-        // Update name attribute
-        let name = $input.attr("name");
-        if (name) {
-          name = name.replace(/group_fields\[\d+\]/, `group_fields[${newGroupIndex}]`);
-          $input.attr("name", name);
-        }
-        
         // Handle quantity field
         if ($input.hasClass('group-quantity')) {
           $input
             .attr('data-group-index', newGroupIndex)
             .val(1); // Reset quantity to 1
-          
           const unitPrice = parseFloat($input.data('unit-price'));
           $input.closest('.custom-field')
             .find('label')
@@ -677,8 +689,11 @@ function initializeWhenReady() {
 
         if (!variationFieldId) return;
 
-        // Find the index of the variation by matching the variationFieldId
-        const variationIndex = variationsArray.findIndex(v => v.variationField.id === variationFieldId);
+        // Use DOM data-group-index for correct group index
+        const groupIndex = parseInt($fieldContainer.closest('.group-field-set').attr('data-group-index'), 10) - 1;
+        const uniqueVariationFieldId = variationFieldId.toString().replace(/_group\\d+$/, '') + '_group' + groupIndex;
+        const variationIndex = variationsArray.findIndex(v => v.variationField.id == uniqueVariationFieldId);
+
         if (variationIndex === -1) return;
 
         // Get the value based on input type
@@ -713,6 +728,35 @@ function initializeWhenReady() {
           }
         }
 
+        // After getting value, map it to label(s) if options are available
+        let options = [];
+        // Try to find options in groupVariationFields or independentVariationFields
+        if (defaultJobJson && defaultJobJson.product) {
+          const allFields = [
+            ...(defaultJobJson.product.groupVariationFields || []),
+            ...(defaultJobJson.product.independentVariationFields || [])
+          ];
+          // Remove _groupN suffix for matching
+          const baseVariationFieldId = variationFieldId ? variationFieldId.toString().replace(/_group\d+$/, '') : '';
+          const field = allFields.find(f => f.id == baseVariationFieldId);
+          if (field && Array.isArray(field.options)) {
+            options = field.options;
+          }
+        }
+        if (options.length > 0 && value != null) {
+          if (Array.isArray(value)) {
+            // Multi-select: map each ID to label
+            value = value.map(val => {
+              const opt = options.find(o => o.id == val || o.value == val);
+              return opt ? (opt.label || opt.value || val) : val;
+            }).join(', ');
+          } else {
+            // Single select: map ID to label
+            const opt = options.find(o => o.id == value || o.value == value);
+            value = opt ? (opt.label || opt.value || value) : value;
+          }
+        }
+
         // Update the value of the variation
         variationsArray[variationIndex].value = value;
       });
@@ -731,17 +775,32 @@ function initializeWhenReady() {
 
       // Process group variations
       if (groupVariationFields.length > 0) {
-        jQuery('.group-field-set').each(function(groupIndex) {
+        jQuery('.group-field-set').each(function() {
           const $group = jQuery(this);
-          
+          const groupIndex = parseInt($group.attr('data-group-index'), 10) - 1;
           // Deep clone the variations array for each group
-          formData.variationsGroups.push({
-            quantity: parseInt($group.find('.group-quantity').val()) || 1,
-            variations: [...defaultJobJson.variationsGroups[0].variations],
+          const groupVariations = JSON.parse(JSON.stringify(defaultJobJson.product.groupVariationFields.map(f => ({ variationField: { ...f }, value: null }))));
+          for (let v of groupVariations) {
+            if (v.variationField && v.variationField.id !== undefined) {
+              v.variationField.id = v.variationField.id.toString().replace(/_group\\d+$/, '') + '_group' + groupIndex;
+            }
+          }
+          $group.find('[data-variation-field]').each(function() {
+            const $input = jQuery(this);
+            let fieldData = $input.data('variation-field');
+            if (fieldData && fieldData.id !== undefined) {
+              fieldData = typeof fieldData === 'string' ? JSON.parse(fieldData) : fieldData;
+              fieldData.id = fieldData.id.toString().replace(/_group\\d+$/, '') + '_group' + groupIndex;
+              $input.attr('data-variation-field', JSON.stringify(fieldData));
+            }
           });
 
           // Process variations within this group
-          processVariations($group, formData.variationsGroups[groupIndex].variations);
+          processVariations($group, groupVariations);
+          formData.variationsGroups.push({
+            quantity: parseInt($group.find('.group-quantity').val()) || 1,
+            variations: groupVariations,
+          });
         });
       } else {
         // if thee are no groups then we just use the quantity from the quantity input
@@ -750,6 +809,14 @@ function initializeWhenReady() {
 
       // Process standalone variations
       processVariations(jQuery('.custom-variation-options'), formData.variations);
+
+      // Store form data in localStorage
+      try {
+        localStorage.setItem('merchiProductFormData', JSON.stringify(formData));
+        console.log('Form data stored in localStorage:', formData);
+      } catch (error) {
+        console.error('Error storing form data in localStorage:', error);
+      }
 
       return formData;
     }
@@ -808,16 +875,15 @@ function initializeWhenReady() {
           cartId = 'js-cart-' + Math.random().toString(36).substr(2, 9);
         }
         // Build cartItems from formData (detailed version)
-        const cartItems = {
-          0: {
-            productID: formData.product?.id || formData.product_id || '',
-            quantity: formData.totalQuantity || formData.quantity || 1,
-            subTotal: formData.totalCost || 0,
-            totalCost: formData.totalCost || 0,
-            variations: [],
-            objExtras: []
-          }
-        };
+        const cartItems = [];
+        cartItems.push({
+          productID: formData.product?.id || formData.product_id || '',
+          quantity: formData.totalQuantity || formData.quantity || 1,
+          subTotal: formData.totalCost || 0,
+          totalCost: formData.totalCost || 0,
+          variations: [],
+          objExtras: []
+        });
 
         // Map group variations (variationsGroups)
         if (Array.isArray(formData.variationsGroups) && formData.variationsGroups.length > 0) {
@@ -868,6 +934,20 @@ function initializeWhenReady() {
           taxAmount: taxAmount,
           cartItems: cartItems
         };
+
+        // Store cart payload in localStorage
+        try {
+          localStorage.setItem('merchiCartPayload', JSON.stringify(cartPayload));
+          console.log('Cart payload stored in localStorage:', cartPayload);
+        } catch (error) {
+          console.error('Error storing cart payload in localStorage:', error);
+        }
+
+        // Log all stored data for debugging
+        console.log('=== LOCAL STORAGE DATA ===');
+        console.log('Form Data:', JSON.parse(localStorage.getItem('merchiProductFormData')));
+        console.log('Cart Payload:', JSON.parse(localStorage.getItem('merchiCartPayload')));
+        console.log('========================');
 
         console.log('cartPayload being sent to send_id_for_add_cart:', cartPayload);
         if (scriptData.is_single_product) {

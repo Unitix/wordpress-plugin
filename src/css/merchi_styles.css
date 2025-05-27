@@ -566,8 +566,8 @@ span.round-tab:hover {
     position: absolute;
     top: 10px;
     right: 10px;
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     background: #000;
     opacity: 0;
@@ -575,18 +575,30 @@ span.round-tab:hover {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1;
+    z-index: 10;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
 .image-select-checkmark:after {
     content: "✓";
     color: white;
-    font-size: 14px;
+    font-size: 18px;
     font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.25);
 }
 
 .image-select-input:checked + .image-select-label .image-select-checkmark {
     opacity: 1;
+}
+
+/* Fallback for browsers that don't support flex */
+@supports not (display: flex) {
+  .image-select-checkmark {
+    display: block;
+    line-height: 28px;
+    text-align: center;
+  }
 }
 
 /* Hover effect */

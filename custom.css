@@ -519,3 +519,27 @@ label.custom-attribute-option {
     font-size: 12px;
     margin-top: 4px;
 }
+
+/* Add space after each group in WooCommerce Blocks cart */
+li[class*="wc-block-components-product-details__group-"] {
+    margin-bottom: 18px !important;
+}
+/* Style the + New Group button to match Add to cart but smaller */
+.merchi-product-form #add-group-button, #add-group-button, .add-group-button {
+    background: #111;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 7px 18px;
+    font-size: 15px;
+    font-weight: 500;
+    margin-bottom: 12px;
+    margin-top: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    display: inline-block;
+}
+.merchi-product-form #add-group-button:hover, #add-group-button:hover, .add-group-button:hover {
+    background: #222;
+}
