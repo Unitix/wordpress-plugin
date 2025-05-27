@@ -43,6 +43,7 @@ final class Init {
 			Base\SettingsLinks::class,
 			Api\CreateMerchiProducts::class,
 			Api\ExportProducts::class,
+			CartPages\CartCheckoutPage::class,
 		];
 	}
 
