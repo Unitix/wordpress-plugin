@@ -1276,3 +1276,34 @@ ul.cst-breadcrumb > li.cst-breadcrumb-li i.cst-delimiter {
   z-index: 99;
   left: -1px;
 }
+
+.merchi-success-message {
+  position: relative;
+  margin-bottom: 24px;
+  background-color: #4CAF50;
+  color: white;
+  padding: 15px 25px;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: slideDown 0.5s ease-out;
+  transition: opacity 1s ease-out;
+}
+.merchi-success-message a {
+  color: white;
+  text-decoration: underline;
+  margin-left: 5px;
+}
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

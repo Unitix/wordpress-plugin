@@ -882,17 +882,20 @@ function initializeWhenReady() {
 
     // Move the click handler here so gatherFormData is in scope
     $(document).on('click', '.single_add_to_cart_button', async function(e) {
+      console.log('Add to cart button clicked');
       e.preventDefault();
       e.stopImmediatePropagation(); // Ensure only this handler runs
       // Validate form before proceeding
       if (!validateForm()) {
-          return;
+        console.log('Form validation failed');
+        return;
       }
+      console.log('Form validation passed');
       setLoadingState(true);
       try {
         // Gather form data and log it
         const formData = await gatherFormData();
-        console.log('Merchi Product Form Data being sent to cart:', formData);
+        console.log('Test: Merchi Product Form Data being sent to cart:', formData);
         // Log the group data specifically
         console.log('DEBUG: variationsGroups (all groups):', formData.variationsGroups);
         // Build cartPayload for PHP handler
@@ -969,6 +972,12 @@ function initializeWhenReady() {
         console.log('cartPayload being sent to send_id_for_add_cart:', cartPayload);
         if (scriptData.is_single_product) {
           console.log('AJAX: About to send data to send_id_for_add_cart');
+          console.log('AJAX URL:', frontendajax.ajaxurl);
+          console.log('AJAX Data:', {
+            action: "send_id_for_add_cart",
+            item: cartPayload,
+          });
+          
           jQuery.ajax({
             method: "POST",
             url: frontendajax.ajaxurl,
@@ -977,55 +986,40 @@ function initializeWhenReady() {
               item: cartPayload,
             },
             success: function (response) {
+              console.log('AJAX Success Response:', response);
               setLoadingState(false);
               // Set a flag in sessionStorage to show the success message after reload
               sessionStorage.setItem('merchiCartSuccess', '1');
               // Reload the page and scroll to top
+              window.scrollTo({ top: 0, behavior: 'smooth' });
               window.location.reload();
+              // Do NOT show the success message here
+              // Do NOT submit the form here
+              // Cart fragment refresh will happen on reload
             },
             error: function (jqXHR, textStatus, errorThrown) {
-              setLoadingState(false);
               console.error('AJAX Error!', {jqXHR, textStatus, errorThrown});
+              setLoadingState(false);
               if (jqXHR && jqXHR.responseText) {
                 console.error('AJAX Error Response Text:', jqXHR.responseText);
               }
               alert("Something went wrong, Please try again later");
             },
           });
+        } else {
+          console.log('Not a single product page, skipping AJAX call');
         }
       } catch (error) {
+        console.error('Error in add to cart process:', error);
         setLoadingState(false);
-        console.error(error);
         alert("An error occurred. Please try again.");
       }
     });
 
-    // At the top of the file or inside jQuery(document).ready
+    // On page load, show the success message if the flag is set
     if (sessionStorage.getItem('merchiCartSuccess') === '1') {
       sessionStorage.removeItem('merchiCartSuccess');
-      let $msg = $('.merchi-cart-success-message');
-      if ($msg.length === 0) {
-        $msg = $(
-          '<div class="merchi-cart-success-message" '
-          + 'style="margin: 16px 88px; padding: 12px; background: #e6ffe6; '
-          + 'border: 1px solid #b2e6b2; border-radius: 6px; color: #155724; '
-          + 'font-weight: bold; position: relative;"></div>'
-        );
-        $('.merchi-product-form').before($msg);
-      }
-      // TODO: Is this message needed?
-      // $msg.html(
-      //   '<span class="merchi-cart-success-close" tabindex="0" aria-label="Close" '
-      //   + 'style="position: absolute; top: 8px; right: 12px; font-size: 22px; cursor: pointer; font-weight: normal;">'
-      //   + '&times;</span>Product added to cart! '
-      //   + '<a href="' + site_url + '/cart/" style="color: #0753d7; text-decoration: underline;">'
-      //   + 'Click here to view cart</a>'
-      // );
-      $msg.find('.merchi-cart-success-close').on('click keydown', function(e) {
-        if (e.type === 'click' || (e.type === 'keydown' && (e.key === 'Enter' || e.key === ' '))) {
-          $msg.fadeOut(200, function() { $msg.remove(); });
-        }
-      });
+      showSuccessMessage();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -1119,4 +1113,36 @@ function setLoadingState(isLoading) {
   } else {
     $button.removeClass('loading').prop('disabled', false);
   }
+}
+
+// Function to show success message above the product heading
+function showSuccessMessage() {
+  // Remove any existing message
+  const existingMessage = document.querySelector('.merchi-success-message');
+  if (existingMessage) {
+    existingMessage.remove();
+  }
+
+  // Create and show new message
+  const message = document.createElement('div');
+  message.className = 'merchi-success-message';
+  message.innerHTML = `
+    <span>✓ Product added to cart successfully!</span>
+    <a href="/cart/">Go to cart</a>
+  `;
+
+  // Find the product heading and insert the message before it
+  const heading = document.querySelector('h1, .product_title, .entry-title');
+  if (heading && heading.parentNode) {
+    heading.parentNode.insertBefore(message, heading);
+  } else {
+    // fallback
+    document.body.prepend(message);
+  }
+
+  // Remove message after 8 seconds with a 1-second fade
+  // setTimeout(() => {
+  //   message.style.opacity = '0';
+  //   setTimeout(() => message.remove(), 1000);
+  // }, 8000);
 }
