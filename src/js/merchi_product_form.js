@@ -882,7 +882,6 @@ function initializeWhenReady() {
 
     // Move the click handler here so gatherFormData is in scope
     $(document).on('click', '.single_add_to_cart_button', async function(e) {
-      console.log('Add to cart button clicked');
       e.preventDefault();
       e.stopImmediatePropagation(); // Ensure only this handler runs
       // Validate form before proceeding
@@ -890,12 +889,11 @@ function initializeWhenReady() {
         console.log('Form validation failed');
         return;
       }
-      console.log('Form validation passed');
       setLoadingState(true);
       try {
         // Gather form data and log it
         const formData = await gatherFormData();
-        console.log('Test: Merchi Product Form Data being sent to cart:', formData);
+        console.log('Merchi Product Form Data being sent to cart:', formData);
         // Log the group data specifically
         console.log('DEBUG: variationsGroups (all groups):', formData.variationsGroups);
         // Build cartPayload for PHP handler
@@ -970,14 +968,7 @@ function initializeWhenReady() {
         };
 
         console.log('cartPayload being sent to send_id_for_add_cart:', cartPayload);
-        if (scriptData.is_single_product) {
-          console.log('AJAX: About to send data to send_id_for_add_cart');
-          console.log('AJAX URL:', frontendajax.ajaxurl);
-          console.log('AJAX Data:', {
-            action: "send_id_for_add_cart",
-            item: cartPayload,
-          });
-          
+        if (scriptData.is_single_product) {       
           jQuery.ajax({
             method: "POST",
             url: frontendajax.ajaxurl,
@@ -986,7 +977,6 @@ function initializeWhenReady() {
               item: cartPayload,
             },
             success: function (response) {
-              console.log('AJAX Success Response:', response);
               setLoadingState(false);
               // Set a flag in sessionStorage to show the success message after reload
               sessionStorage.setItem('merchiCartSuccess', '1');
@@ -1127,6 +1117,7 @@ function showSuccessMessage() {
   const message = document.createElement('div');
   message.className = 'merchi-success-message';
   message.innerHTML = `
+    <span class="merchi-success-close" tabindex="0" aria-label="Close">&times;</span>
     <span>✓ Product added to cart successfully!</span>
     <a href="/cart/">Go to cart</a>
   `;
@@ -1139,6 +1130,13 @@ function showSuccessMessage() {
     // fallback
     document.body.prepend(message);
   }
+
+  // Add close button logic
+  const closeBtn = message.querySelector('.merchi-success-close');
+  closeBtn.onclick = () => message.remove();
+  closeBtn.onkeydown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') message.remove();
+  };
 
   // Remove message after 8 seconds with a 1-second fade
   // setTimeout(() => {
