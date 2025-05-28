@@ -218,30 +218,31 @@ function setLoading(isLoading) {
 //   );
 // }
 //
-// export async function patchCart(cartJson, embed = cartEmbed) {
-//   const cleanedCartJson = {
-//     ...cartJson,
-//     domain: {id: cartJson.domain.id},
-//     cartItems: cartJson.cartItems.map(item => ({
-//       ...item,
-//       product: {id: item.product.id},
-//       taxType: item.taxType ? {id: item.taxType.id} : undefined,
-//       variations: item.variations,
-//       variationsGroups: item.variationsGroups,
-//     })),
-//   }
-//   const cartEnt = MERCHI.fromJson(new MERCHI.Cart(), cleanedCartJson);
-//   cartEnt.token(cartJson.token);
-//   return new Promise((resolve, reject) => {
-//     cartEnt.patch((cartEnt) => {
-//       const _cartJson = MERCHI.toJson(cartEnt);
-//       // save the patched cart to local storage
-//       localStorage.setItem("MerchiCart", JSON.stringify(_cartJson));
-//       resolve(cartEnt);
-//     }, (status, data) => reject(data), embed);
-//   });
-// }
-//
+
+export async function patchCart(cartJson, embed = cartEmbed) {
+  const cleanedCartJson = {
+    ...cartJson,
+    domain: {id: cartJson.domain.id},
+    cartItems: cartJson.cartItems.map(item => ({
+      ...item,
+      product: {id: item.product.id},
+      taxType: item.taxType ? {id: item.taxType.id} : undefined,
+      variations: item.variations,
+      variationsGroups: item.variationsGroups,
+    })),
+  }
+  const cartEnt = MERCHI.fromJson(new MERCHI.Cart(), cleanedCartJson);
+  cartEnt.token(cartJson.token);
+  return new Promise((resolve, reject) => {
+    cartEnt.patch((cartEnt) => {
+      const _cartJson = MERCHI.toJson(cartEnt);
+      // save the patched cart to local storage
+      localStorage.setItem("MerchiCart", JSON.stringify(_cartJson));
+      resolve(cartEnt);
+    }, (status, data) => reject(data), embed);
+  });
+}
+
 // All PATCH requests should now be handled by the backend via send_id_for_add_cart.
 
 function getQueryStringParameter(name) {

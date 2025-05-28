@@ -19,7 +19,7 @@ function initializeWhenReady() {
   jQuery(document).ready(function($) {
     const merchiProductId = merchiConfig.productId;
     let productJson = null;
-    let defaultJobJson = null;
+    let defaultJobJson = {};
 
     // Add cart-loader and cart-count elements if not present
     if ($('#cart-loader').length === 0) {
@@ -487,7 +487,7 @@ function initializeWhenReady() {
           const $input = jQuery(this);
           const name = $input.attr("name");
           if (name) {
-            const newName = name.replace(/group_fields\[\d+\]/, "group_fields[" + newIndex + "]");
+            const newName = name.replace(/variationsGroups\[\d+\]/, "variationsGroups[" + newIndex + "]");
             $input.attr("name", newName);
           }
           
@@ -554,16 +554,24 @@ function initializeWhenReady() {
   
     // Function to add a new group
     function addNewGroup() {
+      const { variationsGroups = [] } = defaultJobJson;
+      const defaultGroup = variationsGroups[0];
+
       console.log('addNewGroup called. Current group count:', jQuery('.group-field-set').length);
       // Always use the first fully structured group as the template
       const $firstGroup = jQuery('.group-field-set').filter(function() {
         return jQuery(this).find('.custom-field').length > 0;
       }).first();
+
+      // if there are no groups then we abort
       if ($firstGroup.length === 0) {
         console.error('No valid group template found for cloning.');
         return;
       }
-      const newGroupIndex = jQuery('.group-field-set').length + 1;
+
+      // new group index      
+      const newGroupIndex = jQuery('.group-field-set').length;
+
       // Clone the group
       const $newGroup = $firstGroup.clone();
 
@@ -590,28 +598,111 @@ function initializeWhenReady() {
       });
       // Also update the group-cost-display's data-group-index
       $newGroup.find('.group-cost-display').attr('data-group-index', newGroupIndex).text('');
-      // Update all form elements in the new group
+
+      // Update all form elements in the new group and apply default values
       $newGroup.find("input, select, textarea").each(function() {
         const $input = jQuery(this);
         let name = $input.attr("name");
         if (name) {
-          name = name.replace(/group_fields\[\d+\]/, `group_fields[${newGroupIndex}]`);
+          name = name.replace(/variationsGroups\[\d+\]/, `variationsGroups[${newGroupIndex}]`);
           $input.attr("name", name);
         }
+
+        // Handle group quantity separately
         if ($input.hasClass('group-quantity')) {
-          $input.attr('data-group-index', newGroupIndex).val(1);
+          $input.attr('data-group-index', newGroupIndex).val(defaultGroup?.quantity || 1);
           const unitPrice = parseFloat($input.data('unit-price'));
           $input.closest('.custom-field').find('label').text(`Group (${newGroupIndex}) quantity ($${unitPrice.toFixed(2)} unit price)`);
         } else {
-          if ($input.is(':checkbox, :radio')) {
-            $input.prop('checked', false);
-          } else {
-            $input.val('');
+          // For variation fields, try to find and apply the default value
+          const variationFieldData = $input.data('variation-field');
+          if (variationFieldData && defaultGroup?.variations) {
+            const defaultVariation = defaultGroup.variations.find(
+              v => v.variationField?.id === variationFieldData.id);
+            if (defaultVariation) {
+              if ($input.is(':checkbox, :radio')) {
+                // For checkboxes and radios, check if the value matches
+                if (Array.isArray(defaultVariation.value)) {
+                  $input.prop('checked', defaultVariation.value.includes($input.val()));
+                } else {
+                  $input.prop('checked', defaultVariation.value === $input.val());
+                }
+              } else if ($input.is('select')) {
+                // For select elements
+                if (Array.isArray(defaultVariation.value)) {
+                  $input.val(defaultVariation.value);
+                } else {
+                  $input.val(defaultVariation.value || '');
+                }
+              } else if ($input.is('input[type="file"]')) {
+                // Skip setting value for file inputs
+                // Clear any existing DataTransfer object
+                if ($input[0]._dt) {
+                  $input[0]._dt = new DataTransfer();
+                }
+                // Clear the preview area if it exists
+                const $previewArea = $input.closest('.custom-upload-wrapper').next('.multi-file-upload-preview');
+                if ($previewArea.length) {
+                  $previewArea.empty();
+                }
+              } else if ($input.is('textarea')) {
+                // Handle textarea - preserve line breaks and formatting
+                $input.val(defaultVariation.value || '');
+                $input.trigger('change');
+              } else if ($input.is('input[type="color"]')) {
+                // Handle color input - ensure valid hex color
+                const colorValue = defaultVariation.value || '#000000';
+                $input.val(colorValue.startsWith('#') ? colorValue : '#' + colorValue);
+                $input.trigger('change');
+              } else if ($input.is('input[type="number"]')) {
+                // Handle number input - ensure numeric value
+                const numValue = parseFloat(defaultVariation.value);
+                $input.val(isNaN(numValue) ? '' : numValue);
+                $input.trigger('change');
+              } else if ($input.is('input[type="text"]')) {
+                // Handle text input
+                $input.val(defaultVariation.value || '');
+                $input.trigger('change');
+              }
+            } else {
+              // If no default value found, reset the input
+              if ($input.is(':checkbox, :radio')) {
+                $input.prop('checked', false);
+              } else if ($input.is('input[type="file"]')) {
+                // Skip setting value for file inputs
+                // Clear any existing DataTransfer object
+                if ($input[0]._dt) {
+                  $input[0]._dt = new DataTransfer();
+                }
+                // Clear the preview area if it exists
+                const $previewArea = $input.closest('.custom-upload-wrapper').next('.multi-file-upload-preview');
+                if ($previewArea.length) {
+                  $previewArea.empty();
+                }
+              } else if ($input.is('textarea')) {
+                $input.val('');
+                $input.trigger('change');
+              } else if ($input.is('input[type="color"]')) {
+                $input.val('#000000');
+                $input.trigger('change');
+              } else if ($input.is('input[type="number"]')) {
+                $input.val('');
+                $input.trigger('change');
+              } else if ($input.is('input[type="text"]')) {
+                $input.val('');
+                $input.trigger('change');
+              } else {
+                $input.val('');
+                $input.trigger('change');
+              }
+            }
           }
         }
       });
+
       // Show delete button
       $newGroup.find(".delete-group-button").show();
+
       // Final check before appending
       if ($newGroup.find('.custom-field').length === 0) {
         console.error('Clone lost its fields before appending. Aborting.');
@@ -619,6 +710,7 @@ function initializeWhenReady() {
         return;
       }
       jQuery("#grouped-fields-container").append($newGroup);
+
       // Initialize handlers for this new group only
       initializeGroupVariationHandlers($newGroup);
       if (jQuery(".group-field-set").length > 1) {
@@ -745,10 +837,10 @@ function initializeWhenReady() {
 
       // Process group variations
       if (groupVariationFields.length > 0) {
-          jQuery('.group-field-set').each(function(groupIndex) {
+        jQuery('.group-field-set').each(function(groupIndex) {
           const $group = jQuery(this);
           // Deep clone the variations array for each group
-            formData.variationsGroups.push({
+          formData.variationsGroups.push({
             quantity: parseInt($group.find('.group-quantity').val()) || 1,
             variations: [...defaultJobJson.variationsGroups[0].variations],
           });
