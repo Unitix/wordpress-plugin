@@ -979,18 +979,12 @@ ul.cst-breadcrumb > li.cst-breadcrumb-li i.cst-delimiter {
     justify-content: flex-start;
 }
 
-#add-group-button {
+.add-group-button {
     background-color: #0066cc;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
     transition: background-color 0.3s;
 }
 
-#add-group-button:hover {
+.add-group-button:hover {
     background-color: #0052a3;
 }
 
@@ -1027,13 +1021,6 @@ ul.cst-breadcrumb > li.cst-breadcrumb-li i.cst-delimiter {
 
 .delete-group-button {
     background-color: #dc3545;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-top: 10px;
-    transition: background-color 0.3s;
 }
 
 .delete-group-button:hover {
