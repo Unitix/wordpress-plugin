@@ -23,59 +23,57 @@ class ProductPage extends BaseController {
 	}
 
 	public function enqueue_merchi_scripts() {
-		if (is_product()) {
-			wp_enqueue_script(
-				'merchi_sdk',
-				plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_sdk.js',
-				array(),
-				'1.0.0',
-				true
-			);
+		wp_enqueue_script(
+			'merchi_sdk',
+			plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_sdk.js',
+			array(),
+			'1.0.0',
+			true
+		);
 
-			wp_enqueue_script(
-				'merchi_checkout_init',
-				plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_checkout_init.js',
-				['merchi_sdk'],
-				null,
-				true
-			);
+		wp_enqueue_script(
+			'merchi_checkout_init',
+			plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_checkout_init.js',
+			['merchi_sdk'],
+			null,
+			true
+		);
 
-			wp_enqueue_script(
-				'merchi_product_form',
-				plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_product_form.js',
-				['jquery', 'merchi_sdk', 'merchi_checkout_init'],
-				null,
-				true
-			);
+		wp_enqueue_script(
+			'merchi_product_form',
+			plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_product_form.js',
+			['jquery', 'merchi_sdk', 'merchi_checkout_init'],
+			null,
+			true
+		);
 
-			// Get the correct configuration based on staging mode
-			$staging_mode = get_option('merchi_staging_mode');
-			$merchi_domain = $staging_mode === 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
-			$merchi_url = $staging_mode === 'yes' ? 'https://api.staging.merchi.co/' : 'https://api.merchi.co/';
+		// Get the correct configuration based on staging mode
+		$staging_mode = get_option('merchi_staging_mode');
+		$merchi_domain = $staging_mode === 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
+		$merchi_url = $staging_mode === 'yes' ? 'https://api.staging.merchi.co/' : 'https://api.merchi.co/';
 
-			// Debug logging
-			error_log('Merchi Configuration:');
-			error_log('Environment: ' . ($staging_mode === 'yes' ? 'Staging' : 'Production'));
-			error_log('API URL: ' . $merchi_url);
-			error_log('Domain ID: ' . $merchi_domain);
-			error_log('Product ID: ' . get_post_meta(get_the_ID(), 'product_id', true));
+		// Debug logging
+		error_log('Merchi Configuration:');
+		error_log('Environment: ' . ($staging_mode === 'yes' ? 'Staging' : 'Production'));
+		error_log('API URL: ' . $merchi_url);
+		error_log('Domain ID: ' . $merchi_domain);
+		error_log('Product ID: ' . get_post_meta(get_the_ID(), 'product_id', true));
 
-			// Add Merchi configuration data
-			wp_localize_script('merchi_product_form', 'merchiConfig', array(
-				'domainId' => $merchi_domain,
-				'apiUrl' => $merchi_url,
-				'productId' => get_post_meta(get_the_ID(), 'product_id', true),
-				'stagingMode' => $staging_mode === 'yes',
-				'backendUri' => $merchi_url
-			));
+		// Add Merchi configuration data
+		wp_localize_script('merchi_product_form', 'merchiConfig', array(
+			'domainId' => $merchi_domain,
+			'apiUrl' => $merchi_url,
+			'productId' => get_post_meta(get_the_ID(), 'product_id', true),
+			'stagingMode' => $staging_mode === 'yes',
+			'backendUri' => $merchi_url
+		));
 
-			// Verify configuration
-			if (empty($merchi_domain)) {
-				error_log('Warning: Merchi Domain ID is empty');
-			}
-			if (empty(get_post_meta(get_the_ID(), 'product_id', true))) {
-				error_log('Warning: Merchi Product ID is empty');
-			}
+		// Verify configuration
+		if (empty($merchi_domain)) {
+			error_log('Warning: Merchi Domain ID is empty');
+		}
+		if (empty(get_post_meta(get_the_ID(), 'product_id', true))) {
+			error_log('Warning: Merchi Product ID is empty');
 		}
 	}
 
@@ -152,7 +150,6 @@ class ProductPage extends BaseController {
 		echo '<button type="button" class="add-group-button">+ New Group</button>';
 		echo '</div>';
 	}
-
 
 	private function get_variation_field_options($field) {
 			if (!empty($field['taxonomy'])) {
@@ -540,11 +537,6 @@ class ProductPage extends BaseController {
 
 	public function display_quote_button() {
 		global $product;
-
-		// Only run on product pages
-		if (!is_product()) {
-			return;
-		}
 
 		$product_id = get_the_ID();
 		$merchi_product_id = get_post_meta($product_id, 'product_id', true);

@@ -11,7 +11,9 @@ const MerchiCheckout = React.forwardRef((props, ref) => {
   
   // Expose methods through ref
   window.toggleMerchiCheckout = (jobDataFromForm = {}) => {
-    setJob({...jobDataFromForm});
+    if (jobDataFromForm) {
+      setJob({...jobDataFromForm});
+    }
     setIsOpen(!isOpen);
   };
 

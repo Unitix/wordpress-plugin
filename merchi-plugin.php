@@ -648,40 +648,34 @@ add_action('admin_enqueue_scripts', 'enqueue_admin_customfiles');
 function enqueue_my_public_script()
 {
 	wp_enqueue_style('custom-admin-style', plugin_dir_url(__FILE__) . 'custom.css');
-	wp_enqueue_script('custom-checkout-script', plugins_url('/dist/js/woocommerce_cart_checkout.js', __FILE__), array(), '1.0', true);
-	wp_enqueue_script('custom-stripe-script', 'https://js.stripe.com/v3/', array(), '1.0', true);
 	wp_enqueue_script('custom-public-script', plugins_url('/dist/js/merchi_public_custom.js', __FILE__), array('jquery'), rand(0,1000), true);
-	
-	$is_single_product = is_product();
-	$stripeSecret = false;
-	$billing_values = WC()->session->get( 'cst_billing_info' ) ? WC()->session->get( 'cst_billing_info' ) : false;
-	$telephoneInput = false;
-	if($billing_values){
-		$telephoneInput = $billing_values['billing_phone'];
-	}
-	if( isset($_COOKIE['cart-'.MERCHI_DOMAIN]) && !empty($_COOKIE['cart-'.MERCHI_DOMAIN]) && is_checkout() && ( isset($_GET['step']) && $_GET['step'] == 3 ) ){
-		$cart = explode(',', $_COOKIE['cart-'.MERCHI_DOMAIN]);
-		$url = MERCHI_URL.'v6/stripe/payment_intent/cart/'.$cart[0].'/?cart_token='.$cart[1];
-		$response = wp_remote_get( $url, array('timeout'=> 20) );
+	wp_enqueue_script('custom-checkout-script', plugins_url('/dist/js/woocommerce_cart_checkout.js', __FILE__), array(), '1.0', true);
+	// wp_enqueue_script('custom-stripe-script', 'https://js.stripe.com/v3/', array(), '1.0', true);
+	// $stripeSecret = false;
+	// $telephoneInput = false;
+	// if($billing_values){
+	// 	$telephoneInput = $billing_values['billing_phone'];
+	// }
+	// if( isset($_COOKIE['cart-'.MERCHI_DOMAIN]) && !empty($_COOKIE['cart-'.MERCHI_DOMAIN]) && is_checkout() && ( isset($_GET['step']) && $_GET['step'] == 3 ) ){
+	// 	$cart = explode(',', $_COOKIE['cart-'.MERCHI_DOMAIN]);
+	// 	$url = MERCHI_URL.'v6/stripe/payment_intent/cart/'.$cart[0].'/?cart_token='.$cart[1];
+	// 	$response = wp_remote_get( $url, array('timeout'=> 20) );
 
-		$resp = json_decode(wp_remote_retrieve_body($response));
-		$stripeSecret = $resp->stripeClientSecret;
-	}
+	// 	$resp = json_decode(wp_remote_retrieve_body($response));
+	// 	$stripeSecret = $resp->stripeClientSecret;
+	// }
 	wp_localize_script('custom-public-script', 'scriptData', array(
-		'is_single_product' => $is_single_product,
 		'merchi_mode' => MERCHI_MODE,
 		'merchi_url' => MERCHI_URL,
 		'merchi_domain' => MERCHI_DOMAIN,
 		'merchi_stripe_api_key' => MERCHI_STRIPE_API_KEY,
 	));
 	wp_localize_script('custom-checkout-scrip', 'scriptData', array(
-		'is_single_product' => $is_single_product,
 		'merchi_domain' => MERCHI_DOMAIN,
 		'merchi_mode' => MERCHI_MODE,
 		'merchi_url' => MERCHI_URL,
 		'merchi_stripe_api_key' => MERCHI_STRIPE_API_KEY,
 	));
-	wp_localize_script('custom-public-script', 'frontendajax', array('ajaxurl' => admin_url('admin-ajax.php'), 'checkouturl' => wc_get_checkout_url(), 'stripeSecret' => $stripeSecret, 'telephoneInput' => $telephoneInput, 'billing_values'=> $billing_values));
 }
 add_action('wp_enqueue_scripts', 'enqueue_my_public_script');
 
@@ -1985,6 +1979,12 @@ function fetch_merchi_product_callback() {
     
     $response = wp_remote_get($api_url);
     $data = json_decode(wp_remote_retrieve_body($response), true);
+
+		// Save allowQuotation to product meta
+		if (isset($data['product']['allowQuotation'])) {
+			$allow_quotation = $data['product']['allowQuotation'];
+			update_post_meta($woo_product_id, 'allowQuotation', $allow_quotation);
+		}
 
     // Store the complete product data
     update_post_meta($woo_product_id, '_merchi_product_data', $data);

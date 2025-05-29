@@ -1,12 +1,6 @@
 import { MERCHI_SDK } from './merchi_sdk';
-import {
-  cartShipmentQuote,
-  cartEmbed,
-  getCookieByName,
-} from './utils';
+import { cartEmbed, getCookieByName } from './utils';
 
-const stripe = '';
-let elements;
 const MERCHI = MERCHI_SDK();
 // const site_url = scriptData.site_url
 const site_url = '';
@@ -14,206 +8,6 @@ const site_url = '';
 async function localStorageUpdateCartEnt(cartEnd) {
   const MERCHI = MERCHI_INIT.MERCHI_SDK;
   localStorage.setItem("MerchiCart", JSON.stringify(MERCHI.toJson(cartEnd)));
-}
-
-function localStorageDeleteCartEnt() {
-  // TODO clear the cart cookie as well
-  localStorage.removeItem("MerchiCart");
-}
-
-function initializeStripe() {
-  var billing_values = frontendajax.billing_values;
-  if (!frontendajax.stripeSecret) {
-    return false;
-  }
-  const clientSecret = frontendajax.stripeSecret;
-  elements = stripe.elements({ clientSecret });
-  const linkAuthenticationElement = elements.create("linkAuthentication");
-  linkAuthenticationElement.mount("#link-authentication-element");
-
-  const paymentElementOptions = {
-    layout: "tabs",
-    defaultValues: {
-      billingDetails: {
-        email: billing_values ? billing_values.billing_email : "",
-      },
-    },
-    fields: {
-      billingDetails: {
-        name: "never",
-        email: "never",
-        phone: "never",
-        address: "never",
-      },
-    },
-  };
-
-  const paymentElement = elements.create("payment", paymentElementOptions);
-  paymentElement.mount("#payment-element");
-}
-
-async function handleSubmit(e) {
-  e.preventDefault();
-  setLoading(true);
-  const {
-    billing_email = "",
-    billing_first_name = "",
-    billing_phone = "",
-    billing_address_1 = "",
-    billing_address_2 = "",
-    billing_city = "",
-    billing_country = "",
-    billing_postcode = "",
-    billing_state = "",
-  } = frontendajax.billing_values;
-  const clientSecret = frontendajax.stripeSecret;
-  elems = stripe.elements({ clientSecret });
-
-  const { error, paymentIntent } = await stripe.confirmPayment({
-    elements,
-    confirmParams: {
-      // TODO Make sure to change this to your payment completion page
-      return_url: "https://staging.unitix.com.au/checkout/?confirm=yes",
-      receipt_email: billing_email,
-      payment_method_data: {
-        billing_details: {
-          email: billing_email,
-          name: billing_first_name,
-          phone: billing_phone,
-          address: {
-            line1: billing_address_1,
-            line2: billing_address_2,
-            city: billing_city,
-            country: billing_country,
-            postal_code: billing_postcode,
-            state: billing_state,
-          },
-        },
-      },
-    },
-    redirect: "if_required",
-  });
-
-  // This point will only be reached if there is an immediate error when
-  // confirming the payment. Otherwise, your customer will be redirected to
-  // your `return_url`. For some payment methods like iDEAL, your customer will
-  // be redirected to an intermediate site first to authorize the payment, then
-  // redirected to the `return_url`.
-  if (
-    error &&
-    (error.type === "card_error" || error.type === "validation_error")
-  ) {
-    showMessage(error.message);
-  } else if (paymentIntent && paymentIntent.status === "succeeded") {
-    showMessage("Payment succeeded");
-    successCallback();
-  } else {
-    showMessage("An unexpected error occurred.");
-  }
-
-  setLoading(false);
-}
-
-// Fetches the payment intent status after payment submission
-async function checkStatus() {
-  const clientSecret = frontendajax.stripeSecret;
-
-  if (!clientSecret) {
-    return;
-  }
-
-  const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
-
-  switch (paymentIntent.status) {
-    case "succeeded":
-      showMessage("Payment succeeded!");
-      break;
-    case "processing":
-      showMessage("Your payment is processing.");
-      break;
-    case "requires_payment_method":
-      showMessage("Payment method is loading, please wait.");
-      break;
-    default:
-      showMessage("Something went wrong.");
-      break;
-  }
-}
-
-function showMessage(messageText) {
-  const messageContainer = document.querySelector("#payment-message");
-
-  messageContainer.classList.remove("hidden");
-  messageContainer.textContent = messageText;
-
-  setTimeout(function () {
-    messageContainer.classList.add("hidden");
-    messageContainer.textContent = "";
-  }, 4000);
-}
-
-// Show a spinner on payment submission
-function setLoading(isLoading) {
-  if (isLoading) {
-    // Disable the button and show a spinner
-    document.querySelector("#submit").disabled = true;
-    document.querySelector("#spinner").classList.remove("hidden");
-    document.querySelector("#button-text").classList.add("hidden");
-  } else {
-    document.querySelector("#submit").disabled = false;
-    document.querySelector("#spinner").classList.add("hidden");
-    document.querySelector("#button-text").classList.remove("hidden");
-  }
-}
-
-// Direct PATCH implementation for cart operations
-async function updateShipmentMethod(index, quoteIndex) {
-  jQuery(".checkout-navigation .button").attr("disabled", "disabled");
-  const embed = {
-    shipmentGroups: {
-      cartItems: { product: {} },
-      quotes: cartShipmentQuote,
-      selectedQuote: cartShipmentQuote,
-    },
-  };
-  var token = false;
-  var id = false;
-  const cookieValue = getCookieByName("cart-" + scriptData.merchi_domain);
-  if (cookieValue) {
-    const cookieArray = cookieValue.split(",");
-    token = cookieArray[1].trim();
-    id = cookieArray[0].trim();
-  }
-  const cart = new MERCHI.Cart();
-  cart.id(id);
-  cart.token(token);
-  cart.get(
-    (cartEnt) => {
-      const qEnt = cartEnt.shipmentGroups()[index].quotes()[quoteIndex];
-      cartEnt.shipmentGroups()[index].selectedQuote(qEnt, {});
-      cartEnt.patch(
-        (response) => {
-          localStorageUpdateCartEnt(cartEnt);
-          jQuery.ajax({
-            type: "POST",
-            url: frontendajax.ajaxurl,
-            data: {
-              action: "cst_add_shipping",
-              shippingCost: qEnt._totalCost,
-            },
-            success: function (response) {
-              jQuery("body").trigger("update_checkout");
-              jQuery(".checkout-navigation .button").removeAttr("disabled");
-            },
-          });
-        },
-        (error) => console.log(JSON.stringify(error)),
-        embed
-      );
-    },
-    (error) => console.log(JSON.stringify(error)),
-    embed
-  );
 }
 
 export async function patchCart(cartJson, embed = cartEmbed) {
@@ -242,15 +36,6 @@ export async function patchCart(cartJson, embed = cartEmbed) {
 
 // All PATCH requests should now be handled by the backend via send_id_for_add_cart.
 
-function getQueryStringParameter(name) {
-  name = name.replace(/[\[\]]/g, "\\$&");
-  var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
-    results = regex.exec(window.location.href);
-  if (!results) return null;
-  if (!results[2]) return "";
-  return decodeURIComponent(results[2].replace(/\+/g, " "));
-}
-
 function setCookie(name, value, days) {
   var ajax_url = frontendajax.ajaxurl;
   var ajax_data = {
@@ -267,217 +52,6 @@ function setCookie(name, value, days) {
     document.cookie = name + "=" + value + expires + "; path=/";
   });
 }
-
-// Function to show success message
-function showSuccessMessage() {
-  // Remove any existing message
-  const existingMessage = document.querySelector('.merchi-success-message');
-  if (existingMessage) {
-    existingMessage.remove();
-  }
-
-  // Create and show new message
-  const message = document.createElement('div');
-  message.className = 'merchi-success-message';
-  message.innerHTML = `
-    <span>✓ Product added to cart successfully!</span>
-    <a href="${site_url}/cart/">Go to cart</a>
-  `;
-  document.body.appendChild(message);
-
-  // Scroll to top
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-
-  // Remove message after 5 seconds
-  setTimeout(() => {
-    message.style.opacity = '0';
-    setTimeout(() => message.remove(), 500);
-  }, 5000);
-}
-
-// Modify the success callback in the form submission
-const successCallback = function () {
-  showSuccessMessage();
-  // Trigger cart fragment refresh
-  jQuery(document.body).trigger("wc_fragment_refresh");
-};
-
-document.addEventListener("click", function (event) {
-  var target = event.target;
-  const $button = jQuery('.product-button-add-to-cart');
-  // the observer is used to watch the cart button for a state change on the
-  // disabled attr. We need this because if we mutate the DOM element while
-  // react is in the middle of a state change, the page will crash.
-  const observer = new MutationObserver((mutationsList) => {
-    for (const mutation of mutationsList) {
-      if (mutation.type === 'attributes' && mutation.attributeName === 'disabled') {
-        // Check if 'disabled' attribute has been removed
-        const isDisabled = mutation.target.hasAttribute('disabled');
-        // When the disabled attr is removed from the button this means that react
-        // has finished with the element; it's now save to use jQuery to change the button
-        if (!isDisabled) {
-          $button.text('Loading...');
-          $button.prop('disabled', true);
-        }
-      }
-    }
-  });
-
-  if (target?.classList?.contains("product-button-add-to-cart")) {
-    // Ensure target is a valid DOM node before observing
-    if (target instanceof Element) {
-      try {
-        observer.observe(target, { attributes: true });
-      } catch (error) {
-        console.warn('Failed to observe target element:', error);
-        return;
-      }
-    } else {
-      console.warn('Target element is not a valid DOM node');
-      return;
-    }
-    try {
-      setTimeout(function () {
-        // Check if the current page is a single product page
-        if (scriptData.is_single_product) {
-          // Retrieve the cart cookie to get cart details
-          const cookie = getCookieByName("cart-" + scriptData.merchi_domain);
-          // Parse the cart cookie value
-          const cookieValueArray = cookie.split(",");
-          const id = cookieValueArray[0].trim();
-          const token = cookieValueArray[1].trim();
-          // Create a new Cart instance and fetch the cart details
-          const cartEnt = new MERCHI.Cart().id(id).token(token);
-          cartEnt.get(
-            (cart) => {
-              // Update local storage with cart details
-              localStorageUpdateCartEnt(cart);
-              const cartJson = new MERCHI.toJson(cart);
-              console.log(cartJson);
-              var cartPayload = {};
-              cartPayload["cartId"] = cartJson.id;
-              cartPayload["taxAmount"] = cartJson.taxAmount;
-              cartPayload["cartItems"] = {};
-              // Process each cart item of response
-              cartJson.cartItems.forEach(function (item, itemIndex) {
-                cartPayload["cartItems"][itemIndex] = {
-                  productID: item.product.id,
-                  quantity: item.quantity,
-                  subTotal: item.subtotalCost,
-                  totalCost: item.totalCost,
-                };
-                var obj = {};
-                var objExtras = {};
-                var count = 0;
-                // Process item variations groups if present
-                if (
-                  Array.isArray(item.variationsGroups) &&
-                  item.variationsGroups.length > 0
-                ) {
-                  item.variationsGroups.forEach(function (group, gi) {
-                    cartPayload["cartItems"][itemIndex]["variations"] = [];
-                    cartPayload["cartItems"][itemIndex]["objExtras"] = [];
-                    obj[count] = {};
-                    objExtras[count] = {};
-                    var loopcount = 0;
-                    var varQuant = false;
-                    group.variations.forEach(function (variation, vi) {
-                      if (variation.selectedOptions.length) {
-                        obj[count][vi] = variation.selectedOptions[0].value;
-                      } else if (variation.hasOwnProperty("value")) {
-                        obj[count][vi] = variation.value;
-                      }
-                      varQuant = variation.quantity;
-                      loopcount = vi + 1;
-                    });
-                    objExtras[count][loopcount] = varQuant;
-                    objExtras[count]["quantity"] = varQuant;
-                    count++;
-                    cartPayload["cartItems"][itemIndex]["variations"].push(obj);
-                    cartPayload["cartItems"][itemIndex]["objExtras"].push(
-                      objExtras
-                    );
-                  });
-                }
-                // Process item variations if present
-                if (
-                  Array.isArray(item.variations) &&
-                  item.variations.length > 0
-                ) {
-                  cartPayload["cartItems"][itemIndex]["variations"] = [];
-                  cartPayload["cartItems"][itemIndex]["objExtras"] = [];
-                  obj[count] = {};
-                  objExtras[count] = {};
-                  var loopcount = 0;
-                  var varQuant = false;
-                  item.variations.forEach(function (variation, vi) {
-                    if (variation.selectedOptions.length) {
-                      obj[count][vi] = variation.selectedOptions[0].value;
-                    } else if (variation.hasOwnProperty("value")) {
-                      obj[count][vi] = variation.value;
-                    }
-                    varQuant = variation.quantity;
-                    loopcount = vi + 1;
-                  });
-                  objExtras[count][loopcount] = varQuant;
-                  objExtras[count]["quantity"] = varQuant;
-                  cartPayload["cartItems"][itemIndex]["variations"].push(obj);
-                  cartPayload["cartItems"][itemIndex]["objExtras"].push(
-                    objExtras
-                  );
-                }
-              });
-              // Check if the cart has items
-              if (
-                cartJson.hasOwnProperty("cartItems") &&
-                Array.isArray(cartJson.cartItems) &&
-                cartJson.cartItems.length !== 0
-              ) {
-                // Send cart data to the server using AJAX
-                jQuery.ajax({
-                  method: "POST",
-                  url: frontendajax.ajaxurl,
-                  data: {
-                    action: "send_id_for_add_cart",
-                    item: cartPayload,
-                  },
-                  success: function (response) {
-                    // Show success message
-                    showSuccessMessage();
-                    // On success, restore the original button state
-                    target.parentElement.classList.remove(
-                      "cst-disabled-btn-parent"
-                    );
-                    target.style.display = "block";
-                    // Trigger a refresh of the cart fragments
-                    jQuery(document.body).trigger("wc_fragment_refresh");
-                  },
-                  error: function (error) {
-                    alert("Something went wrong, Please try again later");
-                  },
-                });
-              } else {
-                // If the cart is empty, restore the button state
-                target.parentElement.classList.remove(
-                  "cst-disabled-btn-parent"
-                );
-                target.style.display = "block";
-                target.innerHTML = "Add To Cart";
-              }
-            },
-            (error) => {
-              console.log(error);
-              return null;
-            },
-            cartEmbed
-          );
-        }
-      }, 500);
-    } catch (e) {
-      console.error(e);
-    }
-  }
-});
 
 async function createCart() {
   const domainId = scriptData.merchi_domain; // TODO REMOCE THIS WHEN DONE
@@ -626,7 +200,12 @@ async function initOrSyncCart() {
 // perhaps within jQuery(document).ready or after MERCHI SDK is confirmed loaded):
 
 jQuery(document).ready(function ($) {
-  // ... other existing ready code ...
+  // Add a flag to track if initOrSyncCart has been called
+  if (window.initOrSyncCartCalled) {
+    return;
+  }
+  window.initOrSyncCartCalled = true;
+
   if (typeof initOrSyncCart === 'function') {
     initOrSyncCart();
   } else {
@@ -634,51 +213,204 @@ jQuery(document).ready(function ($) {
   }
 });
 
-// Helper function to update cart display
-function updateCartDisplay(cart) {
-  // Update cart count
-  const cartCount = document.getElementById('cart-count');
-  if (cartCount && cart.cartItems) {
-    const totalItems = cart.cartItems.reduce((sum, item) => sum + item.quantity, 0);
-    cartCount.textContent = totalItems;
+// Function to show success message
+function showSuccessMessage() {
+  // Remove any existing message
+  const existingMessage = document.querySelector('.merchi-success-message');
+  if (existingMessage) {
+    existingMessage.remove();
   }
-  
-  // Update cart items list if it exists
-  const cartItemsList = document.getElementById('cart-items-list');
-  if (cartItemsList && cart.cartItems) {
-    // Clear existing items
-    cartItemsList.innerHTML = '';
-    
-    // Add new items
-    cart.cartItems.forEach(item => {
-      const itemElement = document.createElement('div');
-      itemElement.className = 'cart-item';
-      itemElement.innerHTML = `
-        <span class="item-name">${item.product.name || 'Product'}</span>
-        <span class="item-quantity">x${item.quantity}</span>
-        <span class="item-price">$${item.totalCost.toFixed(2)}</span>
-      `;
-      cartItemsList.appendChild(itemElement);
-    });
-  }
-  
-  // Update total cost if element exists
-  const totalCost = document.getElementById('cart-total-cost');
-  if (totalCost && cart.totalCost !== undefined) {
-    totalCost.textContent = `$${cart.totalCost.toFixed(2)}`;
-  }
+
+  // Create and show new message
+  const message = document.createElement('div');
+  message.className = 'merchi-success-message';
+  message.innerHTML = `
+    <span>✓ Product added to cart successfully!</span>
+    <a href="${site_url}/cart/">Go to cart</a>
+  `;
+  document.body.appendChild(message);
+
+  // Scroll to top
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // Remove message after 5 seconds
+  setTimeout(() => {
+    message.style.opacity = '0';
+    setTimeout(() => message.remove(), 500);
+  }, 5000);
 }
 
-// Helper functions for loader and cart display (implement as needed)
-function showCartLoader() {
-  // Show a loader/spinner with id 'cart-loader'
-  const loader = document.getElementById('cart-loader');
-  if (loader) loader.style.display = 'block';
-}
-function hideCartLoader() {
-  // Hide the loader/spinner with id 'cart-loader'
-  const loader = document.getElementById('cart-loader');
-  if (loader) loader.style.display = 'none';
-}
+// document.addEventListener("click", function (event) {
+//   var target = event.target;
+//   const $button = jQuery('.product-button-add-to-cart');
+//   // the observer is used to watch the cart button for a state change on the
+//   // disabled attr. We need this because if we mutate the DOM element while
+//   // react is in the middle of a state change, the page will crash.
+//   const observer = new MutationObserver((mutationsList) => {
+//     for (const mutation of mutationsList) {
+//       if (mutation.type === 'attributes' && mutation.attributeName === 'disabled') {
+//         // Check if 'disabled' attribute has been removed
+//         const isDisabled = mutation.target.hasAttribute('disabled');
+//         // When the disabled attr is removed from the button this means that react
+//         // has finished with the element; it's now save to use jQuery to change the button
+//         if (!isDisabled) {
+//           $button.text('Loading...');
+//           $button.prop('disabled', true);
+//         }
+//       }
+//     }
+//   });
 
-
+//   if (target?.classList?.contains("product-button-add-to-cart")) {
+//     // Ensure target is a valid DOM node before observing
+//     if (target instanceof Element) {
+//       try {
+//         observer.observe(target, { attributes: true });
+//       } catch (error) {
+//         console.warn('Failed to observe target element:', error);
+//         return;
+//       }
+//     } else {
+//       console.warn('Target element is not a valid DOM node');
+//       return;
+//     }
+//     try {
+//       setTimeout(function () {
+//         // Check if the current page is a single product page
+//         // Retrieve the cart cookie to get cart details
+//         const cookie = getCookieByName("cart-" + scriptData.merchi_domain);
+//         // Parse the cart cookie value
+//         const cookieValueArray = cookie.split(",");
+//         const id = cookieValueArray[0].trim();
+//         const token = cookieValueArray[1].trim();
+//         // Create a new Cart instance and fetch the cart details
+//         const cartEnt = new MERCHI.Cart().id(id).token(token);
+//         cartEnt.get(
+//           (cart) => {
+//             // Update local storage with cart details
+//             localStorageUpdateCartEnt(cart);
+//             const cartJson = new MERCHI.toJson(cart);
+//             console.log(cartJson);
+//             var cartPayload = {};
+//             cartPayload["cartId"] = cartJson.id;
+//             cartPayload["taxAmount"] = cartJson.taxAmount;
+//             cartPayload["cartItems"] = {};
+//             // Process each cart item of response
+//             cartJson.cartItems.forEach(function (item, itemIndex) {
+//               cartPayload["cartItems"][itemIndex] = {
+//                 productID: item.product.id,
+//                 quantity: item.quantity,
+//                 subTotal: item.subtotalCost,
+//                 totalCost: item.totalCost,
+//               };
+//               var obj = {};
+//               var objExtras = {};
+//               var count = 0;
+//               // Process item variations groups if present
+//               if (
+//                 Array.isArray(item.variationsGroups) &&
+//                 item.variationsGroups.length > 0
+//               ) {
+//                 item.variationsGroups.forEach(function (group, gi) {
+//                   cartPayload["cartItems"][itemIndex]["variations"] = [];
+//                   cartPayload["cartItems"][itemIndex]["objExtras"] = [];
+//                   obj[count] = {};
+//                   objExtras[count] = {};
+//                   var loopcount = 0;
+//                   var varQuant = false;
+//                   group.variations.forEach(function (variation, vi) {
+//                     if (variation.selectedOptions.length) {
+//                       obj[count][vi] = variation.selectedOptions[0].value;
+//                     } else if (variation.hasOwnProperty("value")) {
+//                       obj[count][vi] = variation.value;
+//                     }
+//                     varQuant = variation.quantity;
+//                     loopcount = vi + 1;
+//                   });
+//                   objExtras[count][loopcount] = varQuant;
+//                   objExtras[count]["quantity"] = varQuant;
+//                   count++;
+//                   cartPayload["cartItems"][itemIndex]["variations"].push(obj);
+//                   cartPayload["cartItems"][itemIndex]["objExtras"].push(
+//                     objExtras
+//                   );
+//                 });
+//               }
+//               // Process item variations if present
+//               if (
+//                 Array.isArray(item.variations) &&
+//                 item.variations.length > 0
+//               ) {
+//                 cartPayload["cartItems"][itemIndex]["variations"] = [];
+//                 cartPayload["cartItems"][itemIndex]["objExtras"] = [];
+//                 obj[count] = {};
+//                 objExtras[count] = {};
+//                 var loopcount = 0;
+//                 var varQuant = false;
+//                 item.variations.forEach(function (variation, vi) {
+//                   if (variation.selectedOptions.length) {
+//                     obj[count][vi] = variation.selectedOptions[0].value;
+//                   } else if (variation.hasOwnProperty("value")) {
+//                     obj[count][vi] = variation.value;
+//                   }
+//                   varQuant = variation.quantity;
+//                   loopcount = vi + 1;
+//                 });
+//                 objExtras[count][loopcount] = varQuant;
+//                 objExtras[count]["quantity"] = varQuant;
+//                 cartPayload["cartItems"][itemIndex]["variations"].push(obj);
+//                 cartPayload["cartItems"][itemIndex]["objExtras"].push(
+//                   objExtras
+//                 );
+//               }
+//             });
+//             // Check if the cart has items
+//             if (
+//               cartJson.hasOwnProperty("cartItems") &&
+//               Array.isArray(cartJson.cartItems) &&
+//               cartJson.cartItems.length !== 0
+//             ) {
+//               // Send cart data to the server using AJAX
+//               jQuery.ajax({
+//                 method: "POST",
+//                 url: frontendajax.ajaxurl,
+//                 data: {
+//                   action: "send_id_for_add_cart",
+//                   item: cartPayload,
+//                 },
+//                 success: function (response) {
+//                   // Show success message
+//                   showSuccessMessage();
+//                   // On success, restore the original button state
+//                   target.parentElement.classList.remove(
+//                     "cst-disabled-btn-parent"
+//                   );
+//                   target.style.display = "block";
+//                   // Trigger a refresh of the cart fragments
+//                   jQuery(document.body).trigger("wc_fragment_refresh");
+//                 },
+//                 error: function (error) {
+//                   alert("Something went wrong, Please try again later");
+//                 },
+//               });
+//             } else {
+//               // If the cart is empty, restore the button state
+//               target.parentElement.classList.remove(
+//                 "cst-disabled-btn-parent"
+//               );
+//               target.style.display = "block";
+//               target.innerHTML = "Add To Cart";
+//             }
+//           },
+//           (error) => {
+//             console.log(error);
+//             return null;
+//           },
+//           cartEmbed
+//         );
+//       }, 500);
+//     } catch (e) {
+//       console.error(e);
+//     }
+//   }
+// });

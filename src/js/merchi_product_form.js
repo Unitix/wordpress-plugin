@@ -2,7 +2,6 @@
 import { MERCHI_SDK } from './merchi_sdk';
 import { getCookieByName } from './utils';
 import { initializeCheckout } from './merchi_checkout_init';
-import { patchCart } from './merchi_public_custom';
 
 function initializeWhenReady() {
   const merchiSdk = MERCHI_SDK();
@@ -471,6 +470,7 @@ function initializeWhenReady() {
     // Get the Merchi product ID from the page
     jQuery('#get-quote-button').on('click', async function() {
       const formData = await gatherFormData();
+      console.log(formData, 'what is this?');
       window.toggleMerchiCheckout(formData);
     });
 
@@ -893,19 +893,26 @@ function initializeWhenReady() {
       try {
         // Gather form data and log it
         const formData = await gatherFormData();
-        console.log('Merchi Product Form Data being sent to cart:', formData);
-        // Log the group data specifically
-        console.log('DEBUG: variationsGroups (all groups):', formData.variationsGroups);
-        // Build cartPayload for PHP handler
+
         let cartId = null;
-        let taxAmount = 0;
-        // Try to get cartId from cookie
-        const cookie = getCookieByName("cart-" + scriptData.merchi_domain);
-        if (cookie) {
-          cartId = cookie.split(',')[0];
-        } else {
-          cartId = 'js-cart-' + Math.random().toString(36).substr(2, 9);
+
+        // Get the cart in local storage
+        const merchiCart = localStorage.getItem('MerchiCart');
+        let merchiCartJson;
+        try {
+          // Convert the cart to JSON
+          merchiCartJson = JSON.parse(merchiCart);
+          cartId = merchiCartJson.id;
+          // Add the new item to the cart
+          const cartItems = [...merchiCartJson.cartItems, formData];
+          console.log(cartItems, 'what are cart items');
+          const updatedCart = {...merchiCartJson, cartItems};
+          localStorage.setItem('MerchiCart', JSON.stringify(updatedCart));
+        } catch (error) {
+          console.error('Error parsing MerchiCart:', error);
         }
+
+        let taxAmount = 0;
         // Build cartItems from formData (detailed version)
         const cartItems = [];
         cartItems.push({
@@ -918,7 +925,7 @@ function initializeWhenReady() {
         });
 
         // Map group variations (variationsGroups)
-        if (Array.isArray(formData.variationsGroups) && formData.variationsGroups.length > 0) {
+        if (formData?.variationsGroups?.length > 0) {
           formData.variationsGroups.forEach((group, gi) => {
             let groupObj = {};
             let groupExtras = {};
@@ -942,7 +949,7 @@ function initializeWhenReady() {
         }
 
         // Map standalone variations (if any)
-        if (Array.isArray(formData.variations) && formData.variations.length > 0) {
+        if (formData?.variations?.length > 0) {
           let obj = {};
           let objExtras = {};
           let loopcount = 0;
@@ -967,38 +974,34 @@ function initializeWhenReady() {
           cartItems: cartItems
         };
 
-        console.log('cartPayload being sent to send_id_for_add_cart:', cartPayload);
-        if (scriptData.is_single_product) {       
-          jQuery.ajax({
-            method: "POST",
-            url: frontendajax.ajaxurl,
-            data: {
-              action: "send_id_for_add_cart",
-              item: cartPayload,
-            },
-            success: function (response) {
-              setLoadingState(false);
-              // Set a flag in sessionStorage to show the success message after reload
-              sessionStorage.setItem('merchiCartSuccess', '1');
-              // Reload the page and scroll to top
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-              window.location.reload();
-              // Do NOT show the success message here
-              // Do NOT submit the form here
-              // Cart fragment refresh will happen on reload
-            },
-            error: function (jqXHR, textStatus, errorThrown) {
-              console.error('AJAX Error!', {jqXHR, textStatus, errorThrown});
-              setLoadingState(false);
-              if (jqXHR && jqXHR.responseText) {
-                console.error('AJAX Error Response Text:', jqXHR.responseText);
-              }
-              alert("Something went wrong, Please try again later");
-            },
-          });
-        } else {
-          console.log('Not a single product page, skipping AJAX call');
-        }
+        console.log('cartPayload being sent to send_id_for_add_cart:', cartPayload);     
+        jQuery.ajax({
+          method: "POST",
+          url: frontendajax.ajaxurl,
+          data: {
+            action: "send_id_for_add_cart",
+            item: cartPayload,
+          },
+          success: function (response) {
+            setLoadingState(false);
+            // Set a flag in sessionStorage to show the success message after reload
+            sessionStorage.setItem('merchiCartSuccess', '1');
+            // Reload the page and scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.location.reload();
+            // Do NOT show the success message here
+            // Do NOT submit the form here
+            // Cart fragment refresh will happen on reload
+          },
+          error: function (jqXHR, textStatus, errorThrown) {
+            console.error('AJAX Error!', {jqXHR, textStatus, errorThrown});
+            setLoadingState(false);
+            if (jqXHR && jqXHR.responseText) {
+              console.error('AJAX Error Response Text:', jqXHR.responseText);
+            }
+            alert("Something went wrong, Please try again later");
+          },
+        });
       } catch (error) {
         console.error('Error in add to cart process:', error);
         setLoadingState(false);
