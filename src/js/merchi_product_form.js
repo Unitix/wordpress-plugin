@@ -5,6 +5,16 @@ import { initializeCheckout } from './merchi_checkout_init';
 
 function initializeWhenReady() {
   const merchiSdk = MERCHI_SDK();
+
+  async function uploadFileToMerchi(file) {
+    const merchiFile = new merchiSdk.File().fromFormFile(file);
+    return new Promise((resolve, reject) => {
+      merchiFile.publicCreate((merchiFile) => {
+        resolve(merchiFile);
+      }, (status, data) => reject(data));
+    });
+  }
+
   if (!merchiSdk) {
     window.addEventListener('merchi_sdk_ready', initializeWhenReady);
     return;
@@ -17,8 +27,19 @@ function initializeWhenReady() {
 
   jQuery(document).ready(function($) {
     const merchiProductId = merchiConfig.productId;
-    let productJson = null;
+    let productJson = {};
     let defaultJobJson = {};
+    let productClone = {};
+
+    // Function to create a deep clone of an object
+    const deepClone = (obj) => {
+      try {
+        return JSON.parse(JSON.stringify(obj));
+      } catch (e) {
+        console.error('Deep clone failed:', e);
+        return {};
+      }
+    };
 
     // Add cart-loader and cart-count elements if not present
     if ($('#cart-loader').length === 0) {
@@ -41,8 +62,11 @@ function initializeWhenReady() {
         productEnt.get(
           (product) => {
             productJson = merchiSdk.toJson(product);
+            // Create a deep clone of the original product data
+            productClone = deepClone(productJson);
             // Ensure we have a valid defaultJob structure
             defaultJobJson = productJson.defaultJob;
+
             // Initialize the checkout component
             initializeCheckout(productJson, defaultJobJson);
             resolve(productJson);
@@ -59,6 +83,7 @@ function initializeWhenReady() {
               }
             };
             productJson = fallbackData;
+            productClone = deepClone(fallbackData);
             defaultJobJson = fallbackData.defaultJob;
             resolve(fallbackData);
           },
@@ -183,7 +208,7 @@ function initializeWhenReady() {
           $wrapper.after($previewArea);
         }
 
-        $input.off('change.file-input').on('change.file-input', function(e) {
+        $input.off('change.file-input').on('change.file-input', async function(e) {
           var files = Array.from(this.files);
           
           // --- Maintain a DataTransfer object for this input ---
@@ -193,7 +218,7 @@ function initializeWhenReady() {
           var dt = $input[0]._dt;
 
           // Add new files, avoiding duplicates by name+size
-          files.forEach(function(file) {
+          for (const file of files) {
             var exists = false;
             for (var i = 0; i < dt.items.length; i++) {
               var f = dt.items[i].getAsFile();
@@ -202,33 +227,51 @@ function initializeWhenReady() {
                 break;
               }
             }
-            if (!exists) dt.items.add(file);
-          });
-          // Update input files
-          $input[0].files = dt.files;
-
-          // --- Render preview ---
-          $previewArea.empty();
-          var dtFiles = Array.from(dt.files);
-          if (dtFiles.length > 0) {
-            dtFiles.forEach(function(file, idx) {
-              var $fileBox = jQuery('<div class="multi-file-box" style="display: flex; align-items: center; margin-bottom: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 8px;"></div>');
-              var $removeBtn = jQuery('<span class="file-upload-remove" style="margin-left: 10px; cursor: pointer; font-size: 20px; color: #d00;">&times;</span>');
-              $removeBtn.on('click', function(e) {
-                e.stopPropagation();
-                var newDT = new DataTransfer();
-                dtFiles.forEach(function(f, i) {
-                  if (i !== idx) newDT.items.add(f);
+            
+            if (!exists) {
+              try {
+                // Upload file to Merchi first
+                const merchiFile = await uploadFileToMerchi(file);
+                const merchiFileJson = merchiSdk.toJson(merchiFile);
+                
+                // Add to DataTransfer
+                dt.items.add(file);
+                
+                // Create file box with Merchi data
+                var $fileBox = jQuery('<div class="multi-file-box" style="display: flex; align-items: center; margin-bottom: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 8px;"></div>');
+                
+                // Add Merchi file data attributes
+                $fileBox.attr({
+                  'data-merchi-file': JSON.stringify(merchiFileJson),
+                  'data-download-url': merchiFileJson.downloadUrl,
+                  'data-view-url': merchiFileJson.viewUrl,
+                  'data-mimetype': merchiFileJson.mimetype
                 });
-                $input[0]._dt = newDT;
-                $input[0].files = newDT.files;
-                $input.trigger('change');
-              });
-              if (file.type.startsWith('image/')) {
-                var reader = new FileReader();
-                reader.onload = function(e) {
+
+                var $removeBtn = jQuery('<span class="file-upload-remove" style="margin-left: 10px; cursor: pointer; font-size: 20px; color: #d00;">&times;</span>');
+                $removeBtn.on('click', function(e) {
+                  e.stopPropagation();
+                  var newDT = new DataTransfer();
+                  Array.from(dt.files).forEach(function(f, i) {
+                    if (f.name !== file.name || f.size !== file.size) {
+                      newDT.items.add(f);
+                    }
+                  });
+                  $input[0]._dt = newDT;
+                  $input[0].files = newDT.files;
+                  $fileBox.remove();
+                  if ($previewArea.find('.multi-file-box').length === 0) {
+                    $previewArea.empty();
+                  } else {
+                    updateFileCount($previewArea);
+                  }
+                  $input.trigger('change');
+                });
+
+                if (file.type.startsWith('image/')) {
+                  // Use Merchi viewUrl for images
                   var $img = jQuery('<img />', {
-                    src: e.target.result,
+                    src: merchiFileJson.viewUrl,
                     css: {
                       'max-width': '60px',
                       'max-height': '60px',
@@ -239,42 +282,56 @@ function initializeWhenReady() {
                     }
                   });
                   $fileBox.prepend($img);
-                };
-                reader.readAsDataURL(file);
-              } else {
-                var $fileIcon = jQuery('<span style="font-size: 32px; margin-right: 10px;">📄</span>');
-                $fileBox.prepend($fileIcon);
+                } else {
+                  var $fileIcon = jQuery('<span style="font-size: 32px; margin-right: 10px;">📄</span>');
+                  $fileBox.prepend($fileIcon);
+                }
+
+                var $fileName = jQuery('<span style="font-weight: bold; font-size:0.5em; color: #333;">' + file.name + '</span>');
+                var $downloadBtn = jQuery('<a style="margin-left: 10px; font-size: 18px; text-decoration: none;" href="' + merchiFileJson.downloadUrl + '" download>⬇️</a>');
+                
+                $fileBox.append($fileName).append($downloadBtn).append($removeBtn);
+                $previewArea.append($fileBox);
+                
+                // Update file count display
+                updateFileCount($previewArea);
+              } catch (error) {
+                console.error('Error processing file:', error);
+                // Optionally show error to user
+                alert('Failed to upload file: ' + file.name);
               }
-              var $fileName = jQuery('<span style="font-weight: bold; font-size:0.5em; color: #333;">' + file.name + '</span>');
-              var $downloadBtn = jQuery('<a style="margin-left: 10px; font-size: 18px; text-decoration: none;" href="#" download>⬇️</a>');
-              $downloadBtn.on('click', function(ev) {
-                ev.preventDefault();
-                var url = URL.createObjectURL(file);
-                var a = document.createElement('a');
-                a.href = url;
-                a.download = file.name;
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(function() { URL.revokeObjectURL(url); document.body.removeChild(a); }, 100);
-              });
-              $fileBox.append($fileName).append($downloadBtn).append($removeBtn);
-              $previewArea.append($fileBox);
-            });
-            // Show file count
-            var $count = jQuery('<div style="color: #666; font-size: 14px; font-weight:bold; margin-top: 4px;">' + dtFiles.length + ' file' + (dtFiles.length > 1 ? 's' : '') + ' selected <span style="cursor:pointer;color:#0073aa;" class="toggle-file-list">&#9650;</span></div>');
-            $previewArea.append($count);
-            $count.find('.toggle-file-list').on('click', function() {
-              $previewArea.toggleClass('collapsed');
-              $previewArea.find('.multi-file-box').toggle();
-              jQuery(this).html($previewArea.hasClass('collapsed') ? '&#9660;' : '&#9650;');
-            });
-          } else {
-            $previewArea.empty();
+            }
           }
+          
+          // Update input files
+          $input[0].files = dt.files;
+          
           // Always show icon and instruction
           $wrapper.find('.upload-icon').show();
           $wrapper.find('.upload-instruction, .upload-types').show();
         });
+      });
+    }
+
+    // Helper function to update file count display
+    function updateFileCount($previewArea) {
+      const fileCount = $previewArea.find('.multi-file-box').length;
+      let $count = $previewArea.find('.file-count-display');
+      
+      if ($count.length === 0) {
+        $count = jQuery('<div class="file-count-display" style="color: #666; font-size: 14px; font-weight:bold; margin-top: 4px;"></div>');
+        $previewArea.append($count);
+      }
+      
+      $count.html(
+        fileCount + ' file' + (fileCount > 1 ? 's' : '') + 
+        ' selected <span style="cursor:pointer;color:#0073aa;" class="toggle-file-list">&#9650;</span>'
+      );
+      
+      $count.find('.toggle-file-list').off('click').on('click', function() {
+        $previewArea.toggleClass('collapsed');
+        $previewArea.find('.multi-file-box').toggle();
+        jQuery(this).html($previewArea.hasClass('collapsed') ? '&#9660;' : '&#9650;');
       });
     }
 
@@ -553,11 +610,13 @@ function initializeWhenReady() {
     }
   
     // Function to add a new group
-    function addNewGroup() {
-      const { variationsGroups = [] } = defaultJobJson;
+    const addNewGroup = () => {
+      // Use the cloned default values
+      const { defaultJob = {} } = productClone;
+      const { variationsGroups = [] } = defaultJob;
       const defaultGroup = variationsGroups[0];
+      const { quantity = 1, variations = [] } = defaultGroup;
 
-      console.log('addNewGroup called. Current group count:', jQuery('.group-field-set').length);
       // Always use the first fully structured group as the template
       const $firstGroup = jQuery('.group-field-set').filter(function() {
         return jQuery(this).find('.custom-field').length > 0;
@@ -610,14 +669,14 @@ function initializeWhenReady() {
 
         // Handle group quantity separately
         if ($input.hasClass('group-quantity')) {
-          $input.attr('data-group-index', newGroupIndex).val(defaultGroup?.quantity || 1);
+          $input.attr('data-group-index', newGroupIndex).val(quantity);
           const unitPrice = parseFloat($input.data('unit-price'));
           $input.closest('.custom-field').find('label').text(`Group (${newGroupIndex}) quantity ($${unitPrice.toFixed(2)} unit price)`);
         } else {
           // For variation fields, try to find and apply the default value
           const variationFieldData = $input.data('variation-field');
-          if (variationFieldData && defaultGroup?.variations) {
-            const defaultVariation = defaultGroup.variations.find(
+          if (variationFieldData) {
+            const defaultVariation = variations.find(
               v => v.variationField?.id === variationFieldData.id);
             if (defaultVariation) {
               if ($input.is(':checkbox, :radio')) {
@@ -809,14 +868,29 @@ function initializeWhenReady() {
         } else if ($input.is('input[type="color"]')) {
           value = $input.val();
         } else if ($input.is('input[type="file"]')) {
-          // For file upload fields, store the file name(s) only
-          const files = $input[0].files;
-          if (files && files.length > 0) {
-            value = Array.from(files).map(f => f.name);
-            if (value.length === 1) value = value[0];
-          } else {
-            value = null;
-          }
+          // Find the preview area next to the file input wrapper
+          const $previewArea = $input.closest('.custom-upload-wrapper').next('.multi-file-upload-preview');
+          const variationFiles = [];
+
+          // Process each file box in the preview area
+          $previewArea.find('.multi-file-box').each(function() {
+            const $fileBox = jQuery(this);
+            const merchiFileData = $fileBox.attr('data-merchi-file');
+            
+            if (merchiFileData) {
+              try {
+                const merchiFile = JSON.parse(merchiFileData);
+                variationFiles.push(merchiFile);
+              } catch (e) {
+                console.error('Error parsing Merchi file data:', e);
+              }
+            }
+          });
+
+          // Set both the value (file names) and variationFiles
+          value = variationFiles.map(file => file.id).join(',');
+          // Add the variationFiles array to the variation object
+          variationsArray[variationIndex].variationFiles = variationFiles;
         }
 
         // Update the value of the variation
@@ -1031,8 +1105,6 @@ function initializeWhenReady() {
         mutations.forEach(mutation => {
           mutation.addedNodes.forEach(node => {
             if (node.nodeType === 1 && node.classList.contains('group-field-set')) {
-              console.log('A .group-field-set was added:', node, node.innerHTML);
-              console.trace('Call stack for .group-field-set addition');
             }
           });
         });

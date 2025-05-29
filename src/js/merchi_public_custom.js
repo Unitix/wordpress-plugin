@@ -3,6 +3,7 @@ import { cartEmbed, getCookieByName } from './utils';
 
 const MERCHI = MERCHI_SDK();
 // const site_url = scriptData.site_url
+
 const site_url = '';
 
 async function localStorageUpdateCartEnt(cartEnd) {
