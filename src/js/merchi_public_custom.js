@@ -214,33 +214,6 @@ jQuery(document).ready(function ($) {
   }
 });
 
-jQuery(document).ready(function($) {
-  // Listen for cart item removal
-  $(document.body).on('removed_from_cart', function(event, fragments, cart_hash, $button) {
-      // const cartItemKey = $button.data('cart_item_key');
-      // const cartLength = Object.keys(fragments['div.widget_shopping_cart_content'] || {}).length;
-      
-      // // Make AJAX call to our custom endpoint
-      // $.ajax({
-      //     url: scriptData.ajaxurl,
-      //     type: 'POST',
-      //     data: {
-      //         action: 'cst_cart_item_after_remove',
-      //         item_id: cartItemKey,
-      //         cart_length: cartLength
-      //     },
-      //     success: function(response) {
-      //         console.log('Cart item removed:', response);
-      //         // Handle any additional actions after successful removal
-      //     },
-      //     error: function(xhr, status, error) {
-      //         console.error('Error removing cart item:', error);
-      //     }
-      // });
-      console.log('cart was removed....');
-  });
-});
-
 // Function to show success message
 function showSuccessMessage() {
   // Remove any existing message
