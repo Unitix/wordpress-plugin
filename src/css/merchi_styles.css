@@ -1319,3 +1319,29 @@ ul.cst-breadcrumb > li.cst-breadcrumb-li i.cst-delimiter {
 body.single-product #cart-count {
   display: none !important;
 }
+
+/* Variation Details Styles */
+.item-variations {
+    margin: 8px 0;
+    font-size: 13px;
+}
+
+.variation-detail {
+    margin: 4px 0;
+    color: #666;
+    line-height: 1.4;
+}
+
+.variation-label {
+    font-weight: 500;
+    color: #444;
+}
+
+.variation-value {
+    color: #666;
+}
+
+.variation-quantity {
+    color: #888;
+    font-style: italic;
+}

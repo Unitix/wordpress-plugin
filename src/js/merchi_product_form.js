@@ -961,7 +961,7 @@ function initializeWhenReady() {
       try {
         // Gather form data and log it
         const formData = await gatherFormData();
-        const { quantity, variationsGroups = [], variations } = formData;
+        const { quantity, variationsGroups = [], variations = [] } = formData;
 
         let cartId = null;
         let totalQuantity = variationsGroups.length ? 0 : quantity;
@@ -1008,7 +1008,6 @@ function initializeWhenReady() {
                 loopcount = vi + 1;
               });
             }
-            groupExtras[loopcount] = varQuant;
             groupExtras['quantity'] = varQuant;
             totalQuantity += varQuant;
 
@@ -1023,7 +1022,7 @@ function initializeWhenReady() {
           let objExtras = {};
           let loopcount = 0;
 
-          formData.variations.forEach((variation, vi) => {
+          variations.forEach((variation, vi) => {
             if (variation && (variation.value !== undefined)) {
               obj[vi] = variation.value;
             }
