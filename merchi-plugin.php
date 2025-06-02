@@ -1262,14 +1262,7 @@ function send_id_for_add_cart(){
     wp_die();
 }
 
-add_filter( 'woocommerce_cart_item_quantity', 'wc_cart_item_quantity', 10, 3 );
-function wc_cart_item_quantity( $product_quantity, $cart_item_key, $cart_item ){
-    if( is_cart() ){
-        $product_quantity = sprintf( '%2$s <input type="hidden" name="cart[%1$s][qty]" value="%2$s" />', $cart_item_key, $cart_item['quantity'] );
-    }
-    return $product_quantity;
-
-}
+// Start here!
 
 add_action( 'wp_ajax_cst_cart_item_after_remove', 'cst_cart_item_after_remove', 10, 2);
 add_action( 'wp_ajax_nopriv_cst_cart_item_after_remove', 'cst_cart_item_after_remove', 10, 2);
@@ -1328,6 +1321,28 @@ function cst_cart_item_after_remove() {
     } else {
         error_log('cst_cart_item_after_remove called but no cstCartId cookie found');
     }
+}
+
+function my_custom_remove_cart_item_action( $removed_cart_item_key, $cart_item ) {
+  // Access the removed cart item key
+  // $removed_cart_item_key =  $removed_cart_item_key;
+
+  // Access the removed cart item's data
+  // $cart_item = $cart_item;
+
+  // Example: Display a notice
+  // WC()->add_notice( "The item with key {$removed_cart_item_key} has been removed from your cart.", 'notice' );
+	error_log('Hi james');
+}
+add_action( 'woocommerce_remove_cart_item', 'my_custom_remove_cart_item_action', 10, 2 );
+
+add_filter( 'woocommerce_cart_item_quantity', 'wc_cart_item_quantity', 10, 3 );
+function wc_cart_item_quantity( $product_quantity, $cart_item_key, $cart_item ){
+    if( is_cart() ){
+        $product_quantity = sprintf( '%2$s <input type="hidden" name="cart[%1$s][qty]" value="%2$s" />', $cart_item_key, $cart_item['quantity'] );
+    }
+    return $product_quantity;
+
 }
 
 function filter_woocommerce_get_item_data( $cart_data, $cart_item = null ) {
