@@ -3,6 +3,7 @@ import { cartEmbed, getCookieByName } from './utils';
 
 const MERCHI = MERCHI_SDK();
 // const site_url = scriptData.site_url
+
 const site_url = '';
 
 async function localStorageUpdateCartEnt(cartEnd) {
@@ -54,15 +55,15 @@ function setCookie(name, value, days) {
 }
 
 async function createCart() {
-  const domainId = scriptData.merchi_domain; // TODO REMOCE THIS WHEN DONE
+  const domainId = scriptData.merchi_domain;
   const domain = new MERCHI.Domain().id(domainId);
   const cart = new MERCHI.Cart().domain(domain);
   return new Promise((resolve, reject) => {
     cart.create(
       (response) => {
         const c = MERCHI.toJson(response);
-        // Set cart cookie here
-        setCookie("cart-" + scriptData.merchi_domain, c.id + "," + c.token, 1);
+        // Set cart cookie here. The cart cookie is a combo od the cart id and the cart token.
+        setCookie("cart-" + scriptData.merchi_domain, `${c.id},${c.token}`, 1);
         localStorage.setItem("MerchiCart", JSON.stringify(c));
         resolve(response);
       },

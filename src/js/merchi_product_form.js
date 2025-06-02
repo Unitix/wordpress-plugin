@@ -5,6 +5,16 @@ import { initializeCheckout } from './merchi_checkout_init';
 
 function initializeWhenReady() {
   const merchiSdk = MERCHI_SDK();
+
+  async function uploadFileToMerchi(file) {
+    const merchiFile = new merchiSdk.File().fromFormFile(file);
+    return new Promise((resolve, reject) => {
+      merchiFile.publicCreate((merchiFile) => {
+        resolve(merchiFile);
+      }, (status, data) => reject(data));
+    });
+  }
+
   if (!merchiSdk) {
     window.addEventListener('merchi_sdk_ready', initializeWhenReady);
     return;
@@ -17,8 +27,19 @@ function initializeWhenReady() {
 
   jQuery(document).ready(function($) {
     const merchiProductId = merchiConfig.productId;
-    let productJson = null;
+    let productJson = {};
     let defaultJobJson = {};
+    let productClone = {};
+
+    // Function to create a deep clone of an object
+    const deepClone = (obj) => {
+      try {
+        return JSON.parse(JSON.stringify(obj));
+      } catch (e) {
+        console.error('Deep clone failed:', e);
+        return {};
+      }
+    };
 
     // Add cart-loader and cart-count elements if not present
     if ($('#cart-loader').length === 0) {
@@ -41,8 +62,11 @@ function initializeWhenReady() {
         productEnt.get(
           (product) => {
             productJson = merchiSdk.toJson(product);
+            // Create a deep clone of the original product data
+            productClone = deepClone(productJson);
             // Ensure we have a valid defaultJob structure
             defaultJobJson = productJson.defaultJob;
+
             // Initialize the checkout component
             initializeCheckout(productJson, defaultJobJson);
             resolve(productJson);
@@ -59,6 +83,7 @@ function initializeWhenReady() {
               }
             };
             productJson = fallbackData;
+            productClone = deepClone(fallbackData);
             defaultJobJson = fallbackData.defaultJob;
             resolve(fallbackData);
           },
@@ -128,6 +153,7 @@ function initializeWhenReady() {
       // Use the quote price if available, otherwise fallback to local calculation
       // add loop here
       const {
+        costPerUnit,
         taxType,
         totalCost,
         variations = [],
@@ -138,6 +164,7 @@ function initializeWhenReady() {
       for (let i = 0; i < variationsGroups.length; i++) {
         const {
           variations = [],
+          groupCost = 0,
         } = variationsGroups[i];
 
         jQuery('label[data-update-label="true"][data-group-index="' + i + '"]').each(function() {
@@ -146,6 +173,18 @@ function initializeWhenReady() {
           const variation = variations.find(v => v.variationField?.id === variationFieldId);
           updateVariationLabel($label, variation);
         });
+
+        const $groupCostDisplay = jQuery('.group-cost-display[data-group-index="' + (i) + '"]');
+        $groupCostDisplay
+          .attr('data-group-cost', groupCost)
+          .text('Group Cost: $' + groupCost.toFixed(2));
+        
+        // Update the closest group number
+        const $groupFieldSet = $groupCostDisplay.closest('.group-field-set');
+        $groupFieldSet.find('.group-number').text(i + 1);
+        
+        // Update the unit price display
+        $groupFieldSet.find('.group-unit-price').text('( $' + costPerUnit.toFixed(2) + ' per unit )');
       }
 
       jQuery('label[data-update-label="true"][data-group-index="false"]').each(function() {
@@ -154,15 +193,6 @@ function initializeWhenReady() {
         const variation = variations.find(v => v.variationField?.id === variationFieldId);
         updateVariationLabel($label, variation);
       });
-      
-      // Update group cost display for each group
-      for (let i = 0; i < variationsGroups.length; i++) {
-        const group = variationsGroups[i];
-        const groupCost = group.groupCost || group.totalCost || 0;
-        jQuery('.group-cost-display[data-group-index="' + (i + 1) + '"]').text(
-          'Group Cost: $' + groupCost.toFixed(2)
-        );
-      }
 
       jQuery('.price-amount').text(renderPrice(totalCost, taxType));
     }
@@ -183,7 +213,7 @@ function initializeWhenReady() {
           $wrapper.after($previewArea);
         }
 
-        $input.off('change.file-input').on('change.file-input', function(e) {
+        $input.off('change.file-input').on('change.file-input', async function(e) {
           var files = Array.from(this.files);
           
           // --- Maintain a DataTransfer object for this input ---
@@ -193,7 +223,7 @@ function initializeWhenReady() {
           var dt = $input[0]._dt;
 
           // Add new files, avoiding duplicates by name+size
-          files.forEach(function(file) {
+          for (const file of files) {
             var exists = false;
             for (var i = 0; i < dt.items.length; i++) {
               var f = dt.items[i].getAsFile();
@@ -202,33 +232,51 @@ function initializeWhenReady() {
                 break;
               }
             }
-            if (!exists) dt.items.add(file);
-          });
-          // Update input files
-          $input[0].files = dt.files;
-
-          // --- Render preview ---
-          $previewArea.empty();
-          var dtFiles = Array.from(dt.files);
-          if (dtFiles.length > 0) {
-            dtFiles.forEach(function(file, idx) {
-              var $fileBox = jQuery('<div class="multi-file-box" style="display: flex; align-items: center; margin-bottom: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 8px;"></div>');
-              var $removeBtn = jQuery('<span class="file-upload-remove" style="margin-left: 10px; cursor: pointer; font-size: 20px; color: #d00;">&times;</span>');
-              $removeBtn.on('click', function(e) {
-                e.stopPropagation();
-                var newDT = new DataTransfer();
-                dtFiles.forEach(function(f, i) {
-                  if (i !== idx) newDT.items.add(f);
+            
+            if (!exists) {
+              try {
+                // Upload file to Merchi first
+                const merchiFile = await uploadFileToMerchi(file);
+                const merchiFileJson = merchiSdk.toJson(merchiFile);
+                
+                // Add to DataTransfer
+                dt.items.add(file);
+                
+                // Create file box with Merchi data
+                var $fileBox = jQuery('<div class="multi-file-box" style="display: flex; align-items: center; margin-bottom: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 8px;"></div>');
+                
+                // Add Merchi file data attributes
+                $fileBox.attr({
+                  'data-merchi-file': JSON.stringify(merchiFileJson),
+                  'data-download-url': merchiFileJson.downloadUrl,
+                  'data-view-url': merchiFileJson.viewUrl,
+                  'data-mimetype': merchiFileJson.mimetype
                 });
-                $input[0]._dt = newDT;
-                $input[0].files = newDT.files;
-                $input.trigger('change');
-              });
-              if (file.type.startsWith('image/')) {
-                var reader = new FileReader();
-                reader.onload = function(e) {
+
+                var $removeBtn = jQuery('<span class="file-upload-remove" style="margin-left: 10px; cursor: pointer; font-size: 20px; color: #d00;">&times;</span>');
+                $removeBtn.on('click', function(e) {
+                  e.stopPropagation();
+                  var newDT = new DataTransfer();
+                  Array.from(dt.files).forEach(function(f, i) {
+                    if (f.name !== file.name || f.size !== file.size) {
+                      newDT.items.add(f);
+                    }
+                  });
+                  $input[0]._dt = newDT;
+                  $input[0].files = newDT.files;
+                  $fileBox.remove();
+                  if ($previewArea.find('.multi-file-box').length === 0) {
+                    $previewArea.empty();
+                  } else {
+                    updateFileCount($previewArea);
+                  }
+                  $input.trigger('change');
+                });
+
+                if (file.type.startsWith('image/')) {
+                  // Use Merchi viewUrl for images
                   var $img = jQuery('<img />', {
-                    src: e.target.result,
+                    src: merchiFileJson.viewUrl,
                     css: {
                       'max-width': '60px',
                       'max-height': '60px',
@@ -239,43 +287,66 @@ function initializeWhenReady() {
                     }
                   });
                   $fileBox.prepend($img);
-                };
-                reader.readAsDataURL(file);
-              } else {
-                var $fileIcon = jQuery('<span style="font-size: 32px; margin-right: 10px;">📄</span>');
-                $fileBox.prepend($fileIcon);
+                } else {
+                  var $fileIcon = jQuery('<span style="font-size: 32px; margin-right: 10px;">📄</span>');
+                  $fileBox.prepend($fileIcon);
+                }
+
+                var $fileName = jQuery('<span style="font-weight: bold; font-size:0.5em; color: #333;">' + file.name + '</span>');
+                var $downloadBtn = jQuery('<a style="margin-left: 10px; font-size: 18px; text-decoration: none;" href="' + merchiFileJson.downloadUrl + '" download>⬇️</a>');
+                
+                $fileBox.append($fileName).append($downloadBtn).append($removeBtn);
+                $previewArea.append($fileBox);
+                
+                // Update file count display
+                updateFileCount($previewArea);
+              } catch (error) {
+                console.error('Error processing file:', error);
+                // Optionally show error to user
+                alert('Failed to upload file: ' + file.name);
               }
-              var $fileName = jQuery('<span style="font-weight: bold; font-size:0.5em; color: #333;">' + file.name + '</span>');
-              var $downloadBtn = jQuery('<a style="margin-left: 10px; font-size: 18px; text-decoration: none;" href="#" download>⬇️</a>');
-              $downloadBtn.on('click', function(ev) {
-                ev.preventDefault();
-                var url = URL.createObjectURL(file);
-                var a = document.createElement('a');
-                a.href = url;
-                a.download = file.name;
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(function() { URL.revokeObjectURL(url); document.body.removeChild(a); }, 100);
-              });
-              $fileBox.append($fileName).append($downloadBtn).append($removeBtn);
-              $previewArea.append($fileBox);
-            });
-            // Show file count
-            var $count = jQuery('<div style="color: #666; font-size: 14px; font-weight:bold; margin-top: 4px;">' + dtFiles.length + ' file' + (dtFiles.length > 1 ? 's' : '') + ' selected <span style="cursor:pointer;color:#0073aa;" class="toggle-file-list">&#9650;</span></div>');
-            $previewArea.append($count);
-            $count.find('.toggle-file-list').on('click', function() {
-              $previewArea.toggleClass('collapsed');
-              $previewArea.find('.multi-file-box').toggle();
-              jQuery(this).html($previewArea.hasClass('collapsed') ? '&#9660;' : '&#9650;');
-            });
-          } else {
-            $previewArea.empty();
+            }
           }
+          
+          // Update input files
+          $input[0].files = dt.files;
+          
           // Always show icon and instruction
           $wrapper.find('.upload-icon').show();
           $wrapper.find('.upload-instruction, .upload-types').show();
         });
       });
+    }
+
+    // Helper function to update file count display
+    function updateFileCount($previewArea) {
+      const fileCount = $previewArea.find('.multi-file-box').length;
+      let $count = $previewArea.find('.file-count-display');
+      
+      if ($count.length === 0) {
+        $count = jQuery('<div class="file-count-display" style="color: #666; font-size: 14px; font-weight:bold; margin-top: 4px;"></div>');
+        $previewArea.append($count);
+      }
+      
+      $count.html(
+        fileCount + ' file' + (fileCount > 1 ? 's' : '') + 
+        ' selected <span style="cursor:pointer;color:#0073aa;" class="toggle-file-list">&#9650;</span>'
+      );
+      
+      $count.find('.toggle-file-list').off('click').on('click', function() {
+        $previewArea.toggleClass('collapsed');
+        $previewArea.find('.multi-file-box').toggle();
+        jQuery(this).html($previewArea.hasClass('collapsed') ? '&#9660;' : '&#9650;');
+      });
+    }
+
+    function actionDeleteGroup(e) {
+      e.preventDefault();
+      const $group = jQuery(this).closest(".group-field-set");
+      $group.remove();
+      updateGroupNumbers();
+      // Trigger immediate price calculation
+      calculateAndUpdatePrice();
     }
 
     // Initialize event handlers
@@ -309,120 +380,112 @@ function initializeWhenReady() {
       });
 
       // Delete group handler with immediate price update
-      jQuery(document).on('click', '.delete-group-button', function(e) {
-        e.preventDefault();
-        const $group = jQuery(this).closest(".group-field-set");
-        $group.remove();
-        updateGroupNumbers();
-        // Trigger immediate price calculation
-        calculateAndUpdatePrice();
-      });
+      jQuery(document).on('click', '.delete-group-button', actionDeleteGroup);
 
       // Replace the file upload preview handler
-      jQuery(document).off('change', 'input[type="file"]');
-      jQuery(document).on('change', 'input[type="file"]', function(e) {
-        var $input = jQuery(this);
-        var files = Array.from(this.files);
-        var $wrapper = $input.closest('.custom-upload-wrapper');
-        var $previewArea = $wrapper.next('.multi-file-upload-preview');
-        if ($previewArea.length === 0) {
-          $previewArea = jQuery('<div class="multi-file-upload-preview"></div>');
-          $wrapper.after($previewArea);
-        }
+      // jQuery(document).off('change', 'input[type="file"]');
+      // jQuery(document).on('change', 'input[type="file"]', function(e) {
+      //   var $input = jQuery(this);
+      //   var $wrapper = $input.closest('.custom-upload-wrapper');
+      //   var $previewArea = $wrapper.next('.multi-file-upload-preview');
+      //   if ($previewArea.length === 0) {
+      //     $previewArea = jQuery('<div class="multi-file-upload-preview"></div>');
+      //     $wrapper.after($previewArea);
+      //   }
 
-        $input.off('change.file-input').on('change.file-input', function(e) {
-          var files = Array.from(this.files);
+      //   $input.off('change.file-input').on('change.file-input', function(e) {
+      //     var files = Array.from(this.files);
           
-          // --- Maintain a DataTransfer object for this input ---
-          if (!$input[0]._dt) {
-            $input[0]._dt = new DataTransfer();
-          }
-          var dt = $input[0]._dt;
+      //     // --- Maintain a DataTransfer object for this input ---
+      //     if (!$input[0]._dt) {
+      //       $input[0]._dt = new DataTransfer();
+      //     }
+      //     var dt = $input[0]._dt;
 
-          // Add new files, avoiding duplicates by name+size
-          files.forEach(function(file) {
-            var exists = false;
-            for (var i = 0; i < dt.items.length; i++) {
-              var f = dt.items[i].getAsFile();
-              if (f.name === file.name && f.size === file.size) {
-                exists = true;
-                break;
-              }
-            }
-            if (!exists) dt.items.add(file);
-          });
-          // Update input files
-          $input[0].files = dt.files;
+      //     // Add new files, avoiding duplicates by name+size
+      //     files.forEach(function(file) {
+      //       var exists = false;
+      //       for (var i = 0; i < dt.items.length; i++) {
+      //         var f = dt.items[i].getAsFile();
+      //         if (f.name === file.name && f.size === file.size) {
+      //           exists = true;
+      //           break;
+      //         }
+      //       }
+      //       if (!exists) dt.items.add(file);
+      //     });
+      //     // Update input files
+      //     $input[0].files = dt.files;
 
-          // --- Render preview ---
-          $previewArea.empty();
-          var dtFiles = Array.from(dt.files);
-          if (dtFiles.length > 0) {
-            dtFiles.forEach(function(file, idx) {
-              var $fileBox = jQuery('<div class="multi-file-box" style="display: flex; align-items: center; margin-bottom: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 8px;"></div>');
-              var $removeBtn = jQuery('<span class="file-upload-remove" style="margin-left: 10px; cursor: pointer; font-size: 20px; color: #d00;">&times;</span>');
-              $removeBtn.on('click', function(e) {
-                e.stopPropagation();
-                var newDT = new DataTransfer();
-                dtFiles.forEach(function(f, i) {
-                  if (i !== idx) newDT.items.add(f);
-                });
-                $input[0]._dt = newDT;
-                $input[0].files = newDT.files;
-                $input.trigger('change');
-              });
-              if (file.type.startsWith('image/')) {
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                  var $img = jQuery('<img />', {
-                    src: e.target.result,
-                    css: {
-                      'max-width': '60px',
-                      'max-height': '60px',
-                      'object-fit': 'contain',
-                      'margin-right': '10px',
-                      'border-radius': '4px',
-                      'box-shadow': '0 1px 4px rgba(0,0,0,0.08)'
-                    }
-                  });
-                  $fileBox.prepend($img);
-                };
-                reader.readAsDataURL(file);
-              } else {
-                var $fileIcon = jQuery('<span style="font-size: 32px; margin-right: 10px;">📄</span>');
-                $fileBox.prepend($fileIcon);
-              }
-              var $fileName = jQuery('<span style="font-weight: bold; font-size:0.5em; color: #333;">' + file.name + '</span>');
-              var $downloadBtn = jQuery('<a style="margin-left: 10px; font-size: 18px; text-decoration: none;" href="#" download>⬇️</a>');
-              $downloadBtn.on('click', function(ev) {
-                ev.preventDefault();
-                var url = URL.createObjectURL(file);
-                var a = document.createElement('a');
-                a.href = url;
-                a.download = file.name;
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(function() { URL.revokeObjectURL(url); document.body.removeChild(a); }, 100);
-              });
-              $fileBox.append($fileName).append($downloadBtn).append($removeBtn);
-              $previewArea.append($fileBox);
-            });
-            // Show file count
-            var $count = jQuery('<div style="color: #666; font-size: 14px; font-weight:bold; margin-top: 4px;">' + dtFiles.length + ' file' + (dtFiles.length > 1 ? 's' : '') + ' selected <span style="cursor:pointer;color:#0073aa;" class="toggle-file-list">&#9650;</span></div>');
-            $previewArea.append($count);
-            $count.find('.toggle-file-list').on('click', function() {
-              $previewArea.toggleClass('collapsed');
-              $previewArea.find('.multi-file-box').toggle();
-              jQuery(this).html($previewArea.hasClass('collapsed') ? '&#9660;' : '&#9650;');
-            });
-          } else {
-            $previewArea.empty();
-          }
-          // Always show icon and instruction
-          $wrapper.find('.upload-icon').show();
-          $wrapper.find('.upload-instruction, .upload-types').show();
-        });
-      });
+      //     // --- Render preview ---
+      //     $previewArea.empty();
+      //     var dtFiles = Array.from(dt.files);
+      //     if (dtFiles.length > 0) {
+      //       dtFiles.forEach(function(file, idx) {
+      //         var $fileBox = jQuery('<div class="multi-file-box" style="display: flex; align-items: center; margin-bottom: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 8px;"></div>');
+      //         var $removeBtn = jQuery('<span class="file-upload-remove" style="margin-left: 10px; cursor: pointer; font-size: 20px; color: #d00;">&times;</span>');
+      //         $removeBtn.on('click', function(e) {
+      //           e.stopPropagation();
+      //           var newDT = new DataTransfer();
+      //           dtFiles.forEach(function(f, i) {
+      //             if (i !== idx) newDT.items.add(f);
+      //           });
+      //           $input[0]._dt = newDT;
+      //           $input[0].files = newDT.files;
+      //           $input.trigger('change');
+      //         });
+      //         if (file.type.startsWith('image/')) {
+      //           var reader = new FileReader();
+      //           reader.onload = function(e) {
+      //             var $img = jQuery('<img />', {
+      //               src: e.target.result,
+      //               css: {
+      //                 'max-width': '60px',
+      //                 'max-height': '60px',
+      //                 'object-fit': 'contain',
+      //                 'margin-right': '10px',
+      //                 'border-radius': '4px',
+      //                 'box-shadow': '0 1px 4px rgba(0,0,0,0.08)'
+      //               }
+      //             });
+      //             $fileBox.prepend($img);
+      //           };
+      //           reader.readAsDataURL(file);
+      //         } else {
+      //           var $fileIcon = jQuery('<span style="font-size: 32px; margin-right: 10px;">📄</span>');
+      //           $fileBox.prepend($fileIcon);
+      //         }
+      //         var $fileName = jQuery('<span style="font-weight: bold; font-size:0.5em; color: #333;">' + file.name + '</span>');
+      //         var $downloadBtn = jQuery('<a style="margin-left: 10px; font-size: 18px; text-decoration: none;" href="#" download>⬇️</a>');
+      //         $downloadBtn.on('click', function(ev) {
+      //           ev.preventDefault();
+      //           var url = URL.createObjectURL(file);
+      //           var a = document.createElement('a');
+      //           a.href = url;
+      //           a.download = file.name;
+      //           document.body.appendChild(a);
+      //           a.click();
+      //           setTimeout(function() { URL.revokeObjectURL(url); document.body.removeChild(a); }, 100);
+      //         });
+      //         $fileBox.append($fileName).append($downloadBtn).append($removeBtn);
+      //         $previewArea.append($fileBox);
+      //       });
+      //       // Show file count
+      //       var $count = jQuery('<div style="color: #666; font-size: 14px; font-weight:bold; margin-top: 4px;">' + dtFiles.length + ' file' + (dtFiles.length > 1 ? 's' : '') + ' selected <span style="cursor:pointer;color:#0073aa;" class="toggle-file-list">&#9650;</span></div>');
+      //       $previewArea.append($count);
+      //       $count.find('.toggle-file-list').on('click', function() {
+      //         $previewArea.toggleClass('collapsed');
+      //         $previewArea.find('.multi-file-box').toggle();
+      //         jQuery(this).html($previewArea.hasClass('collapsed') ? '&#9660;' : '&#9650;');
+      //       });
+      //     } else {
+      //       $previewArea.empty();
+      //     }
+      //     // Always show icon and instruction
+      //     $wrapper.find('.upload-icon').show();
+      //     $wrapper.find('.upload-instruction, .upload-types').show();
+      //   });
+      // });
     }
 
     function initializeImageSelectVariations($container) {
@@ -470,8 +533,7 @@ function initializeWhenReady() {
     // Get the Merchi product ID from the page
     jQuery('#get-quote-button').on('click', async function() {
       const formData = await gatherFormData();
-      console.log(formData, 'what is this?');
-      window.toggleMerchiCheckout(formData);
+      window.toggleMerchiCheckout({...formData});
     });
 
     // When deleteing a group we update each group index and name
@@ -487,13 +549,18 @@ function initializeWhenReady() {
           const $input = jQuery(this);
           const name = $input.attr("name");
           if (name) {
-            const newName = name.replace(/variationsGroups\[\d+\]/, "variationsGroups[" + newIndex + "]");
+            const newName = name.replace(
+              /variationsGroups\[\d+\]/, "variationsGroups[" + index + "]"
+            );
             $input.attr("name", newName);
           }
-          
+          const { costPerUnit = 0 } = defaultJobJson;
           if ($input.hasClass('group-quantity')) {
-            $input.attr('data-group-index', newIndex);
-            updateGroupLabel($input);
+            $input.attr('data-group-index', index);
+      
+            $input.closest('.custom-field')
+              .find('label')
+              .text('Quantity ($' + costPerUnit.toFixed(2) + ' per unit)');
           }
         });
       });
@@ -523,23 +590,11 @@ function initializeWhenReady() {
 
       // Bind group-quantity change for this group
       $group.find('.group-quantity').off('change.group').on('change.group', calculateAndUpdatePrice);
-      $group.find('.delete-group-button').off('click.group').on('click.group', function() {
-        $group.remove();
-        updateGroupNumbers();
-        // Trigger immediate price calculation
-        calculateAndUpdatePrice();
-      });
+      $group.find('.delete-group-button').off('click.group').on('click.group', actionDeleteGroup);
 
       $group.find('.delete-group-button').off('click');
       // Delete group handler with immediate price update
-      $group.find('.delete-group-button').on('click', function(e) {
-        e.preventDefault();
-        const $group = jQuery(this).closest(".group-field-set");
-        $group.remove();
-        updateGroupNumbers();
-        // Trigger immediate price calculation
-        calculateAndUpdatePrice();
-      });
+      $group.find('.delete-group-button').on('click', actionDeleteGroup);
     }
 
     function initializeVariations() {
@@ -553,11 +608,13 @@ function initializeWhenReady() {
     }
   
     // Function to add a new group
-    function addNewGroup() {
-      const { variationsGroups = [] } = defaultJobJson;
+    const addNewGroup = () => {
+      // Use the cloned default values
+      const { defaultJob = {} } = productClone;
+      const { variationsGroups = [] } = defaultJob;
       const defaultGroup = variationsGroups[0];
+      const { quantity = 1, variations = [] } = defaultGroup;
 
-      console.log('addNewGroup called. Current group count:', jQuery('.group-field-set').length);
       // Always use the first fully structured group as the template
       const $firstGroup = jQuery('.group-field-set').filter(function() {
         return jQuery(this).find('.custom-field').length > 0;
@@ -597,7 +654,8 @@ function initializeWhenReady() {
         $element.attr('data-group-index', newGroupIndex);
       });
       // Also update the group-cost-display's data-group-index
-      $newGroup.find('.group-cost-display').attr('data-group-index', newGroupIndex).text('');
+      $newGroup.find('.group-cost-display')
+        .attr('data-group-index', newGroupIndex).text('');
 
       // Update all form elements in the new group and apply default values
       $newGroup.find("input, select, textarea").each(function() {
@@ -610,14 +668,16 @@ function initializeWhenReady() {
 
         // Handle group quantity separately
         if ($input.hasClass('group-quantity')) {
-          $input.attr('data-group-index', newGroupIndex).val(defaultGroup?.quantity || 1);
-          const unitPrice = parseFloat($input.data('unit-price'));
-          $input.closest('.custom-field').find('label').text(`Group (${newGroupIndex}) quantity ($${unitPrice.toFixed(2)} unit price)`);
+          $input.attr('data-group-index', newGroupIndex).val(quantity);
+          $input
+            .closest('.custom-field')
+            .find('label')
+            .html('Quantity <span class="group-unit-price"><span class="loading-spinner"></span></span></label>');
         } else {
           // For variation fields, try to find and apply the default value
           const variationFieldData = $input.data('variation-field');
-          if (variationFieldData && defaultGroup?.variations) {
-            const defaultVariation = defaultGroup.variations.find(
+          if (variationFieldData) {
+            const defaultVariation = variations.find(
               v => v.variationField?.id === variationFieldData.id);
             if (defaultVariation) {
               if ($input.is(':checkbox, :radio')) {
@@ -765,14 +825,6 @@ function initializeWhenReady() {
       }
     }
 
-    function updateGroupLabel($input) {
-      const groupIndex = $input.data('group-index');
-      const unitPrice = parseFloat($input.data('unit-price'));
-      $input.closest('.custom-field')
-        .find('label')
-        .text('Group (' + groupIndex + ') ($' + unitPrice.toFixed(2) + ' unit price)');
-    }
-
     // Function to process variations from a container
     function processVariations($container, variationsArray) {
       $container.find('.custom-field').each(function() {
@@ -809,14 +861,29 @@ function initializeWhenReady() {
         } else if ($input.is('input[type="color"]')) {
           value = $input.val();
         } else if ($input.is('input[type="file"]')) {
-          // For file upload fields, store the file name(s) only
-          const files = $input[0].files;
-          if (files && files.length > 0) {
-            value = Array.from(files).map(f => f.name);
-            if (value.length === 1) value = value[0];
-          } else {
-            value = null;
-          }
+          // Find the preview area next to the file input wrapper
+          const $previewArea = $input.closest('.custom-upload-wrapper').next('.multi-file-upload-preview');
+          const variationFiles = [];
+
+          // Process each file box in the preview area
+          $previewArea.find('.multi-file-box').each(function() {
+            const $fileBox = jQuery(this);
+            const merchiFileData = $fileBox.attr('data-merchi-file');
+            
+            if (merchiFileData) {
+              try {
+                const merchiFile = JSON.parse(merchiFileData);
+                variationFiles.push(merchiFile);
+              } catch (e) {
+                console.error('Error parsing Merchi file data:', e);
+              }
+            }
+          });
+
+          // Set both the value (file names) and variationFiles
+          value = variationFiles.map(file => file.id).join(',');
+          // Add the variationFiles array to the variation object
+          variationsArray[variationIndex].variationFiles = variationFiles;
         }
 
         // Update the value of the variation
@@ -841,6 +908,7 @@ function initializeWhenReady() {
           const $group = jQuery(this);
           // Deep clone the variations array for each group
           formData.variationsGroups.push({
+            groupCost: parseFloat($group.find('[data-group-cost]').attr('data-group-cost')) || 0,
             quantity: parseInt($group.find('.group-quantity').val()) || 1,
             variations: [...defaultJobJson.variationsGroups[0].variations],
           });
@@ -893,8 +961,10 @@ function initializeWhenReady() {
       try {
         // Gather form data and log it
         const formData = await gatherFormData();
+        const { quantity, variationsGroups = [], variations = [] } = formData;
 
         let cartId = null;
+        let totalQuantity = variationsGroups.length ? 0 : quantity;
 
         // Get the cart in local storage
         const merchiCart = localStorage.getItem('MerchiCart');
@@ -905,7 +975,6 @@ function initializeWhenReady() {
           cartId = merchiCartJson.id;
           // Add the new item to the cart
           const cartItems = [...merchiCartJson.cartItems, formData];
-          console.log(cartItems, 'what are cart items');
           const updatedCart = {...merchiCartJson, cartItems};
           localStorage.setItem('MerchiCart', JSON.stringify(updatedCart));
         } catch (error) {
@@ -916,17 +985,16 @@ function initializeWhenReady() {
         // Build cartItems from formData (detailed version)
         const cartItems = [];
         cartItems.push({
-          productID: formData.product?.id || formData.product_id || '',
-          quantity: formData.totalQuantity || formData.quantity || 1,
-          subTotal: formData.totalCost || 0,
+          productID: formData.product?.id || '',
+          subTotal: formData.cost || 0,
           totalCost: formData.totalCost || 0,
           variations: [],
           objExtras: []
         });
 
         // Map group variations (variationsGroups)
-        if (formData?.variationsGroups?.length > 0) {
-          formData.variationsGroups.forEach((group, gi) => {
+        if (variationsGroups?.length) {
+          variationsGroups.forEach((group, gi) => {
             let groupObj = {};
             let groupExtras = {};
             let loopcount = 0;
@@ -940,8 +1008,8 @@ function initializeWhenReady() {
                 loopcount = vi + 1;
               });
             }
-            groupExtras[loopcount] = varQuant;
             groupExtras['quantity'] = varQuant;
+            totalQuantity += varQuant;
 
             cartItems[0].variations.push(groupObj);
             cartItems[0].objExtras.push(groupExtras);
@@ -949,25 +1017,25 @@ function initializeWhenReady() {
         }
 
         // Map standalone variations (if any)
-        if (formData?.variations?.length > 0) {
+        if (variations?.length) {
           let obj = {};
           let objExtras = {};
           let loopcount = 0;
-          let varQuant = formData.totalQuantity || 1;
 
-          formData.variations.forEach((variation, vi) => {
+          variations.forEach((variation, vi) => {
             if (variation && (variation.value !== undefined)) {
               obj[vi] = variation.value;
             }
             loopcount = vi + 1;
           });
-          objExtras[loopcount] = varQuant;
-          objExtras['quantity'] = varQuant;
+          objExtras[loopcount] = totalQuantity;
+          objExtras['quantity'] = totalQuantity;
 
           cartItems[0].variations.push(obj);
           cartItems[0].objExtras.push(objExtras);
         }
 
+        cartItems[0].quantity = totalQuantity;
         const cartPayload = {
           cartId: cartId,
           taxAmount: taxAmount,
@@ -977,7 +1045,7 @@ function initializeWhenReady() {
         console.log('cartPayload being sent to send_id_for_add_cart:', cartPayload);     
         jQuery.ajax({
           method: "POST",
-          url: frontendajax.ajaxurl,
+          url: (typeof frontendajax !== 'undefined' ? frontendajax.ajaxurl : '/wp-admin/admin-ajax.php'),
           data: {
             action: "send_id_for_add_cart",
             item: cartPayload,
@@ -1031,8 +1099,6 @@ function initializeWhenReady() {
         mutations.forEach(mutation => {
           mutation.addedNodes.forEach(node => {
             if (node.nodeType === 1 && node.classList.contains('group-field-set')) {
-              console.log('A .group-field-set was added:', node, node.innerHTML);
-              console.trace('Call stack for .group-field-set addition');
             }
           });
         });

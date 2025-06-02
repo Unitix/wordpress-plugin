@@ -1111,6 +1111,14 @@ function send_id_for_add_cart(){
         try {
             $item_count = count( WC()->cart->get_cart() ) ;
             $cart = $_POST['item'];
+            error_log('Cart data: ' . print_r($cart, true));
+            
+            if (!isset($cart['cartId'])) {
+                error_log('Error: No cartId in cart data');
+                echo json_encode(array('success' => false, 'error' => 'No cartId provided'));
+                exit;
+            }
+            
             $cartId = $cart['cartId'];
             $taxAmount = $cart['taxAmount'];
             if(!isset($cart['cartItems'])){
@@ -1228,10 +1236,10 @@ function send_id_for_add_cart(){
             echo json_encode(array('success' => true));
             // --- Merchi PATCH integration ---
             // Build Merchi cart payload (example: you may need to adjust this structure)
-            $merchi_cart_payload = array(
-                'cartItems' => $cartItems,
-                // Add other fields as needed
-            );
+            // $merchi_cart_payload = array(
+            //     'cartItem' => $cartItem,
+            //     // Add other fields as needed
+            // );
             // Get cart token from cookie (or wherever it is stored)
             $cart_token = null;
             if (isset($_COOKIE['cart-'.MERCHI_DOMAIN])) {
@@ -1240,6 +1248,7 @@ function send_id_for_add_cart(){
                     $cart_token = trim($cookie_parts[1]);
                 }
             }
+
             if ($cart_token) {
                 $patch_response = patch_merchi_cart($cartId, $cart_token, $merchi_cart_payload);
                 // Optionally, handle/log the response or errors
@@ -1253,6 +1262,80 @@ function send_id_for_add_cart(){
     wp_die();
 }
 
+// Start here!
+
+add_action( 'wp_ajax_cst_cart_item_after_remove', 'cst_cart_item_after_remove', 10, 2);
+add_action( 'wp_ajax_nopriv_cst_cart_item_after_remove', 'cst_cart_item_after_remove', 10, 2);
+
+function cst_cart_item_after_remove() {
+    error_log('cst_cart_item_after_remove function called');
+    
+    if (isset($_COOKIE['cstCartId'])) {
+        error_log('cstCartId cookie found: ' . $_COOKIE['cstCartId']);
+        $item_id = $_POST['item_id'];
+        $cart_id = $_COOKIE['cstCartId'];
+        $cart_length = $_POST['cart_length'];
+        
+        error_log('Removing item_id: ' . $item_id . ', cart_length: ' . $cart_length);
+        
+        // Get cart token from cookie
+        $cart_token = null;
+        if (isset($_COOKIE['cart-'.MERCHI_DOMAIN])) {
+            $cookie_parts = explode(',', $_COOKIE['cart-'.MERCHI_DOMAIN]);
+            if (count($cookie_parts) > 1) {
+                $cart_token = trim($cookie_parts[1]);
+                error_log('Found cart token: ' . $cart_token);
+            }
+        }
+
+        // Make delete request to Merchi API if we have the token
+        if ($cart_token) {
+            $url = MERCHI_URL . 'v6/cart_items/' . $item_id . '/?cart_token=' . urlencode($cart_token);
+            error_log('Attempting DELETE request to: ' . $url);
+            
+            $args = array(
+                'method' => 'DELETE',
+                'timeout' => 30,
+            );
+
+            $response = wp_remote_request($url, $args);
+            
+            if (is_wp_error($response)) {
+                error_log('Merchi DELETE error: ' . $response->get_error_message());
+            } else {
+                error_log('Merchi DELETE response: ' . wp_remote_retrieve_response_code($response));
+            }
+        }
+
+        if (1 == $cart_length || 0 == $cart_length) {
+            setcookie('cart-'.MERCHI_DOMAIN, "", time() - 3600, "/");
+            setcookie("cstCartId", "", time() - 3600, "/");
+            error_log('Cookies cleared due to empty cart');
+        }
+
+        $options = get_option_extended("get_cart_myItems_".$cart_id);
+        $itemData = $options['get_cart_myItems_'.$cart_id.'_'.$item_id];
+        error_log('Returning item data: ' . json_encode($itemData));
+        echo json_encode($itemData);
+        exit;
+    } else {
+        error_log('cst_cart_item_after_remove called but no cstCartId cookie found');
+    }
+}
+
+function my_custom_remove_cart_item_action( $removed_cart_item_key, $cart_item ) {
+  // Access the removed cart item key
+  // $removed_cart_item_key =  $removed_cart_item_key;
+
+  // Access the removed cart item's data
+  // $cart_item = $cart_item;
+
+  // Example: Display a notice
+  // WC()->add_notice( "The item with key {$removed_cart_item_key} has been removed from your cart.", 'notice' );
+	error_log('Hi james');
+}
+add_action( 'woocommerce_remove_cart_item', 'my_custom_remove_cart_item_action', 10, 2 );
+
 add_filter( 'woocommerce_cart_item_quantity', 'wc_cart_item_quantity', 10, 3 );
 function wc_cart_item_quantity( $product_quantity, $cart_item_key, $cart_item ){
     if( is_cart() ){
@@ -1260,25 +1343,6 @@ function wc_cart_item_quantity( $product_quantity, $cart_item_key, $cart_item ){
     }
     return $product_quantity;
 
-}
-
-add_action( 'wp_ajax_cst_cart_item_after_remove', 'cst_cart_item_after_remove', 10, 2);
-add_action( 'wp_ajax_nopriv_cst_cart_item_after_remove', 'cst_cart_item_after_remove', 10, 2);
-
-function cst_cart_item_after_remove() {
-	if (isset($_COOKIE['cstCartId'])) {
-		$item_id = $_POST['item_id'];
-		$cart_id = $_COOKIE['cstCartId'];
-		$cart_length = $_POST['cart_length'];
-		if( 1 == $cart_length || 0 == $cart_length ){
-			setcookie('cart-'.MERCHI_DOMAIN, "", time() - 3600, "/");
-			setcookie("cstCartId", "", time() - 3600, "/");
-		}
-		$options = get_option_extended("get_cart_myItems_".$cart_id);
-		$itemData = $options['get_cart_myItems_'.$cart_id.'_'.$item_id];
-		echo json_encode($itemData);
-		exit;
-	} 
 }
 
 function filter_woocommerce_get_item_data( $cart_data, $cart_item = null ) {

@@ -47,6 +47,15 @@ class ProductPage extends BaseController {
 			true
 		);
 
+		// Localize the script with AJAX URL
+		wp_localize_script(
+			'merchi_product_form',
+			'frontendajax',
+			array(
+				'ajaxurl' => admin_url('admin-ajax.php')
+			)
+		);
+
 		// Get the correct configuration based on staging mode
 		$staging_mode = get_option('merchi_staging_mode');
 		$merchi_domain = $staging_mode === 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
@@ -128,7 +137,7 @@ class ProductPage extends BaseController {
 		
 		// Add group quantity field inside the group container
 		echo '<div class="custom-field">';
-		echo '<label>Group (1) quantity ($' . number_format((float)$unit_price, 2) . ' unit price)</label>';
+		echo '<label>Quantity <span class="group-unit-price"><span class="loading-spinner"></span></span></label>';
 		echo '<input type="number" class="qty group-quantity" name="variationsGroups[0].quantity" value="1" min="1" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="0">';
 		echo '</div>';
 
@@ -139,15 +148,15 @@ class ProductPage extends BaseController {
 				echo $this->render_meta_field($field, "variationsGroups[0]", $field_index);
 			}
 		}
-		echo '<div class="group-cost-display" data-group-index="0"></div>';
-		echo '<button type="button" class="delete-group-button" style="display: none;">Delete Group</button>';
+		echo '<div class="group-cost-display" data-group-index="0" data-group-cost="0"><span class="loading-spinner"></span></div>';
+		echo '<button type="button" class="button wp-element-button delete-group-button" style="display: none;">Delete Group</button>';
 		echo '</div>';
 
 		echo '</div>';
 
 		// Add Group button container
 		echo '<div class="merchi-buttons-container">';
-		echo '<button type="button" class="add-group-button">+ New Group</button>';
+		echo '<button type="button" class="button wp-element-button add-group-button">+ New Group</button>';
 		echo '</div>';
 	}
 
