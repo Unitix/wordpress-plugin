@@ -13,83 +13,94 @@ const AddressForm = ({
   const prefix = type === 'shipping' ? 'shipping' : 'billing';
 
   return (
-    <div className={`${prefix}-details`}>
-      <div className="form-row">
-        <label htmlFor={`${prefix}_country`}>Country / Region *</label>
-        <CountrySelect
-          id={`${prefix}_country`}
-          className="select form-control"
-          defaultValue={selectedCountry}
-          onChange={(country) => {
-            setSelectedCountry(country);
-          }}
-          placeHolder="Select Country"
-        />
-        {errors[`${prefix}_country`] && 
-          <span className="error">{errors[`${prefix}_country`].message}</span>}
+    <div id={prefix} className="wc-block-components-address-form">
+      {/* country */}
+      <div className="wc-block-components-address-form__country wc-block-components-country-input">
+        <div className="wc-blocks-components-select">
+          <div className="wc-blocks-components-select__container">
+            <label htmlFor={`${prefix}_country`} className="wc-blocks-components-select__label">Country / Region *</label>
+            <CountrySelect
+              id={`${prefix}_country`}
+              className="wc-blocks-components-select__select"
+              defaultValue={selectedCountry}
+              onChange={(country) => {
+                setSelectedCountry(country);
+              }}
+            />
+          </div>
+        </div>
+        {errors[`${prefix}_country`] &&
+          <span className="wc-block-components-validation-error">{errors[`${prefix}_country`].message}</span>}
       </div>
 
-      <div className="form-row">
-        <label htmlFor={`${prefix}_address_1`}>Street Address *</label>
+      {/* address_1*/}
+      <div className="wc-block-components-text-input wc-block-components-address-form__address_1">
+        <label htmlFor={`${prefix}_address_1`} className="wc-block-components-text-input__label">House number and street name *</label>
         <input
           type="text"
           id={`${prefix}_address_1`}
-          className="input-text form-control"
-          placeholder="House number and street name"
+          className="wc-block-components-text-input__input"
           {...register(`${prefix}_address_1`, { required: "Street address is required" })}
         />
-        {errors[`${prefix}_address_1`] && 
-          <span className="error">{errors[`${prefix}_address_1`].message}</span>}
+        {errors[`${prefix}_address_1`] &&
+          <span className="wc-block-components-validation-error">{errors[`${prefix}_address_1`].message}</span>}
       </div>
 
-      <div className="form-row">
+      {/* address_2 */}
+      <div className="wc-block-components-text-input wc-block-components-address-form__address_2">
+        <label htmlFor={`${prefix}_address_2`} className="wc-block-components-text-input__label">Apartment, suite, unit, etc. (optional)</label>
         <input
           type="text"
           id={`${prefix}_address_2`}
-          className="input-text form-control"
-          placeholder="Apartment, suite, unit, etc. (optional)"
+          className="wc-block-components-text-input__input"
           {...register(`${prefix}_address_2`)}
         />
       </div>
 
-      <div className="form-row">
-        <label htmlFor={`${prefix}_city`}>Town / City *</label>
+      {/* city */}
+      <div className="wc-block-components-text-input wc-block-components-address-form__city">
+        <label htmlFor={`${prefix}_city`} className="wc-block-components-text-input__label">Town / City *</label>
         <input
           type="text"
           id={`${prefix}_city`}
-          className="input-text form-control"
+          className="wc-block-components-text-input__input"
           {...register(`${prefix}_city`, { required: "City is required" })}
         />
-        {errors[`${prefix}_city`] && 
-          <span className="error">{errors[`${prefix}_city`].message}</span>}
+        {errors[`${prefix}_city`] &&
+          <span className="wc-block-components-validation-error">{errors[`${prefix}_city`].message}</span>}
       </div>
 
-      <div className="form-row">
-        <label htmlFor={`${prefix}_state`}>State *</label>
-        <StateSelect
-          id={`${prefix}_state`}
-          countryid={selectedCountry?.id}
-          className="select form-control"
-          onChange={(state) => {
-            setSelectedState(state);
-          }}
-          placeHolder="Select State"
-          defaultValue={selectedState}
-        />
-        {errors[`${prefix}_state`] && 
-          <span className="error">{errors[`${prefix}_state`].message}</span>}
+      {/* state */}
+      <div className="wc-block-components-address-form__state wc-block-components-state-input">
+        <div className="wc-blocks-components-select">
+          <div className="wc-blocks-components-select__container">
+            <label htmlFor={`${prefix}_state`} className="wc-blocks-components-select__label">State *</label>
+            <StateSelect
+              id={`${prefix}_state`}
+              countryid={selectedCountry?.id}
+              className="wc-blocks-components-select__select"
+              onChange={(state) => {
+                setSelectedState(state);
+              }}
+              defaultValue={selectedState}
+            />
+          </div>
+        </div>
+        {errors[`${prefix}_state`] &&
+          <span className="wc-block-components-validation-error">{errors[`${prefix}_state`].message}</span>}
       </div>
 
-      <div className="form-row">
-        <label htmlFor={`${prefix}_postcode`}>Postcode / ZIP *</label>
+      {/* postcode */}
+      <div className="wc-block-components-text-input wc-block-components-address-form__postcode">
+        <label htmlFor={`${prefix}_postcode`} className="wc-block-components-text-input__label">Postcode / ZIP *</label>
         <input
           type="text"
           id={`${prefix}_postcode`}
-          className="input-text form-control"
+          className="wc-block-components-text-input__input"
           {...register(`${prefix}_postcode`, { required: "Postcode is required" })}
         />
-        {errors[`${prefix}_postcode`] && 
-          <span className="error">{errors[`${prefix}_postcode`].message}</span>}
+        {errors[`${prefix}_postcode`] &&
+          <span className="wc-block-components-validation-error">{errors[`${prefix}_postcode`].message}</span>}
       </div>
     </div>
   );

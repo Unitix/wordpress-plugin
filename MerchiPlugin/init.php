@@ -5,6 +5,28 @@
 
 namespace MerchiPlugin;
 
+// Base classes (load BaseController first!)
+require_once __DIR__ . '/Base/BaseController.php';
+require_once __DIR__ . '/Base/Enqueue.php';
+require_once __DIR__ . '/Base/SettingsLinks.php';
+
+// Callbacks (relies on BaseController)
+require_once __DIR__ . '/Api/Callbacks/AdminCallbacks.php';
+
+// API services
+require_once __DIR__ . '/Api/CreateMerchiProducts.php';
+require_once __DIR__ . '/Api/ExportProducts.php';
+require_once __DIR__ . '/Api/SettingsApi.php';
+
+// Pages
+require_once __DIR__ . '/Pages/Admin.php';
+require_once __DIR__ . '/PublicPages/ProductPage.php';
+
+// Cart injection
+// require_once __DIR__ . '/ShoppingCart/ShoppingCartInject.php';
+require_once __DIR__ . '/CartPages/CartCheckoutPage.php'; 
+
+
 final class Init {
 
 

@@ -13,15 +13,15 @@ async function createClient(MERCHI, clientJson, cartJson) {
   return new Promise((resolve, reject) => {
     const { domain = {} } = cartJson;
     const registeredUnderDomains = domain?.id
-      ? [{id: domain.id}]
+      ? [{ id: domain.id }]
       : undefined;
-    
+
     const clientEnt = MERCHI.fromJson(
       new MERCHI.Client(),
-      {... clientJson, registeredUnderDomains}
+      { ...clientJson, registeredUnderDomains }
     );
-    
-    const data = serialise(clientEnt, null, null, null, {excludeOld: false})[0];
+
+    const data = serialise(clientEnt, null, null, null, { excludeOld: false })[0];
     const request = new MERCHI.Request();
     request.resource('/public_user_create/');
     request.method('POST');
@@ -53,11 +53,11 @@ const WoocommerceCheckoutForm = () => {
   const [cart, setCart] = useState(localCart);
   const { domain = {} } = cart;
   const { country = 'AU' } = domain;
-  
+
   // Shipping address state
   const [selectedShippingCountry, setSelectedShippingCountry] = useState(null);
   const [selectedShippingState, setSelectedShippingState] = useState(null);
-  
+
   const { register, handleSubmit, formState: { errors }, setValue, getValues } = useForm();
 
   const onSubmit = (data) => {
@@ -98,7 +98,7 @@ const WoocommerceCheckoutForm = () => {
     const s = state?.iso2 || '';
     const cartJson = {
       ...cart,
-      receiverAddress: {...cart.receiverAddress, country: c, state: s},
+      receiverAddress: { ...cart.receiverAddress, country: c, state: s },
       shipmentGroups: [],
     };
     try {
@@ -141,8 +141,8 @@ const WoocommerceCheckoutForm = () => {
           MERCHI,
           {
             name: client.name,
-            emailAddresses: [{emailAddress: client.emailAddresses[0].emailAddress}],
-            phoneNumbers: [{code: phoneNumberCountry, number: phoneNumber}],
+            emailAddresses: [{ emailAddress: client.emailAddresses[0].emailAddress }],
+            phoneNumbers: [{ code: phoneNumberCountry, number: phoneNumber }],
           },
           cart
         );
@@ -186,139 +186,154 @@ const WoocommerceCheckoutForm = () => {
   };
 
   return (
-    <div className='wc-block-components-sidebar-layout wc-block-checkout is-large'>
-      {/* <WoocommerceCheckoutFormSideCart /> */}
-      <div className="wc-block-components-main wc-block-checkout__main wp-block-woocommerce-checkout-fields-block">
-        {currentStep === 'details' ? (
-          <form onSubmit={handleSubmit(placeOrder)}>
-            <fieldset className="wc-block-checkout__contact-fields wp-block-woocommerce-checkout-contact-information-block wc-block-components-checkout-step" id="contact-fields">
-              <legend className="screen-reader-text">Contact information</legend>
-              <div className="wc-block-components-checkout-step__heading">
-                <h2 className="wc-block-components-title wc-block-components-checkout-step__title">Contact information</h2>
-                <span className="wc-block-components-checkout-step__heading-content"></span>
-              </div>
-              <div className="wc-block-components-checkout-step__container">
-                <p className="wc-block-components-checkout-step__description">
-                  We'll use this your contact information to send you details and updates about your order.
-                </p>
-                <div className="wc-block-components-checkout-step__content">
-                  <div className="wc-block-components-notices"></div>
-                  <div className="wc-block-components-notices__snackbar wc-block-components-notice-snackbar-list" tabIndex="-1">
-                    <div></div>
-                  </div>
-                  <div id="contact" className="wc-block-components-address-form">
-                    <div className="form-row">
-                      <label htmlFor="billing_first_name">Full Name *</label>
-                      <input
-                        type="text"
-                        id="billing_first_name"
-                        placeholder="John Smith"
-                        className="input-text form-control"
-                        {...register("cart.client.name", { required: "First name is required" })}
-                      />
-                      {errors.billing_first_name && 
-                        <span className="error">{errors.billing_first_name.message}</span>}
+    <div className='wp-block-woocommerce-checkout'>
+      <div className='wc-block-components-sidebar-layout wc-block-checkout is-large'>
+        {/* <WoocommerceCheckoutFormSideCart /> */}
+        <div className="wc-block-components-main wc-block-checkout__main wp-block-woocommerce-checkout-fields-block">
+          {currentStep === 'details' ? (
+            <form onSubmit={handleSubmit(placeOrder)} className='wc-block-components-form wc-block-checkout__form'>
+              <fieldset className="wc-block-checkout__contact-fields wp-block-woocommerce-checkout-contact-information-block wc-block-components-checkout-step" id="contact-fields">
+                <legend className="screen-reader-text">Contact information</legend>
+                <div className="wc-block-components-checkout-step__heading">
+                  <h2 className="wc-block-components-title wc-block-components-checkout-step__title">Contact information</h2>
+                  <span className="wc-block-components-checkout-step__heading-content"></span>
+                </div>
+                <div className="wc-block-components-checkout-step__container">
+                  <p className="wc-block-components-checkout-step__description">
+                    We'll use this your contact information to send you details and updates about your order.
+                  </p>
+                  <div className="wc-block-components-checkout-step__content">
+                    <div className="wc-block-components-notices"></div>
+                    <div className="wc-block-components-notices__snackbar wc-block-components-notice-snackbar-list" tabIndex="-1">
+                      <div></div>
                     </div>
+                    <div id="contact" className="wc-block-components-address-form">
+                      <div className="wc-block-components-text-input wc-block-components-address-form__first_name">
+                        <label htmlFor="billing_first_name">Full Name *</label>
+                        <input
+                          type="text"
+                          id="billing_first_name"
+                          className="wc-block-components-text-input__input input-text"
+                          {...register("cart.client.name", { required: "First name is required" })}
+                        />
+                        {errors.billing_first_name &&
+                          <span className="error">{errors.billing_first_name.message}</span>}
+                      </div>
 
-                    <div className="form-row">
-                      <label htmlFor="client.emailAddresses[0].emailAddress">Email Address *</label>
-                      <input
-                        type="email"
-                        id="billing_email"
-                        className="input-text form-control"
-                        placeholder="example@example.com"
-                        {...register("client.emailAddresses[0].emailAddress", { 
-                          required: "Email is required",
-                          pattern: {
-                            value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                            message: "Please enter a valid email address"
-                          }
-                        })}
-                        onChange={(e) => {
-                          console.log('e', e);
-                        }}
-                      />
-                      {errors.billing_email && 
-                        <span className="error">{errors.billing_email.message}</span>}
-                    </div>
+                      <div className="wc-block-components-text-input wc-block-components-address-form__email">
+                        <label htmlFor="client.emailAddresses[0].emailAddress">Email Address *</label>
+                        <input
+                          type="email"
+                          id="client.emailAddresses[0].emailAddress"
+                          className="wc-block-components-text-input__input input-text"
+                          {...register("client.emailAddresses[0].emailAddress", {
+                            required: "Email is required",
+                            pattern: {
+                              value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                              message: "Please enter a valid email address"
+                            }
+                          })}
+                          onChange={(e) => {
+                            console.log('e', e);
+                          }}
+                        />
+                        {errors.billing_email &&
+                          <span className="error">{errors.billing_email.message}</span>}
+                      </div>
 
-                    <div className="form-row">
-                      <label htmlFor="client.phoneNumbers[0].phoneNumber">Phone Number *</label>
-                      <PhoneInput
-                        country={country.toLowerCase()}
-                        inputClass="input-text form-control"
-                        containerClass="form-row"
-                        inputStyle={{ width: '100%' }}
-                        preferredCountries={['au', 'nz', 'uk', 'us']}
-                        inputProps={{
-                          name: "client.phoneNumbers[0].phoneNumber",
-                          required: true,
-                          autoFocus: true
-                        }}
-                        onChange={(value, country) => {
-                          setPhoneNumber(value);
-                          setPhoneNumberCountry(country.countryCode.toUpperCase());
-                        }}
-                      />
+                      <div className="wc-block-components-text-input wc-block-components-address-form__phone">
+                        <label htmlFor="client.phoneNumbers[0].phoneNumber" className="wc-block-components-text-input__label">Phone Number *</label>
+                        <PhoneInput
+                          country={country.toLowerCase()}
+                          // containerClass="react-tel-input wc-block-components-text-input"
+                          inputClass="wc-block-components-text-input__input input-text"
+                          inputStyle={{ height: '3.125em', paddingLeft: '40px', width: '100%' }}
+                          preferredCountries={['au', 'nz', 'uk', 'us']}
+                          inputProps={{
+                            name: "client.phoneNumbers[0].phoneNumber",
+                            required: true,
+                            autoFocus: true
+                          }}
+                          onChange={(value, country) => {
+                            setPhoneNumber(value);
+                            setPhoneNumberCountry(country.countryCode.toUpperCase());
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </fieldset>
+              </fieldset>
 
-            <fieldset className="wc-block-checkout__billing-fields">
-              <legend>Shipping Address</legend>
-              <AddressForm
-                type="shipping"
-                register={register}
-                errors={errors}
-                selectedCountry={selectedShippingCountry}
-                setSelectedCountry={setSelectedShippingCountry}
-                selectedState={selectedShippingState}
-                setSelectedState={setSelectedShippingState}
-              />
-            </fieldset>
-
-            <ShippingOptions
-              shipmentGroups={shipmentGroups}
-              shipmentOptionsLoading={shipmentOptionsLoading}
-            />
-
-            <div className="form-row">
-              <label htmlFor="order_notes">Order Notes (optional)</label>
-              <textarea
-                id="order_notes"
-                className="wc-block-components-textarea"
-                placeholder="Notes about your order, e.g. special notes for delivery"
-                {...register("order_notes")}
-              ></textarea>
-            </div>
-
-            <div className="form-submit">
-              <button 
-                type="submit" 
-                className='button wp-element-button'
-                disabled={orderLoading}
+              <fieldset
+                id="billing-fields"
+                className="wc-block-checkout__billing-fields
+             wp-block-woocommerce-checkout-billing-address-block
+             wc-block-components-checkout-step"
               >
-                {orderLoading ? 'Processing...' : 'Continue to Payment'}
+                {/* <legend>Shipping Address</legend> */}
+                <div className="wc-block-components-checkout-step__heading">
+                  <h2 className="wc-block-components-title wc-block-components-checkout-step__title">
+                    Shipping address
+                  </h2>
+                </div>
+                <div className="wc-block-components-checkout-step__container">
+                  <p className="wc-block-components-checkout-step__description">
+                    Enter the address where you want your order delivered.
+                  </p>
+                  <AddressForm
+                    type="shipping"
+                    register={register}
+                    errors={errors}
+                    selectedCountry={selectedShippingCountry}
+                    setSelectedCountry={setSelectedShippingCountry}
+                    selectedState={selectedShippingState}
+                    setSelectedState={setSelectedShippingState}
+                  />
+                </div>
+              </fieldset>
+
+              <ShippingOptions
+                shipmentGroups={shipmentGroups}
+                shipmentOptionsLoading={shipmentOptionsLoading}
+              />
+
+              <div className="form-row">
+                <label htmlFor="order_notes">Order Notes (optional)</label>
+                <textarea
+                  id="order_notes"
+                  className="wc-block-components-textarea"
+                  placeholder="Notes about your order, e.g. special notes for delivery"
+                  {...register("order_notes")}
+                ></textarea>
+              </div>
+
+              <div className="form-submit">
+                <button
+                  type="submit"
+                  className='button wp-element-button'
+                  disabled={orderLoading}
+                >
+                  {orderLoading ? 'Processing...' : 'Continue to Payment'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="payment-step">
+              <button
+                className='button wp-element-button'
+                onClick={() => setCurrentStep('details')}
+              >
+                ← Back to Details
               </button>
+              <StripePaymentForm
+                clientSecret={stripeClientSecret}
+                onPaymentSuccess={handlePaymentSuccess}
+                onPaymentError={handlePaymentError}
+              />
             </div>
-          </form>
-        ) : (
-          <div className="payment-step">
-            <button
-              className='button wp-element-button'
-              onClick={() => setCurrentStep('details')} 
-            >
-              ← Back to Details
-            </button>
-            <StripePaymentForm
-              clientSecret={stripeClientSecret}
-              onPaymentSuccess={handlePaymentSuccess}
-              onPaymentError={handlePaymentError}
-            />
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

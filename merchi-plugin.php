@@ -624,6 +624,44 @@ function country_prefix_in_billing_phone() {
     die();
 }
 
+// add_action( 'wp_enqueue_scripts', function () {
+//       if ( wp_style_is( 'wc-blocks-style', 'registered' ) ) {
+//           wp_enqueue_style( 'wc-blocks-style' );
+//       }
+//       $rel_path   = 'assets/client/blocks/checkout.css';
+// 			$css_handle = 'wc-blocks-checkout';
+
+// 			wp_enqueue_style(
+//     			$css_handle,
+//     			plugins_url( 'woocommerce/' . $rel_path ), 
+//     			array(),                                    
+//     			null
+// 			);
+// } );
+
+// add_action( 'wp_enqueue_scripts', function () {
+//       if ( wp_style_is( 'wc-blocks-style', 'registered' ) ) {
+//           wp_enqueue_style( 'wc-blocks-style' );
+//       }
+//       $rel_path   = 'assets/client/blocks/packages-style.css';
+// 			$css_handle = 'wc-blocks-packages-style';
+
+// 			wp_enqueue_style(
+//     			$css_handle,
+//     			plugins_url( 'woocommerce/' . $rel_path ), 
+//     			array(),                                    
+//     			null
+// 			);
+// } );
+
+function merchi_enqueue_wc_block_styles() {
+
+    wp_enqueue_style( 'wc-blocks-style' );
+    wp_enqueue_style( 'wc-blocks-packages-style' );
+    wp_enqueue_style( 'wc-blocks-checkout-style' );
+}
+add_action( 'wp_enqueue_scripts', 'merchi_enqueue_wc_block_styles' );
+
 function enqueue_admin_customfiles($hook)
 {
 	wp_enqueue_style('custom-admin-style', plugin_dir_url(__FILE__) . 'custom.css');
@@ -647,6 +685,7 @@ add_action('admin_enqueue_scripts', 'enqueue_admin_customfiles');
 
 function enqueue_my_public_script()
 {
+
 	wp_enqueue_style('custom-admin-style', plugin_dir_url(__FILE__) . 'custom.css');
 	wp_enqueue_script('custom-checkout-script', plugins_url('/dist/js/woocommerce_cart_checkout.js', __FILE__), array(), '1.0', true);
 	wp_enqueue_script('custom-stripe-script', 'https://js.stripe.com/v3/', array(), '1.0', true);
@@ -685,7 +724,6 @@ function enqueue_my_public_script()
 }
 add_action('wp_enqueue_scripts', 'enqueue_my_public_script');
 
-
 function custom_product_meta_box()
 {
 	add_meta_box(
@@ -698,6 +736,7 @@ function custom_product_meta_box()
 	);
 }
 add_action('add_meta_boxes', 'custom_product_meta_box');
+
 
 function render_custom_product_meta_box()
 {
@@ -2261,7 +2300,6 @@ add_action('admin_init', function () {
 			add_filter("manage_{$taxonomy}_custom_column", 'display_taxonomy_image_column', 10, 3);
 	}
 });
-
 
 
 
