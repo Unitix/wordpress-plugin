@@ -658,9 +658,27 @@ function merchi_enqueue_wc_block_styles() {
 
     wp_enqueue_style( 'wc-blocks-style' );
     wp_enqueue_style( 'wc-blocks-packages-style' );
-    wp_enqueue_style( 'wc-blocks-checkout-style' );
+
+		$handle = 'wc-blocks-checkout-style';
+		$rel_path = 'assets/client/blocks/checkout.css';
+
+    if ( wp_style_is( $handle, 'registered' ) ) {
+        wp_enqueue_style( $handle );
+        return;
+    }
+
+    if ( class_exists( 'WooCommerce' ) ) {
+        wp_register_style(
+            $handle,
+            trailingslashit( WC()->plugin_url() ) . $rel_path,
+            array( 'wc-blocks-style' ),
+            WC_VERSION
+        );
+        wp_enqueue_style( $handle );
+    }
 }
 add_action( 'wp_enqueue_scripts', 'merchi_enqueue_wc_block_styles' );
+
 
 function enqueue_admin_customfiles($hook)
 {

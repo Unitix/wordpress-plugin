@@ -1,5 +1,6 @@
 import React from 'react';
-import { CountrySelect, StateSelect } from 'react-country-state-city';
+import { CountryDropdown, RegionDropdown } from 'react-country-region-selector';
+import useWooActive from '../utils';
 
 const AddressForm = ({
   type = 'billing', // or 'shipping'
@@ -10,6 +11,7 @@ const AddressForm = ({
   selectedState,
   setSelectedState
 }) => {
+  useWooActive();
   const prefix = type === 'shipping' ? 'shipping' : 'billing';
 
   return (
@@ -19,10 +21,10 @@ const AddressForm = ({
         <div className="wc-blocks-components-select">
           <div className="wc-blocks-components-select__container">
             <label htmlFor={`${prefix}_country`} className="wc-blocks-components-select__label">Country / Region *</label>
-            <CountrySelect
+            <CountryDropdown
               id={`${prefix}_country`}
               className="wc-blocks-components-select__select"
-              defaultValue={selectedCountry}
+              value={selectedCountry ?? ''}
               onChange={(country) => {
                 setSelectedCountry(country);
               }}
@@ -35,13 +37,13 @@ const AddressForm = ({
 
       {/* address_1*/}
       <div className="wc-block-components-text-input wc-block-components-address-form__address_1">
-        <label htmlFor={`${prefix}_address_1`} className="wc-block-components-text-input__label">House number and street name *</label>
         <input
           type="text"
           id={`${prefix}_address_1`}
           className="wc-block-components-text-input__input"
           {...register(`${prefix}_address_1`, { required: "Street address is required" })}
         />
+        <label htmlFor={`${prefix}_address_1`} className="wc-block-components-text-input__label">House number and street name *</label>
         {errors[`${prefix}_address_1`] &&
           <span className="wc-block-components-validation-error">{errors[`${prefix}_address_1`].message}</span>}
       </div>
@@ -75,9 +77,9 @@ const AddressForm = ({
         <div className="wc-blocks-components-select">
           <div className="wc-blocks-components-select__container">
             <label htmlFor={`${prefix}_state`} className="wc-blocks-components-select__label">State *</label>
-            <StateSelect
+            <RegionDropdown
               id={`${prefix}_state`}
-              countryid={selectedCountry?.id}
+              country={selectedCountry}
               className="wc-blocks-components-select__select"
               onChange={(state) => {
                 setSelectedState(state);

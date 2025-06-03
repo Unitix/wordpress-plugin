@@ -185,6 +185,7 @@ const WoocommerceCheckoutForm = () => {
     // Handle payment error (show message, etc.)
   };
 
+
   return (
     <div className='wp-block-woocommerce-checkout'>
       <div className='wc-block-components-sidebar-layout wc-block-checkout is-large'>

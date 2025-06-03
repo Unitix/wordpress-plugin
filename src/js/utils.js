@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+
 export const backendUri = 'https://api.merchi.co/';
 export const websocketServer = 'https://websockets.merchi.co/';
 
@@ -73,4 +75,32 @@ export function getCookieByName(name) {
   }
 
   return null; // Cookie not found
+}
+
+export default function useWooActive() {
+  useEffect(() => {
+    var INPUT = '.wc-block-components-text-input__input';
+    var WRAP = '.wc-block-components-text-input';
+
+    function toggle(el, force) {
+      var w = el.closest(WRAP);
+      if (w) w.classList.toggle('is-active', force ?? !!el.value);
+    }
+
+    function onFocus(e) { if (e.target.matches(INPUT)) toggle(e.target, true); }
+    function onBlur(e) { if (e.target.matches(INPUT)) toggle(e.target); }
+    function onInput(e) { if (e.target.matches(INPUT)) toggle(e.target); }
+
+    document.addEventListener('focusin', onFocus);
+    document.addEventListener('focusout', onBlur);
+    document.addEventListener('input', onInput);
+    document.addEventListener('change', onInput);
+
+    return () => {
+      document.removeEventListener('focusin', onFocus);
+      document.removeEventListener('focusout', onBlur);
+      document.removeEventListener('input', onInput);
+      document.removeEventListener('change', onInput);
+    };
+  }, []);
 }
