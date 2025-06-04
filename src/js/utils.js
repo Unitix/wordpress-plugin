@@ -79,28 +79,50 @@ export function getCookieByName(name) {
 
 export default function useWooActive() {
   useEffect(() => {
-    var INPUT = '.wc-block-components-text-input__input';
-    var WRAP = '.wc-block-components-text-input';
+    const INPUT = '.wc-block-components-text-input__input';
+    const WRAP = '.wc-block-components-text-input';
 
     function toggle(el, force) {
-      var w = el.closest(WRAP);
+      const w = el.closest(WRAP);
       if (w) w.classList.toggle('is-active', force ?? !!el.value);
     }
 
-    function onFocus(e) { if (e.target.matches(INPUT)) toggle(e.target, true); }
-    function onBlur(e) { if (e.target.matches(INPUT)) toggle(e.target); }
-    function onInput(e) { if (e.target.matches(INPUT)) toggle(e.target); }
+    function recheckAll() {
+      document.querySelectorAll(INPUT).forEach(input => {
+        const isFocused = document.activeElement === input;
+        toggle(input, isFocused || undefined);
+      });
+    }
 
-    document.addEventListener('focusin', onFocus);
-    document.addEventListener('focusout', onBlur);
-    document.addEventListener('input', onInput);
-    document.addEventListener('change', onInput);
+    function handleEvent(e) {
+      if (!e.target.matches(INPUT)) return;
+      toggle(e.target, e.type === 'focusin' || undefined);
+    }
+
+    let timeout;
+    const observer = new MutationObserver(() => {
+      clearTimeout(timeout);
+      timeout = setTimeout(recheckAll, 20);
+    });
+
+    ['focusin', 'focusout', 'input', 'change'].forEach(event => {
+      document.addEventListener(event, handleEvent);
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributeFilter: ['class']
+    });
+
+    recheckAll();
 
     return () => {
-      document.removeEventListener('focusin', onFocus);
-      document.removeEventListener('focusout', onBlur);
-      document.removeEventListener('input', onInput);
-      document.removeEventListener('change', onInput);
+      clearTimeout(timeout);
+      observer.disconnect();
+      ['focusin', 'focusout', 'input', 'change'].forEach(event => {
+        document.removeEventListener(event, handleEvent);
+      });
     };
   }, []);
 }

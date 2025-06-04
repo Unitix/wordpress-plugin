@@ -1,4 +1,5 @@
 import React from 'react';
+import CouponPanel from './CouponPanel';
 
 export default function WoocommerceCheckoutFormSideCart() {
   const handleImageError = (e) => {
@@ -52,18 +53,7 @@ export default function WoocommerceCheckoutFormSideCart() {
               </div>
             </div>
           </div>
-
-          <div className="wp-block-woocommerce-checkout-order-summary-coupon-form-block wc-block-components-totals-wrapper">
-            <div role="heading" aria-level="2" className="wc-block-components-totals-coupon wc-block-components-panel">
-              <div aria-expanded="false" className="wc-block-components-panel__button" tabIndex="0" role="button">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="24" height="24" aria-hidden="true" className="wc-block-components-panel__button-icon" focusable="false">
-                  <path d="M17.5 11.6L12 16l-5.5-4.4.9-1.2L12 14l4.5-3.6 1 1.2z"></path>
-                </svg>
-                Add a coupon
-              </div>
-            </div>
-          </div>
-
+          <CouponPanel />
           <div data-block-name="woocommerce/checkout-order-summary-totals-block" className="wp-block-woocommerce-checkout-order-summary-totals-block">
             <div className="wp-block-woocommerce-checkout-order-summary-subtotal-block wc-block-components-totals-wrapper">
               <div className="wc-block-components-totals-item">

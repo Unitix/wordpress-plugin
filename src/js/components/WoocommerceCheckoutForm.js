@@ -189,7 +189,6 @@ const WoocommerceCheckoutForm = () => {
   return (
     <div className='wp-block-woocommerce-checkout alignwide wc-block-checkout'>
       <div className='wc-block-components-sidebar-layout wc-block-checkout is-large'>
-        {/* <WoocommerceCheckoutFormSideCart /> */}
         <div className="wc-block-components-main wc-block-checkout__main wp-block-woocommerce-checkout-fields-block">
           {currentStep === 'details' ? (
             <form onSubmit={handleSubmit(placeOrder)} className='wc-block-components-form wc-block-checkout__form'>
@@ -209,24 +208,35 @@ const WoocommerceCheckoutForm = () => {
                       <div></div>
                     </div>
                     <div id="contact" className="wc-block-components-address-form">
-                      <div className="wc-block-components-text-input wc-block-components-address-form__first_name">
+                      <div className={`wc-block-components-text-input wc-block-components-address-form__first_name 
+                        ${errors.cart?.client?.name ? 'has-error' : ''}`}>
                         <label htmlFor="billing_first_name">Full Name *</label>
                         <input
                           type="text"
                           id="billing_first_name"
                           className="wc-block-components-text-input__input input-text"
-                          {...register("cart.client.name", { required: "First name is required" })}
+                          {...register("cart.client.name", { required: "Full name is required" })}
                         />
-                        {errors.billing_first_name &&
-                          <span className="error">{errors.billing_first_name.message}</span>}
+                        {errors.cart?.client?.name &&
+                          <div className="wc-block-components-validation-error" role="alert">
+                            <p id="error-billing-name">
+                              <svg viewBox="-2 -2 24 24" width="24" height="24" aria-hidden="true">
+                                <path d="M10 2c4.42 0 8 3.58 8 8s-3.58 8-8 8-8-3.58-8-8 3.58-8 8-8zm1.13 9.38l.35-6.46H8.52l.35 6.46h2.26zm-.09 3.36c.24-.23.37-.55.37-.96 0-.42-.12-.74-.36-.97s-.59-.35-1.06-.35-.82.12-1.07.35-.37.55-.37.97c0 .41.13.73.38.96.26.23.61.34 1.06.34s.8-.11 1.05-.34z" />
+                              </svg>
+                              <span>{errors.cart.client.name.message}</span>
+                            </p>
+                          </div>
+                        }
                       </div>
 
-                      <div className="wc-block-components-text-input wc-block-components-address-form__email">
+                      <div className={`wc-block-components-text-input wc-block-components-address-form__email 
+                        ${errors.client?.emailAddresses?.[0]?.emailAddress ? 'has-error' : ''}`}>
                         <label htmlFor="client.emailAddresses[0].emailAddress">Email Address *</label>
                         <input
                           type="email"
                           id="client.emailAddresses[0].emailAddress"
                           className="wc-block-components-text-input__input input-text"
+                          noValidate="novalidate"
                           {...register("client.emailAddresses[0].emailAddress", {
                             required: "Email is required",
                             pattern: {
@@ -238,22 +248,28 @@ const WoocommerceCheckoutForm = () => {
                             console.log('e', e);
                           }}
                         />
-                        {errors.billing_email &&
-                          <span className="error">{errors.billing_email.message}</span>}
+                        {errors.client?.emailAddresses?.[0]?.emailAddress &&
+                          <div className="wc-block-components-validation-error" role="alert">
+                            <p id="error-billing-email">
+                              <svg viewBox="-2 -2 24 24" width="24" height="24" aria-hidden="true">
+                                <path d="M10 2c4.42 0 8 3.58 8 8s-3.58 8-8 8-8-3.58-8-8 3.58-8 8-8zm1.13 9.38l.35-6.46H8.52l.35 6.46h2.26zm-.09 3.36c.24-.23.37-.55.37-.96 0-.42-.12-.74-.36-.97s-.59-.35-1.06-.35-.82.12-1.07.35-.37.55-.37.97c0 .41.13.73.38.96.26.23.61.34 1.06.34s.8-.11 1.05-.34z" />
+                              </svg>
+                              <span>{errors.client.emailAddresses[0].emailAddress.message}</span>
+                            </p>
+                          </div>
+                        }
                       </div>
 
                       <div className="wc-block-components-text-input wc-block-components-address-form__phone">
                         <label htmlFor="client.phoneNumbers[0].phoneNumber" className="wc-block-components-text-input__label">Phone Number *</label>
                         <PhoneInput
                           country={country.toLowerCase()}
-                          // containerClass="react-tel-input wc-block-components-text-input"
                           containerStyle={{
                             height: '3.125em'
                           }}
                           buttonStyle={{
                             height: '100%'
                           }}
-                          // inputClass="wc-block-components-text-input__input input-text"
                           className="wc-block-components-text-input__input"
                           inputStyle={{ height: '100%', paddingLeft: '40px', width: '100%' }}
                           preferredCountries={['au', 'nz', 'uk', 'us']}
@@ -306,14 +322,18 @@ const WoocommerceCheckoutForm = () => {
                 shipmentOptionsLoading={shipmentOptionsLoading}
               />
               <div className="wc-block-checkout__order-notes wp-block-woocommerce-checkout-order-note-block wc-block-components-checkout-step" id="order-notes">
-                <div className="wc-block-components-textarea-field">
-                  <label htmlFor="order_notes">Order Notes (optional)</label>
-                  <textarea
-                    id="order_notes"
-                    className="wc-block-components-textarea"
-                    placeholder="Notes about your order, e.g. special notes for delivery"
-                    {...register("order_notes")}
-                  ></textarea>
+                <div className="wc-block-components-checkout-step__container">
+                  <div className="wc-block-components-checkout-step__content">
+                    <div className="wc-block-components-textarea-field">
+                      <label htmlFor="order_notes">Order Notes (optional)</label>
+                      <textarea
+                        id="order_notes"
+                        className="wc-block-components-textarea"
+                        placeholder="Notes about your order, e.g. special notes for delivery"
+                        {...register("order_notes")}
+                      ></textarea>
+                    </div>
+                  </div>
                 </div>
               </div>
 

@@ -624,36 +624,6 @@ function country_prefix_in_billing_phone() {
     die();
 }
 
-// add_action( 'wp_enqueue_scripts', function () {
-//       if ( wp_style_is( 'wc-blocks-style', 'registered' ) ) {
-//           wp_enqueue_style( 'wc-blocks-style' );
-//       }
-//       $rel_path   = 'assets/client/blocks/checkout.css';
-// 			$css_handle = 'wc-blocks-checkout';
-
-// 			wp_enqueue_style(
-//     			$css_handle,
-//     			plugins_url( 'woocommerce/' . $rel_path ), 
-//     			array(),                                    
-//     			null
-// 			);
-// } );
-
-// add_action( 'wp_enqueue_scripts', function () {
-//       if ( wp_style_is( 'wc-blocks-style', 'registered' ) ) {
-//           wp_enqueue_style( 'wc-blocks-style' );
-//       }
-//       $rel_path   = 'assets/client/blocks/packages-style.css';
-// 			$css_handle = 'wc-blocks-packages-style';
-
-// 			wp_enqueue_style(
-//     			$css_handle,
-//     			plugins_url( 'woocommerce/' . $rel_path ), 
-//     			array(),                                    
-//     			null
-// 			);
-// } );
-
 function merchi_enqueue_wc_block_styles() {
 
     wp_enqueue_style( 'wc-blocks-style' );
