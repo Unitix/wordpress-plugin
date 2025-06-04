@@ -1,6 +1,12 @@
 import React from 'react';
+import CouponPanel from './CouponPanel';
 
 export default function WoocommerceCheckoutFormSideCart() {
+  const handleImageError = (e) => {
+    e.target.onerror = null;
+    e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Crect width="100" height="100" fill="%23cccccc"/%3E%3Cpath d="M65,45 L65,40 L60,40 L60,35 L40,35 L40,40 L35,40 L35,65 L65,65 L65,45 Z M60,45 L60,60 L40,60 L40,45 L45,45 L45,40 L55,40 L55,45 L60,45 Z" fill="%23888888"/%3E%3C/svg%3E';
+  };
+
   return (
     <div className='wc-block-components-sidebar wc-block-checkout__sidebar wp-block-woocommerce-checkout-totals-block is-sticky is-large'>
       <div className="wp-block-woocommerce-checkout-order-summary-block">
@@ -17,7 +23,11 @@ export default function WoocommerceCheckoutFormSideCart() {
                       <span aria-hidden="true">20</span>
                       <span className="screen-reader-text">20 items</span>
                     </div>
-                    <img src="http://localhost:3002/wp-content/uploads/2025/05/419157-300x300.jpeg" alt="Duffle Bag &#8211; 7th May 2024" />
+                    <img
+                      src="http://localhost:3002/wp-content/uploads/2025/05/419157-300x300.jpeg"
+                      alt="Duffle Bag &#8211; 7th May 2024"
+                      onError={handleImageError}
+                    />
                   </div>
                   <div className="wc-block-components-order-summary-item__description">
                     <h3 className="wc-block-components-product-name">Duffle Bag – 7th May 2024</h3>
@@ -43,18 +53,7 @@ export default function WoocommerceCheckoutFormSideCart() {
               </div>
             </div>
           </div>
-
-          <div className="wp-block-woocommerce-checkout-order-summary-coupon-form-block wc-block-components-totals-wrapper">
-            <div role="heading" aria-level="2" className="wc-block-components-totals-coupon wc-block-components-panel">
-              <div aria-expanded="false" className="wc-block-components-panel__button" tabIndex="0" role="button">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="24" height="24" aria-hidden="true" className="wc-block-components-panel__button-icon" focusable="false">
-                  <path d="M17.5 11.6L12 16l-5.5-4.4.9-1.2L12 14l4.5-3.6 1 1.2z"></path>
-                </svg>
-                Add a coupon
-              </div>
-            </div>
-          </div>
-
+          <CouponPanel />
           <div data-block-name="woocommerce/checkout-order-summary-totals-block" className="wp-block-woocommerce-checkout-order-summary-totals-block">
             <div className="wp-block-woocommerce-checkout-order-summary-subtotal-block wc-block-components-totals-wrapper">
               <div className="wc-block-components-totals-item">

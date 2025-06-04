@@ -145,7 +145,7 @@ function initializeWhenReady() {
     function renderPrice(totalCost, countryTax) {
       const tax = countryTax ?? {};
       const { taxName, taxPercent } = tax;
-      const taxText = taxName ? `in ${taxName} (${taxPercent}%)` : 'inc tax';
+      const taxText = taxName ? `inc ${taxName} (${taxPercent}%)` : 'inc tax';
       return `$${totalCost.toFixed(2)} ${taxText}`;
     }
 
@@ -1038,7 +1038,17 @@ function initializeWhenReady() {
           cartId = merchiCartJson.id;
           // Add the new item to the cart
           const cartItems = [...merchiCartJson.cartItems, formData];
-          updatedCartJson = {...merchiCartJson, cartItems};
+          updatedCartJson = {
+            ...merchiCartJson,
+            cartItems: cartItems.map(item => ({
+              ...item,
+              product: {id: item.product.id},
+              taxType: item.taxType ? {id: item.taxType.id} : undefined,
+              variations: item.variations,
+              variationsGroups: item.variationsGroups,
+            })),
+            domain: {id: merchiCartJson?.domain?.id},
+          };
           localStorage.setItem('MerchiCart', JSON.stringify(updatedCartJson)); //use the patchcart method here from merchi_public_custom.js
         } catch (error) {
           console.error('Error parsing MerchiCart:', error);
@@ -1109,7 +1119,6 @@ function initializeWhenReady() {
           merchiCartJson: updatedCartJson,
         };
 
-        console.log('cartPayload being sent to send_id_for_add_cart:', cartPayload);     
         jQuery.ajax({
           method: "POST",
           url: (typeof frontendajax !== 'undefined' ? frontendajax.ajaxurl : '/wp-admin/admin-ajax.php'),
@@ -1123,7 +1132,7 @@ function initializeWhenReady() {
             sessionStorage.setItem('merchiCartSuccess', '1');
             // Reload the page and scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });
-            window.location.reload();
+            // window.location.reload();
             // Do NOT show the success message here
             // Do NOT submit the form here
             // Cart fragment refresh will happen on reload
