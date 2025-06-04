@@ -1402,3 +1402,7 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   left: -1px;
   top: calc(100% + 2px);
 }
+
+.react-tel-input .special-label {
+  display: none;
+}

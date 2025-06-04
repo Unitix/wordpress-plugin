@@ -187,7 +187,7 @@ const WoocommerceCheckoutForm = () => {
 
 
   return (
-    <div className='wp-block-woocommerce-checkout'>
+    <div className='wp-block-woocommerce-checkout alignwide wc-block-checkout'>
       <div className='wc-block-components-sidebar-layout wc-block-checkout is-large'>
         {/* <WoocommerceCheckoutFormSideCart /> */}
         <div className="wc-block-components-main wc-block-checkout__main wp-block-woocommerce-checkout-fields-block">
@@ -247,8 +247,15 @@ const WoocommerceCheckoutForm = () => {
                         <PhoneInput
                           country={country.toLowerCase()}
                           // containerClass="react-tel-input wc-block-components-text-input"
-                          inputClass="wc-block-components-text-input__input input-text"
-                          inputStyle={{ height: '3.125em', paddingLeft: '40px', width: '100%' }}
+                          containerStyle={{
+                            height: '3.125em'
+                          }}
+                          buttonStyle={{
+                            height: '100%'
+                          }}
+                          // inputClass="wc-block-components-text-input__input input-text"
+                          className="wc-block-components-text-input__input"
+                          inputStyle={{ height: '100%', paddingLeft: '40px', width: '100%' }}
                           preferredCountries={['au', 'nz', 'uk', 'us']}
                           inputProps={{
                             name: "client.phoneNumbers[0].phoneNumber",
@@ -298,25 +305,49 @@ const WoocommerceCheckoutForm = () => {
                 shipmentGroups={shipmentGroups}
                 shipmentOptionsLoading={shipmentOptionsLoading}
               />
-
-              <div className="form-row">
-                <label htmlFor="order_notes">Order Notes (optional)</label>
-                <textarea
-                  id="order_notes"
-                  className="wc-block-components-textarea"
-                  placeholder="Notes about your order, e.g. special notes for delivery"
-                  {...register("order_notes")}
-                ></textarea>
+              <div className="wc-block-checkout__order-notes wp-block-woocommerce-checkout-order-note-block wc-block-components-checkout-step" id="order-notes">
+                <div className="wc-block-components-textarea-field">
+                  <label htmlFor="order_notes">Order Notes (optional)</label>
+                  <textarea
+                    id="order_notes"
+                    className="wc-block-components-textarea"
+                    placeholder="Notes about your order, e.g. special notes for delivery"
+                    {...register("order_notes")}
+                  ></textarea>
+                </div>
               </div>
 
-              <div className="form-submit">
-                <button
-                  type="submit"
-                  className='button wp-element-button'
-                  disabled={orderLoading}
-                >
-                  {orderLoading ? 'Processing...' : 'Continue to Payment'}
-                </button>
+              <div class="css-0 e19lxcc00"></div>
+              <div class="wc-block-checkout__terms wc-block-checkout__terms--with-separator wp-block-woocommerce-checkout-terms-block">
+                <span class="wc-block-components-checkbox__label">By proceeding with your purchase you agree to our Terms and Conditions and Privacy Policy</span>
+              </div>
+
+              <div className="wc-block-checkout__actions wp-block-woocommerce-checkout-actions-block">
+                <div className="wc-block-checkout__actions_row">
+                  <a
+                    href="/cart/"
+                    className="wc-block-components-checkout-return-to-cart-button"
+                  >
+                    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">
+                      <path d="M20 11.2H6.8l3.7-3.7-1-1L3.9 12l5.6 5.5 1-1-3.7-3.7H20z" />
+                    </svg>
+                    Return to Cart
+                  </a>
+
+                  <button
+                    type="submit"
+                    className='button wp-element-button'
+                    disabled={orderLoading}
+                  >
+                    <span className="wc-block-components-button__text">
+                      {orderLoading ? (
+                        <div className="wc-block-components-checkout-place-order-button__text">Processing…</div>
+                      ) : (
+                        <div className="wc-block-components-checkout-place-order-button__text">Continue to Payment</div>
+                      )}
+                    </span>
+                  </button>
+                </div>
               </div>
             </form>
           ) : (
@@ -335,6 +366,7 @@ const WoocommerceCheckoutForm = () => {
             </div>
           )}
         </div>
+        <WoocommerceCheckoutFormSideCart />
       </div>
     </div>
   );

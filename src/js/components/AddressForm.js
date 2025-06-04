@@ -36,7 +36,8 @@ const AddressForm = ({
       </div>
 
       {/* address_1*/}
-      <div className="wc-block-components-text-input wc-block-components-address-form__address_1">
+      <div className={`wc-block-components-text-input wc-block-components-address-form__address_1 
+        ${errors[`${prefix}_address_1`] ? 'has-error' : ''}`}>
         <input
           type="text"
           id={`${prefix}_address_1`}
@@ -45,7 +46,15 @@ const AddressForm = ({
         />
         <label htmlFor={`${prefix}_address_1`} className="wc-block-components-text-input__label">House number and street name *</label>
         {errors[`${prefix}_address_1`] &&
-          <span className="wc-block-components-validation-error">{errors[`${prefix}_address_1`].message}</span>}
+          <div className="wc-block-components-validation-error" role="alert">
+            <p id={`error-${prefix}-address_1`}>
+              <svg viewBox="-2 -2 24 24" width="24" height="24" aria-hidden="true">
+                <path d="M10 2c4.42 0 8 3.58 8 8s-3.58 8-8 8-8-3.58-8-8 3.58-8 8-8zm1.13 9.38l.35-6.46H8.52l.35 6.46h2.26zm-.09 3.36c.24-.23.37-.55.37-.96 0-.42-.12-.74-.36-.97s-.59-.35-1.06-.35-.82.12-1.07.35-.37.55-.37.97c0 .41.13.73.38.96.26.23.61.34 1.06.34s.8-.11 1.05-.34z" />
+              </svg>
+              <span>{errors[`${prefix}_address_1`].message}</span>
+            </p>
+          </div>
+        }
       </div>
 
       {/* address_2 */}
@@ -60,7 +69,8 @@ const AddressForm = ({
       </div>
 
       {/* city */}
-      <div className="wc-block-components-text-input wc-block-components-address-form__city">
+      <div className={`wc-block-components-text-input wc-block-components-address-form__city 
+        ${errors[`${prefix}_city`] ? 'has-error' : ''}`}>
         <label htmlFor={`${prefix}_city`} className="wc-block-components-text-input__label">Town / City *</label>
         <input
           type="text"
@@ -69,7 +79,15 @@ const AddressForm = ({
           {...register(`${prefix}_city`, { required: "City is required" })}
         />
         {errors[`${prefix}_city`] &&
-          <span className="wc-block-components-validation-error">{errors[`${prefix}_city`].message}</span>}
+          <div className="wc-block-components-validation-error" role="alert">
+            <p id={`error-${prefix}-city`}>
+              <svg viewBox="-2 -2 24 24" width="24" height="24" aria-hidden="true">
+                <path d="M10 2c4.42 0 8 3.58 8 8s-3.58 8-8 8-8-3.58-8-8 3.58-8 8-8zm1.13 9.38l.35-6.46H8.52l.35 6.46h2.26zm-.09 3.36c.24-.23.37-.55.37-.96 0-.42-.12-.74-.36-.97s-.59-.35-1.06-.35-.82.12-1.07.35-.37.55-.37.97c0 .41.13.73.38.96.26.23.61.34 1.06.34s.8-.11 1.05-.34z" />
+              </svg>
+              <span>{errors[`${prefix}_city`].message}</span>
+            </p>
+          </div>
+        }
       </div>
 
       {/* state */}
@@ -93,7 +111,8 @@ const AddressForm = ({
       </div>
 
       {/* postcode */}
-      <div className="wc-block-components-text-input wc-block-components-address-form__postcode">
+      <div className={`wc-block-components-text-input wc-block-components-address-form__postcode 
+        ${errors[`${prefix}_postcode`] ? 'has-error' : ''}`}>
         <label htmlFor={`${prefix}_postcode`} className="wc-block-components-text-input__label">Postcode / ZIP *</label>
         <input
           type="text"
@@ -102,7 +121,15 @@ const AddressForm = ({
           {...register(`${prefix}_postcode`, { required: "Postcode is required" })}
         />
         {errors[`${prefix}_postcode`] &&
-          <span className="wc-block-components-validation-error">{errors[`${prefix}_postcode`].message}</span>}
+          <div className="wc-block-components-validation-error" role="alert">
+            <p id={`error-${prefix}-postcode`}>
+              <svg viewBox="-2 -2 24 24" width="24" height="24" aria-hidden="true">
+                <path d="M10 2c4.42 0 8 3.58 8 8s-3.58 8-8 8-8-3.58-8-8 3.58-8 8-8zm1.13 9.38l.35-6.46H8.52l.35 6.46h2.26zm-.09 3.36c.24-.23.37-.55.37-.96 0-.42-.12-.74-.36-.97s-.59-.35-1.06-.35-.82.12-1.07.35-.37.55-.37.97c0 .41.13.73.38.96.26.23.61.34 1.06.34s.8-.11 1.05-.34z" />
+              </svg>
+              <span>{errors[`${prefix}_postcode`].message}</span>
+            </p>
+          </div>
+        }
       </div>
     </div>
   );
