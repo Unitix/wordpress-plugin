@@ -893,8 +893,17 @@ function initializeWhenReady() {
 
     // Function to gather form data with proper group handling
     async function gatherFormData() {
+      // Add defensive checks for defaultJobJson
+      if (!defaultJobJson || !defaultJobJson.product) {
+        console.error('Product data not loaded yet');
+        return {
+          variationsGroups: [],
+          variations: []
+        };
+      }
+
       // Process variation groups
-      const { groupVariationFields } = defaultJobJson.product;
+      const { groupVariationFields = [] } = defaultJobJson.product;
 
       const formData = {
         ...defaultJobJson,
@@ -903,21 +912,74 @@ function initializeWhenReady() {
       };
 
       // Process group variations
-      if (groupVariationFields.length > 0) {
+      if (groupVariationFields && groupVariationFields.length > 0) {
         jQuery('.group-field-set').each(function(groupIndex) {
           const $group = jQuery(this);
-          // Deep clone the variations array for each group
+          const groupVariations = [];
+
+          // For each field in this group, get the field ID and value
+          $group.find('.custom-field').each(function() {
+            const $input = jQuery(this).find('input, select, textarea').first();
+            const variationFieldData = $input.data('variation-field');
+            if (!variationFieldData) return;
+
+            let value = $input.val();
+            // Handle checkboxes, radios, files, etc. as in your processVariations
+            if ($input.is('select')) {
+              value = $input.val();
+            } else if ($input.is('input[type="text"], input[type="number"], textarea')) {
+              value = $input.val();
+            } else if ($input.is('input[type="checkbox"]')) {
+              // Collect all checked values as an array
+              const $checked = $group.find('input[type="checkbox"]:checked');
+              if ($checked.length > 1) {
+                value = $checked.map(function() { return $(this).val(); }).get();
+              } else if ($checked.length === 1) {
+                value = $checked.val();
+              } else {
+                value = null;
+              }
+            } else if ($input.is('input[type="radio"]')) {
+              const $checked = $group.find('input[type="radio"]:checked');
+              value = $checked.length ? $checked.val() : null;
+            } else if ($input.is('input[type="color"]')) {
+              value = $input.val();
+            } else if ($input.is('input[type="file"]')) {
+              // Find the preview area next to the file input wrapper
+              const $previewArea = $input.closest('.custom-upload-wrapper').next('.multi-file-upload-preview');
+              const variationFiles = [];
+              $previewArea.find('.multi-file-box').each(function() {
+                const $fileBox = jQuery(this);
+                const merchiFileData = $fileBox.attr('data-merchi-file');
+                if (merchiFileData) {
+                  try {
+                    const merchiFile = JSON.parse(merchiFileData);
+                    variationFiles.push(merchiFile);
+                  } catch (e) {
+                    console.error('Error parsing Merchi file data:', e);
+                  }
+                }
+              });
+              value = variationFiles.map(file => file.id).join(',');
+            }
+
+            groupVariations.push({
+              variationField: {
+                id: variationFieldData.id,
+                name: variationFieldData.name
+              },
+              value: value
+            });
+          });
+
           formData.variationsGroups.push({
             groupCost: parseFloat($group.find('[data-group-cost]').attr('data-group-cost')) || 0,
             quantity: parseInt($group.find('.group-quantity').val()) || 1,
-            variations: [...defaultJobJson.variationsGroups[0].variations],
+            variations: groupVariations
           });
-
-          // Process variations within this group
-          processVariations($group, formData.variationsGroups[groupIndex].variations);
         });
       } else {
-        // if thee are no groups then we just use the quantity from the quantity input
+        // if there are no groups then we just use the quantity from the quantity input
         formData.quantity = parseInt(jQuery('input.qty').val()) || 1;
       }
 
@@ -969,14 +1031,15 @@ function initializeWhenReady() {
         // Get the cart in local storage
         const merchiCart = localStorage.getItem('MerchiCart');
         let merchiCartJson;
+        let updatedCartJson;
         try {
           // Convert the cart to JSON
           merchiCartJson = JSON.parse(merchiCart);
           cartId = merchiCartJson.id;
           // Add the new item to the cart
           const cartItems = [...merchiCartJson.cartItems, formData];
-          const updatedCart = {...merchiCartJson, cartItems};
-          localStorage.setItem('MerchiCart', JSON.stringify(updatedCart));
+          updatedCartJson = {...merchiCartJson, cartItems};
+          localStorage.setItem('MerchiCart', JSON.stringify(updatedCartJson)); //use the patchcart method here from merchi_public_custom.js
         } catch (error) {
           console.error('Error parsing MerchiCart:', error);
         }
@@ -997,15 +1060,18 @@ function initializeWhenReady() {
           variationsGroups.forEach((group, gi) => {
             let groupObj = {};
             let groupExtras = {};
-            let loopcount = 0;
             let varQuant = group.quantity || 1;
 
+            // Use variationField.id or variationField.name as key, fallback to index
             if (Array.isArray(group.variations)) {
               group.variations.forEach((variation, vi) => {
-                if (variation && (variation.value !== undefined)) {
-                  groupObj[vi] = variation.value;
+                let key = vi;
+                if (variation && variation.variationField) {
+                  key = variation.variationField.id || variation.variationField.name || vi;
                 }
-                loopcount = vi + 1;
+                if (variation && (variation.value !== undefined)) {
+                  groupObj[key] = variation.value;
+                }
               });
             }
             groupExtras['quantity'] = varQuant;
@@ -1039,7 +1105,8 @@ function initializeWhenReady() {
         const cartPayload = {
           cartId: cartId,
           taxAmount: taxAmount,
-          cartItems: cartItems
+          cartItems: cartItems,
+          merchiCartJson: updatedCartJson,
         };
 
         console.log('cartPayload being sent to send_id_for_add_cart:', cartPayload);     

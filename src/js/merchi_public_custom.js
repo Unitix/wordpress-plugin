@@ -6,6 +6,64 @@ const MERCHI = MERCHI_SDK();
 
 const site_url = '';
 
+// Cookie management system
+const COOKIE_MANAGER = {
+  // Cookie names
+  CART_COOKIE: `cart-${scriptData.merchi_domain}`,
+  CART_ID_COOKIE: 'cstCartId',
+  
+  // Set cookie with proper domain and path
+  setCookie(name, value, days) {
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    const expires = `expires=${date.toUTCString()}`;
+    const path = 'path=/';
+    const domain = window.location.hostname;
+    document.cookie = `${name}=${value};${expires};${path};domain=${domain}`;
+  },
+
+  // Get cookie value
+  getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  },
+
+  // Remove cookie
+  removeCookie(name) {
+    this.setCookie(name, '', -1);
+  },
+
+  // Clear all cart-related cookies
+  clearCartCookies() {
+    this.removeCookie(this.CART_COOKIE);
+    this.removeCookie(this.CART_ID_COOKIE);
+  },
+
+  // Synchronize cookies with localStorage
+  syncWithLocalStorage() {
+    const merchiCart = localStorage.getItem('MerchiCart');
+    if (!merchiCart) {
+      this.clearCartCookies();
+      return;
+    }
+
+    try {
+      const cartData = JSON.parse(merchiCart);
+      if (cartData.id && cartData.token) {
+        this.setCookie(this.CART_COOKIE, `${cartData.id},${cartData.token}`, 1);
+        this.setCookie(this.CART_ID_COOKIE, cartData.id, 1);
+      } else {
+        this.clearCartCookies();
+      }
+    } catch (error) {
+      console.error('Error syncing cookies with localStorage:', error);
+      this.clearCartCookies();
+    }
+  }
+};
+
 async function localStorageUpdateCartEnt(cartEnd) {
   const MERCHI = MERCHI_INIT.MERCHI_SDK;
   localStorage.setItem("MerchiCart", JSON.stringify(MERCHI.toJson(cartEnd)));
@@ -25,33 +83,54 @@ export async function patchCart(cartJson, embed = cartEmbed) {
   }
   const cartEnt = MERCHI.fromJson(new MERCHI.Cart(), cleanedCartJson);
   cartEnt.token(cartJson.token);
+
+  // Store the current cart state for potential rollback
+  const currentCartState = localStorage.getItem("MerchiCart");
+
   return new Promise((resolve, reject) => {
-    cartEnt.patch((cartEnt) => {
-      const _cartJson = MERCHI.toJson(cartEnt);
-      // save the patched cart to local storage
-      localStorage.setItem("MerchiCart", JSON.stringify(_cartJson));
-      resolve(cartEnt);
-    }, (status, data) => reject(data), embed);
+    cartEnt.patch(
+      (cartEnt) => {
+        try {
+          const _cartJson = MERCHI.toJson(cartEnt);
+          // Update localStorage
+          localStorage.setItem("MerchiCart", JSON.stringify(_cartJson));
+          // Sync cookies with localStorage
+          COOKIE_MANAGER.syncWithLocalStorage();
+          resolve(cartEnt);
+        } catch (error) {
+          // If localStorage update fails, attempt rollback
+          if (currentCartState) {
+            try {
+              localStorage.setItem("MerchiCart", currentCartState);
+              COOKIE_MANAGER.syncWithLocalStorage();
+            } catch (rollbackError) {
+              console.error("Failed to rollback cart state:", rollbackError);
+            }
+          }
+          reject(new Error("Failed to update cart state: " + error.message));
+        }
+      },
+      (status, data) => {
+        // If server update fails, attempt rollback
+        if (currentCartState) {
+          try {
+            localStorage.setItem("MerchiCart", currentCartState);
+            COOKIE_MANAGER.syncWithLocalStorage();
+          } catch (rollbackError) {
+            console.error("Failed to rollback cart state:", rollbackError);
+          }
+        }
+        reject(new Error(`Server update failed: ${status} - ${JSON.stringify(data)}`));
+      },
+      embed
+    );
   });
 }
 
 // All PATCH requests should now be handled by the backend via send_id_for_add_cart.
 
 function setCookie(name, value, days) {
-  var ajax_url = frontendajax.ajaxurl;
-  var ajax_data = {
-    action: "cst_remove_cookie",
-    cookieName: name,
-  };
-  jQuery.post(ajax_url, ajax_data, function (response) {
-    var expires = "";
-    if (days) {
-      var date = new Date();
-      date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
-      expires = "; expires=" + date.toUTCString();
-    }
-    document.cookie = name + "=" + value + expires + "; path=/";
-  });
+  COOKIE_MANAGER.setCookie(name, value, days);
 }
 
 async function createCart() {
@@ -62,9 +141,10 @@ async function createCart() {
     cart.create(
       (response) => {
         const c = MERCHI.toJson(response);
-        // Set cart cookie here. The cart cookie is a combo od the cart id and the cart token.
-        setCookie("cart-" + scriptData.merchi_domain, `${c.id},${c.token}`, 1);
+        // Set cart data in localStorage
         localStorage.setItem("MerchiCart", JSON.stringify(c));
+        // Sync cookies with localStorage
+        COOKIE_MANAGER.syncWithLocalStorage();
         resolve(response);
       },
       (status, data) => {
@@ -105,95 +185,115 @@ async function initOrSyncCart() {
     return null;
   }
 
-  const localCartJSONString = localStorage.getItem("MerchiCart");
+  // Add a lock to prevent concurrent cart operations
+  const cartLockKey = 'merchi_cart_operation_lock';
+  if (localStorage.getItem(cartLockKey)) {
+    console.warn("MERCHI_LOG: Another cart operation is in progress. Waiting...");
+    // Wait for a short time and try again
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return initOrSyncCart();
+  }
 
-  if (!localCartJSONString) {
-    // CREATE NEW CART No cart in localStorage, create a new one
-    try {
-      const newCart = await createCart();
-      return newCart;
-    } catch (error) {
-      console.error("MERCHI_LOG: Error during createCart execution:", error);
-      return null;
-    }
-  } else {
-    let localCartData;
-    try {
-      // PARSE LOCAL STORAGE CART DATA
-      localCartData = JSON.parse(localCartJSONString);
-    } catch (e) {
-      // IF ERROR PARSING LOCAL STORAGE CART DATA, CLEAR LOCAL STORAGE AND CREATE NEW CART
-      localStorage.removeItem("MerchiCart");
+  try {
+    // Set the lock
+    localStorage.setItem(cartLockKey, Date.now().toString());
+
+    const localCartJSONString = localStorage.getItem("MerchiCart");
+
+    if (!localCartJSONString) {
+      // CREATE NEW CART No cart in localStorage, create a new one
       try {
         const newCart = await createCart();
         return newCart;
       } catch (error) {
+        console.error("MERCHI_LOG: Error during createCart execution:", error);
         return null;
       }
-    }
-
-    // There was an error with the local storage cart data, so we need to create a new cart
-    if (!localCartData || !localCartData.id || !localCartData.token) {
-      localStorage.removeItem("MerchiCart");
-      try {
-        const newCart = await createCart();
-        console.log("MERCHI_LOG: New cart created after clearing invalid cart data from localStorage.");
-        return newCart;
-      } catch (error) {
-        console.error("MERCHI_LOG: Error during createCart after clearing invalid cart data:", error);
-        return null;
-      }
-    }
-
-    // Get the cart from the server
-    let serverCart;
-    try {
-      // Assuming getCart uses default embed options if third param is null/undefined.
-      serverCart = await getCart(localCartData.id, localCartData.token);
-    } catch (error) {
-      console.error("MERCHI_LOG: Exception occurred while calling getCart:", error);
-    }
-
-    // If the server cart is not found, we need to create a new cart
-    if (!serverCart) {
-      localStorage.removeItem("MerchiCart");
-      // Consider clearing cookie
-      try {
-        const newCartFallback = await createCart();
-        return newCartFallback;
-      } catch (error) {
-        console.error("MERCHI_LOG: Error during fallback createCart:", error);
-        return null;
-      }
-    }
-
-    // Server cart fetched successfully. getCart should have updated localStorage.
-    const serverCartDataForCompare = MERCHI.toJson(serverCart); // Get plain JS object from server cart entity
-
-    // Compare stringified versions of the local data (parsed from storage) and server data (from toJson)
-    const localCartStringified = JSON.stringify(localCartData); // localCartData is already a JS object
-    const serverCartStringified = JSON.stringify(serverCartDataForCompare);
-
-    if (localCartStringified !== serverCartStringified) {
-      // IF the local cart data is different from the server cart data, we need to patch the server cart
-      // Ensure id and token are on the entity for the patch.
-      // MERCHI.fromJson should handle this. If not, one might need:
-      // cartEntityToPatch.id(localCartData.id).token(localCartData.token);
-
-      try {
-        // Promisify the patch call
-        const patchedCart = await patchCart(localCartData);
-        return patchedCart;
-      } catch (error) {
-         console.error("MERCHI_LOG: Exception during the cart patch operation promise:", error);
-         // Fallback to the server version if the patch call itself (promisified part) fails.
-         return serverCart; 
-      }
-
     } else {
-      // getCart should have updated localStorage with serverCart's data.
-      return serverCart;
+      let localCartData;
+      try {
+        // PARSE LOCAL STORAGE CART DATA
+        localCartData = JSON.parse(localCartJSONString);
+      } catch (e) {
+        // IF ERROR PARSING LOCAL STORAGE CART DATA, CLEAR LOCAL STORAGE AND CREATE NEW CART
+        localStorage.removeItem("MerchiCart");
+        try {
+          const newCart = await createCart();
+          return newCart;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      // There was an error with the local storage cart data, so we need to create a new cart
+      if (!localCartData || !localCartData.id || !localCartData.token) {
+        localStorage.removeItem("MerchiCart");
+        try {
+          const newCart = await createCart();
+          console.log("MERCHI_LOG: New cart created after clearing invalid cart data from localStorage.");
+          return newCart;
+        } catch (error) {
+          console.error("MERCHI_LOG: Error during createCart after clearing invalid cart data:", error);
+          return null;
+        }
+      }
+
+      // Get the cart from the server with retry mechanism
+      let serverCart;
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      while (retryCount < maxRetries) {
+        try {
+          serverCart = await getCart(localCartData.id, localCartData.token);
+          break;
+        } catch (error) {
+          retryCount++;
+          if (retryCount === maxRetries) {
+            console.error("MERCHI_LOG: Failed to fetch cart after", maxRetries, "attempts:", error);
+            break;
+          }
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        }
+      }
+
+      // If the server cart is not found, we need to create a new cart
+      if (!serverCart) {
+        localStorage.removeItem("MerchiCart");
+        try {
+          const newCartFallback = await createCart();
+          return newCartFallback;
+        } catch (error) {
+          console.error("MERCHI_LOG: Error during fallback createCart:", error);
+          return null;
+        }
+      }
+
+      // Server cart fetched successfully
+      const serverCartDataForCompare = MERCHI.toJson(serverCart);
+
+      // Compare stringified versions of the local data and server data
+      const localCartStringified = JSON.stringify(localCartData);
+      const serverCartStringified = JSON.stringify(serverCartDataForCompare);
+
+      if (localCartStringified !== serverCartStringified) {
+        try {
+          // Use the server version as the source of truth
+          const patchedCart = await patchCart(serverCartDataForCompare);
+          return patchedCart;
+        } catch (error) {
+          console.error("MERCHI_LOG: Exception during the cart patch operation:", error);
+          // Fallback to the server version if the patch fails
+          return serverCart;
+        }
+      } else {
+        return serverCart;
+      }
     }
+  } finally {
+    // Always remove the lock when done
+    localStorage.removeItem(cartLockKey);
   }
 }
 
@@ -415,3 +515,150 @@ function showSuccessMessage() {
 //     }
 //   }
 // });
+
+// Function to handle cart item removal
+async function handleCartItemRemoval(cartItemKey) {
+  const cartLockKey = 'merchi_cart_operation_lock';
+  
+  // Check if another cart operation is in progress
+  if (localStorage.getItem(cartLockKey)) {
+    console.warn("MERCHI_LOG: Another cart operation is in progress. Waiting...");
+    // Wait for a short time and try again
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return handleCartItemRemoval(cartItemKey);
+  }
+
+  try {
+    // Set the lock
+    localStorage.setItem(cartLockKey, Date.now().toString());
+
+    // Get the current cart from localStorage
+    const merchiCart = localStorage.getItem('MerchiCart');
+    if (!merchiCart) {
+      console.error('No Merchi cart found in localStorage');
+      COOKIE_MANAGER.clearCartCookies();
+      return;
+    }
+
+    const cartJson = JSON.parse(merchiCart);
+    
+    // Store the current cart state for potential rollback
+    const currentCartState = merchiCart;
+    
+    // Filter out the removed item from cartItems
+    cartJson.cartItems = cartJson.cartItems.filter(item => item.id !== cartItemKey);
+    
+    try {
+      // Update the cart using patchCart
+      await patchCart(cartJson);
+      
+      // If cart is empty, clear both localStorage and cookies
+      if (cartJson.cartItems.length === 0) {
+        localStorage.removeItem('MerchiCart');
+        COOKIE_MANAGER.clearCartCookies();
+      }
+      
+      // Trigger a refresh of the cart fragments
+      jQuery(document.body).trigger("wc_fragment_refresh");
+    } catch (error) {
+      console.error('Error updating cart:', error);
+      
+      // Attempt rollback if the update fails
+      try {
+        localStorage.setItem('MerchiCart', currentCartState);
+        COOKIE_MANAGER.syncWithLocalStorage();
+      } catch (rollbackError) {
+        console.error('Failed to rollback cart state:', rollbackError);
+      }
+      
+      // Show error message to user
+      jQuery(document.body).trigger('wc_add_to_cart_error', [{
+        message: 'Failed to update cart. Please try again.'
+      }]);
+    }
+  } catch (error) {
+    console.error('Error handling cart item removal:', error);
+    // Show error message to user
+    jQuery(document.body).trigger('wc_add_to_cart_error', [{
+      message: 'Failed to process cart update. Please try again.'
+    }]);
+  } finally {
+    // Always remove the lock when done
+    localStorage.removeItem(cartLockKey);
+  }
+}
+
+// Add event listener for cart item removal
+jQuery(document).on('removed_from_cart', function(event, cartItemKey) {
+  handleCartItemRemoval(cartItemKey);
+});
+
+// Function to handle Merchi cart item removal response
+function handleMerchiCartItemRemoved(response) {
+  if (response.success && response.data.event === 'merchi_cart_item_removed') {
+    const { item_id, cart_id, cart_length, item_data } = response.data;
+    
+    // Get the current cart from localStorage
+    const merchiCart = localStorage.getItem('MerchiCart');
+    if (!merchiCart) {
+      console.error('No Merchi cart found in localStorage');
+      return;
+    }
+
+    try {
+      const cartJson = JSON.parse(merchiCart);
+      
+      // Filter out the removed item from cartItems
+      cartJson.cartItems = cartJson.cartItems.filter(item => item.id !== item_id);
+      
+      // Update the cart using patchCart
+      patchCart(cartJson).then(response => {
+        if (!response.success) {
+          console.error('Error updating cart:', response.error);
+          // Show error message to user
+          jQuery(document.body).trigger('wc_add_to_cart_error', [{
+            message: 'Failed to update cart. Please try again.'
+          }]);
+          return;
+        }
+        
+        // If cart is empty, clear localStorage
+        if (cart_length <= 1) {
+          localStorage.removeItem('MerchiCart');
+        }
+        
+        // Trigger a refresh of the cart fragments
+        jQuery(document.body).trigger("wc_fragment_refresh");
+      }).catch(error => {
+        console.error('Error updating cart after item removal:', error);
+        // Show error message to user
+        jQuery(document.body).trigger('wc_add_to_cart_error', [{
+          message: 'Failed to update cart. Please try again.'
+        }]);
+      });
+    } catch (error) {
+      console.error('Error handling cart item removal:', error);
+      // Show error message to user
+      jQuery(document.body).trigger('wc_add_to_cart_error', [{
+        message: 'Failed to process cart update. Please try again.'
+      }]);
+    }
+  }
+}
+
+// Add event listener for the AJAX response
+jQuery(document).ajaxSuccess(function(event, xhr, settings) {
+  try {
+    const response = JSON.parse(xhr.responseText);
+    if (response.success && response.data && response.data.event === 'merchi_cart_item_removed') {
+      handleMerchiCartItemRemoved(response);
+    }
+  } catch (error) {
+    console.error('Error parsing AJAX response:', error);
+  }
+});
+
+// Add periodic cookie sync check
+setInterval(() => {
+  COOKIE_MANAGER.syncWithLocalStorage();
+}, 60000); // Check every minute
