@@ -299,16 +299,6 @@ input[type="checkbox"] {
   font-size: 24px;
 }
 
-button#add-group-button, button.delete-group-button {
-  padding: 11px 20px;
-  margin: 10px 0;
-  background-color: #0753d7;
-  appearance: none;
-  border: none;
-  color: #fff;
-  border-radius: 6px;
-}
-
 
 .custom-attribute-options {
   display: flex;
@@ -518,4 +508,47 @@ label.custom-attribute-option {
     color: #dc3545;
     font-size: 12px;
     margin-top: 4px;
+}
+
+/* Add space after each group in WooCommerce Blocks cart */
+li[class*="wc-block-components-product-details__group-"] {
+    margin-bottom: 18px !important;
+}
+
+/* Hide only the product page price, not the cart/mini-cart price */
+.wc-block-components-product-price.wc-block-grid__product-price {
+  display: none !important;
+}
+
+/* Hide duplicated price in mini-cart: only hide the price inside .wc-block-cart-item__prices */
+.wc-block-cart-item__prices .price.wc-block-components-product-price {
+  display: none !important;
+}
+
+/* Group product details by group number in mini-cart, remove space between fields in a group, add space between groups (works for any group number) */
+.wc-block-components-product-details [class^="wc-block-components-product-details__group-"],
+.wc-block-components-product-details [class*=" wc-block-components-product-details__group-"] {
+  margin-top: 1em;
+}
+
+.wc-block-components-product-details [class^="wc-block-components-product-details__group-"]:first-child,
+.wc-block-components-product-details [class*=" wc-block-components-product-details__group-"]:first-child {
+  margin-top: 0;
+}
+
+.wc-block-components-product-details li {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* Add a little space after the last field in each group for clarity */
+.wc-block-components-product-details__quantity {
+  margin-bottom: 0.75em;
+}
+
+/* Hide cart count on product and cart pages */
+.single-product #cart-count,
+.woocommerce-cart #cart-count,
+.cart #cart-count {
+  display: none !important;
 }
