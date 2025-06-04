@@ -1111,6 +1111,8 @@ function send_id_for_add_cart(){
         try {
             $item_count = count( WC()->cart->get_cart() ) ;
             $cart = $_POST['item'];
+						$merchi_cart_json = $cart['merchiCartJson'];
+						$merchi_cart_token = $merchi_cart_json['token'];
             error_log('Cart data: ' . print_r($cart, true));
             
             if (!isset($cart['cartId'])) {
@@ -1118,7 +1120,8 @@ function send_id_for_add_cart(){
                 echo json_encode(array('success' => false, 'error' => 'No cartId provided'));
                 exit;
             }
-            
+
+
             $cartId = $cart['cartId'];
             $taxAmount = $cart['taxAmount'];
             if(!isset($cart['cartItems'])){
@@ -1236,10 +1239,10 @@ function send_id_for_add_cart(){
             echo json_encode(array('success' => true));
             // --- Merchi PATCH integration ---
             // Build Merchi cart payload (example: you may need to adjust this structure)
-            // $merchi_cart_payload = array(
-            //     'cartItem' => $cartItem,
-            //     // Add other fields as needed
-            // );
+						$merchi_cart_payload = array(
+						    'cartItem' => $cartItem,
+						    // Add other fields as needed
+						);
             // Get cart token from cookie (or wherever it is stored)
             $cart_token = null;
             if (isset($_COOKIE['cart-'.MERCHI_DOMAIN])) {
@@ -1250,7 +1253,7 @@ function send_id_for_add_cart(){
             }
 
             if ($cart_token) {
-                $patch_response = patch_merchi_cart($cartId, $cart_token, $merchi_cart_payload);
+                $patch_response = patch_merchi_cart($cartId, $cart_token, $merchi_cart_json);
                 // Optionally, handle/log the response or errors
             } else {
                 error_log('Merchi PATCH skipped: cart_token not found');

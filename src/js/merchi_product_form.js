@@ -969,13 +969,14 @@ function initializeWhenReady() {
         // Get the cart in local storage
         const merchiCart = localStorage.getItem('MerchiCart');
         let merchiCartJson;
+        let updatedCart;
         try {
           // Convert the cart to JSON
           merchiCartJson = JSON.parse(merchiCart);
           cartId = merchiCartJson.id;
           // Add the new item to the cart
           const cartItems = [...merchiCartJson.cartItems, formData];
-          const updatedCart = {...merchiCartJson, cartItems};
+          updatedCart = {...merchiCartJson, cartItems};
           localStorage.setItem('MerchiCart', JSON.stringify(updatedCart));
         } catch (error) {
           console.error('Error parsing MerchiCart:', error);
@@ -989,7 +990,8 @@ function initializeWhenReady() {
           subTotal: formData.cost || 0,
           totalCost: formData.totalCost || 0,
           variations: [],
-          objExtras: []
+          objExtras: [],
+          merchiCartJson: updatedCart,
         });
 
         // Map group variations (variationsGroups)
