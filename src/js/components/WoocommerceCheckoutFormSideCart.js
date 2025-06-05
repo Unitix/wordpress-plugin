@@ -7,6 +7,7 @@ export default function WoocommerceCheckoutFormSideCart() {
     e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Crect width="100" height="100" fill="%23cccccc"/%3E%3Cpath d="M65,45 L65,40 L60,40 L60,35 L40,35 L40,40 L35,40 L35,65 L65,65 L65,45 Z M60,45 L60,60 L40,60 L40,45 L45,45 L45,40 L55,40 L55,45 L60,45 Z" fill="%23888888"/%3E%3C/svg%3E';
   };
 
+
   return (
     <div className='wc-block-components-sidebar wc-block-checkout__sidebar wp-block-woocommerce-checkout-totals-block is-sticky is-large'>
       <div className="wp-block-woocommerce-checkout-order-summary-block">

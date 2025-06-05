@@ -320,6 +320,8 @@ const WoocommerceCheckoutForm = () => {
               <ShippingOptions
                 shipmentGroups={shipmentGroups}
                 shipmentOptionsLoading={shipmentOptionsLoading}
+                register={register}
+                errors={errors}
               />
               <div className="wc-block-checkout__order-notes wp-block-woocommerce-checkout-order-note-block wc-block-components-checkout-step" id="order-notes">
                 <div className="wc-block-components-checkout-step__container">
