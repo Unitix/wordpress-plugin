@@ -25,7 +25,7 @@ function initializeWhenReady() {
     return;
   }
 
-  jQuery(document).ready(function($) {
+  jQuery(document).ready(function ($) {
     const merchiProductId = merchiConfig.productId;
     let productJson = {};
     let defaultJobJson = {};
@@ -58,7 +58,7 @@ function initializeWhenReady() {
     function fetchProductDetails() {
       return new Promise((resolve) => {
         const productEnt = new merchiSdk.Product().id(merchiProductId);
-        
+
         productEnt.get(
           (product) => {
             productJson = merchiSdk.toJson(product);
@@ -74,10 +74,10 @@ function initializeWhenReady() {
           (error) => {
             const fallbackData = {
               id: parseInt(merchiProductId),
-              domain: {id: merchiConfig.domainId},
+              domain: { id: merchiConfig.domainId },
               defaultJob: {
-                domain: {id: merchiConfig.domainId},
-                product: {id: merchiProductId},
+                domain: { id: merchiConfig.domainId },
+                product: { id: merchiProductId },
                 variations: [],
                 variationsGroups: []
               }
@@ -91,14 +91,14 @@ function initializeWhenReady() {
             component: {},
             defaultJob: {},
             domain: {
-              activeTheme: {mainCss: {}},
+              activeTheme: { mainCss: {} },
               logo: {}
             },
-            draftTemplates: {file: {}},
+            draftTemplates: { file: {} },
             groupBuyStatus: {},
-            groupVariationFields: {options: {linkedFile: {}}},
+            groupVariationFields: { options: { linkedFile: {} } },
             images: {},
-            independentVariationFields: {options: {linkedFile: {}}},
+            independentVariationFields: { options: { linkedFile: {} } },
             publicFiles: {},
           },
         );
@@ -110,12 +110,12 @@ function initializeWhenReady() {
     let lastCalculationTime = 0;
     const DEBOUNCE_DELAY = 300; // 300ms debounce
     const MIN_CALCULATION_INTERVAL = 500; // Minimum 500ms between calculations
-      
+
     // Function to debounce price calculations with rate limiting
     function debouncedCalculatePrice() {
       const now = Date.now();
       clearTimeout(priceCalculationTimeout);
-      
+
       // If we recently calculated, delay more
       if (now - lastCalculationTime < MIN_CALCULATION_INTERVAL) {
         priceCalculationTimeout = setTimeout(() => {
@@ -124,7 +124,7 @@ function initializeWhenReady() {
         }, DEBOUNCE_DELAY);
         return;
       }
-      
+
       // If enough time has passed, calculate immediately
       lastCalculationTime = now;
       calculateAndUpdatePrice();
@@ -167,7 +167,7 @@ function initializeWhenReady() {
           groupCost = 0,
         } = variationsGroups[i];
 
-        jQuery('label[data-update-label="true"][data-group-index="' + i + '"]').each(function() {
+        jQuery('label[data-update-label="true"][data-group-index="' + i + '"]').each(function () {
           const $label = jQuery(this);
           const variationFieldId = $label.data('variation-field-id');
           const variation = variations.find(v => v.variationField?.id === variationFieldId);
@@ -178,16 +178,16 @@ function initializeWhenReady() {
         $groupCostDisplay
           .attr('data-group-cost', groupCost)
           .text('Group Cost: $' + groupCost.toFixed(2));
-        
+
         // Update the closest group number
         const $groupFieldSet = $groupCostDisplay.closest('.group-field-set');
         $groupFieldSet.find('.group-number').text(i + 1);
-        
+
         // Update the unit price display
         $groupFieldSet.find('.group-unit-price').text('( $' + costPerUnit.toFixed(2) + ' per unit )');
       }
 
-      jQuery('label[data-update-label="true"][data-group-index="false"]').each(function() {
+      jQuery('label[data-update-label="true"][data-group-index="false"]').each(function () {
         const $label = jQuery(this);
         const variationFieldId = $label.data('variation-field-id');
         const variation = variations.find(v => v.variationField?.id === variationFieldId);
@@ -203,19 +203,19 @@ function initializeWhenReady() {
     }
 
     function initializeFileUploadVariations($container) {
-      $container.find('input[type="file"]').each(function() {
+      $container.find('input[type="file"]').each(function () {
         const $input = jQuery(this);
         const $wrapper = $input.closest('.custom-upload-wrapper');
         let $previewArea = $wrapper.next('.multi-file-upload-preview');
-        
+
         if ($previewArea.length === 0) {
           $previewArea = jQuery('<div class="multi-file-upload-preview"></div>');
           $wrapper.after($previewArea);
         }
 
-        $input.off('change.file-input').on('change.file-input', async function(e) {
+        $input.off('change.file-input').on('change.file-input', async function (e) {
           var files = Array.from(this.files);
-          
+
           // --- Maintain a DataTransfer object for this input ---
           if (!$input[0]._dt) {
             $input[0]._dt = new DataTransfer();
@@ -232,19 +232,19 @@ function initializeWhenReady() {
                 break;
               }
             }
-            
+
             if (!exists) {
               try {
                 // Upload file to Merchi first
                 const merchiFile = await uploadFileToMerchi(file);
                 const merchiFileJson = merchiSdk.toJson(merchiFile);
-                
+
                 // Add to DataTransfer
                 dt.items.add(file);
-                
+
                 // Create file box with Merchi data
                 var $fileBox = jQuery('<div class="multi-file-box" style="display: flex; align-items: center; margin-bottom: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 8px;"></div>');
-                
+
                 // Add Merchi file data attributes
                 $fileBox.attr({
                   'data-merchi-file': JSON.stringify(merchiFileJson),
@@ -254,10 +254,10 @@ function initializeWhenReady() {
                 });
 
                 var $removeBtn = jQuery('<span class="file-upload-remove" style="margin-left: 10px; cursor: pointer; font-size: 20px; color: #d00;">&times;</span>');
-                $removeBtn.on('click', function(e) {
+                $removeBtn.on('click', function (e) {
                   e.stopPropagation();
                   var newDT = new DataTransfer();
-                  Array.from(dt.files).forEach(function(f, i) {
+                  Array.from(dt.files).forEach(function (f, i) {
                     if (f.name !== file.name || f.size !== file.size) {
                       newDT.items.add(f);
                     }
@@ -294,10 +294,10 @@ function initializeWhenReady() {
 
                 var $fileName = jQuery('<span style="font-weight: bold; font-size:0.5em; color: #333;">' + file.name + '</span>');
                 var $downloadBtn = jQuery('<a style="margin-left: 10px; font-size: 18px; text-decoration: none;" href="' + merchiFileJson.downloadUrl + '" download>⬇️</a>');
-                
+
                 $fileBox.append($fileName).append($downloadBtn).append($removeBtn);
                 $previewArea.append($fileBox);
-                
+
                 // Update file count display
                 updateFileCount($previewArea);
               } catch (error) {
@@ -307,10 +307,10 @@ function initializeWhenReady() {
               }
             }
           }
-          
+
           // Update input files
           $input[0].files = dt.files;
-          
+
           // Always show icon and instruction
           $wrapper.find('.upload-icon').show();
           $wrapper.find('.upload-instruction, .upload-types').show();
@@ -322,18 +322,18 @@ function initializeWhenReady() {
     function updateFileCount($previewArea) {
       const fileCount = $previewArea.find('.multi-file-box').length;
       let $count = $previewArea.find('.file-count-display');
-      
+
       if ($count.length === 0) {
         $count = jQuery('<div class="file-count-display" style="color: #666; font-size: 14px; font-weight:bold; margin-top: 4px;"></div>');
         $previewArea.append($count);
       }
-      
+
       $count.html(
-        fileCount + ' file' + (fileCount > 1 ? 's' : '') + 
+        fileCount + ' file' + (fileCount > 1 ? 's' : '') +
         ' selected <span style="cursor:pointer;color:#0073aa;" class="toggle-file-list">&#9650;</span>'
       );
-      
-      $count.find('.toggle-file-list').off('click').on('click', function() {
+
+      $count.find('.toggle-file-list').off('click').on('click', function () {
         $previewArea.toggleClass('collapsed');
         $previewArea.find('.multi-file-box').toggle();
         jQuery(this).html($previewArea.hasClass('collapsed') ? '&#9660;' : '&#9650;');
@@ -357,15 +357,15 @@ function initializeWhenReady() {
       jQuery(document).off('click', '.delete-group-button');
 
       // add loop here
-      jQuery('.custom-field input, .custom-field select, .custom-field textarea, .custom-variation-options input, .custom-variation-options select, .custom-variation-options textarea').each(function() {
+      jQuery('.custom-field input, .custom-field select, .custom-field textarea, .custom-variation-options input, .custom-variation-options select, .custom-variation-options textarea').each(function () {
         const $input = jQuery(this);
         if ($input.attr('data-calculate')) {
-          $input.on('change', function() {
+          $input.on('change', function () {
             debouncedCalculatePrice();
           });
         }
       });
-      
+
       // Handle quantity changes immediately without debounce
       jQuery(document).on('change', '.group-quantity', calculateAndUpdatePrice);
 
@@ -373,7 +373,7 @@ function initializeWhenReady() {
       jQuery(document).on('input', '.group-quantity', calculateAndUpdatePrice);
 
       // Add group button handler
-      jQuery('#add-group-button').on('click', function(e) {
+      jQuery('#add-group-button').on('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
         addNewGroup();
@@ -395,7 +395,7 @@ function initializeWhenReady() {
 
       //   $input.off('change.file-input').on('change.file-input', function(e) {
       //     var files = Array.from(this.files);
-          
+
       //     // --- Maintain a DataTransfer object for this input ---
       //     if (!$input[0]._dt) {
       //       $input[0]._dt = new DataTransfer();
@@ -489,10 +489,10 @@ function initializeWhenReady() {
     }
 
     function initializeImageSelectVariations($container) {
-      $container.find('.image-select-option').each(function() {
+      $container.find('.image-select-option').each(function () {
         const $option = jQuery(this);
         const $input = $option.find('input');
-        $option.off('click.image-select').on('click.image-select', function(e) {
+        $option.off('click.image-select').on('click.image-select', function (e) {
           e.preventDefault();
           if ($input.is(':radio')) {
             $input.prop('checked', true).trigger('change');
@@ -504,7 +504,7 @@ function initializeWhenReady() {
     }
 
     function initializeVariationFields($container) {
-      $container.find('input[data-calculate], select[data-calculate], textarea[data-calculate]').each(function() {
+      $container.find('input[data-calculate], select[data-calculate], textarea[data-calculate]').each(function () {
         const $input = jQuery(this);
         $input.off('change.calculate'); // Remove previous handler
         $input.on('change.calculate', debouncedCalculatePrice);
@@ -531,21 +531,21 @@ function initializeWhenReady() {
     }
 
     // Get the Merchi product ID from the page
-    jQuery('#get-quote-button').on('click', async function() {
+    jQuery('#get-quote-button').on('click', async function () {
       const formData = await gatherFormData();
-      window.toggleMerchiCheckout({...formData});
+      window.toggleMerchiCheckout({ ...formData });
     });
 
     // When deleteing a group we update each group index and name
     function updateGroupNumbers() {
-      jQuery(".group-field-set").each(function(index) {
+      jQuery(".group-field-set").each(function (index) {
         const newIndex = index + 1;
         const $group = jQuery(this);
-        
+
         $group.attr("data-group-index", newIndex);
         $group.find(".group-number").text(newIndex);
-        
-        $group.find("input, select, textarea").each(function() {
+
+        $group.find("input, select, textarea").each(function () {
           const $input = jQuery(this);
           const name = $input.attr("name");
           if (name) {
@@ -557,7 +557,7 @@ function initializeWhenReady() {
           const { costPerUnit = 0 } = defaultJobJson;
           if ($input.hasClass('group-quantity')) {
             $input.attr('data-group-index', index);
-      
+
             $input.closest('.custom-field')
               .find('label')
               .text('Quantity ($' + costPerUnit.toFixed(2) + ' per unit)');
@@ -606,7 +606,7 @@ function initializeWhenReady() {
       // Initialize image select options
       initializeImageSelectVariations($variationsContainer);
     }
-  
+
     // Function to add a new group
     const addNewGroup = () => {
       // Use the cloned default values
@@ -616,7 +616,7 @@ function initializeWhenReady() {
       const { quantity = 1, variations = [] } = defaultGroup;
 
       // Always use the first fully structured group as the template
-      const $firstGroup = jQuery('.group-field-set').filter(function() {
+      const $firstGroup = jQuery('.group-field-set').filter(function () {
         return jQuery(this).find('.custom-field').length > 0;
       }).first();
 
@@ -633,7 +633,7 @@ function initializeWhenReady() {
       const $newGroup = $firstGroup.clone();
 
       // Defensive: Remove any direct text nodes that are just numbers
-      $newGroup.contents().filter(function() {
+      $newGroup.contents().filter(function () {
         return this.nodeType === 3 && /^\d+$/.test(this.nodeValue.trim());
       }).remove();
 
@@ -649,7 +649,7 @@ function initializeWhenReady() {
       $newGroup.find(".group-number").text(newGroupIndex);
 
       // in the new group find all the data-group-index + 1
-      $newGroup.find('[data-group-index]').each(function() {
+      $newGroup.find('[data-group-index]').each(function () {
         const $element = jQuery(this);
         $element.attr('data-group-index', newGroupIndex);
       });
@@ -658,7 +658,7 @@ function initializeWhenReady() {
         .attr('data-group-index', newGroupIndex).text('');
 
       // Update all form elements in the new group and apply default values
-      $newGroup.find("input, select, textarea").each(function() {
+      $newGroup.find("input, select, textarea").each(function () {
         const $input = jQuery(this);
         let name = $input.attr("name");
         if (name) {
@@ -795,7 +795,7 @@ function initializeWhenReady() {
       jQuery('.add-group-button').off('click');
 
       // Add group button handler
-      jQuery('.add-group-button').on('click', function(e) {
+      jQuery('.add-group-button').on('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
         addNewGroup();
@@ -805,20 +805,20 @@ function initializeWhenReady() {
         // if the product has no group variation fields then we update the value of the quantity
         // field to the productJson.defaultJob.quantity and also set event listners to the quantity field
         const $quantityInput = jQuery('input.qty');
-        
+
         if ($quantityInput.length > 0) {
           $quantityInput.val(productJson.defaultJob.quantity);
-          
+
           // Remove any existing handlers
           $quantityInput.off('change');
-          
+
           // Add the new handler
-          $quantityInput.on('change', function(e) {
+          $quantityInput.on('change', function (e) {
             calculateAndUpdatePrice();
           });
-          
+
           // Also bind to input event for immediate feedback
-          $quantityInput.on('input', function(e) {
+          $quantityInput.on('input', function (e) {
             calculateAndUpdatePrice();
           });
         }
@@ -827,7 +827,7 @@ function initializeWhenReady() {
 
     // Function to process variations from a container
     function processVariations($container, variationsArray) {
-      $container.find('.custom-field').each(function() {
+      $container.find('.custom-field').each(function () {
         const $fieldContainer = jQuery(this);
         const $input = $fieldContainer.find('input, select, textarea').first();
         const variationFieldData = $input.data('variation-field');
@@ -849,7 +849,7 @@ function initializeWhenReady() {
           // Collect all checked values as an array
           const $checked = $fieldContainer.find('input[type="checkbox"]:checked');
           if ($checked.length > 1) {
-            value = $checked.map(function() { return $(this).val(); }).get();
+            value = $checked.map(function () { return $(this).val(); }).get();
           } else if ($checked.length === 1) {
             value = $checked.val();
           } else {
@@ -866,10 +866,10 @@ function initializeWhenReady() {
           const variationFiles = [];
 
           // Process each file box in the preview area
-          $previewArea.find('.multi-file-box').each(function() {
+          $previewArea.find('.multi-file-box').each(function () {
             const $fileBox = jQuery(this);
             const merchiFileData = $fileBox.attr('data-merchi-file');
-            
+
             if (merchiFileData) {
               try {
                 const merchiFile = JSON.parse(merchiFileData);
@@ -913,12 +913,12 @@ function initializeWhenReady() {
 
       // Process group variations
       if (groupVariationFields && groupVariationFields.length > 0) {
-        jQuery('.group-field-set').each(function(groupIndex) {
+        jQuery('.group-field-set').each(function (groupIndex) {
           const $group = jQuery(this);
           const groupVariations = [];
 
           // For each field in this group, get the field ID and value
-          $group.find('.custom-field').each(function() {
+          $group.find('.custom-field').each(function () {
             const $input = jQuery(this).find('input, select, textarea').first();
             const variationFieldData = $input.data('variation-field');
             if (!variationFieldData) return;
@@ -933,7 +933,7 @@ function initializeWhenReady() {
               // Collect all checked values as an array
               const $checked = $group.find('input[type="checkbox"]:checked');
               if ($checked.length > 1) {
-                value = $checked.map(function() { return $(this).val(); }).get();
+                value = $checked.map(function () { return $(this).val(); }).get();
               } else if ($checked.length === 1) {
                 value = $checked.val();
               } else {
@@ -948,7 +948,7 @@ function initializeWhenReady() {
               // Find the preview area next to the file input wrapper
               const $previewArea = $input.closest('.custom-upload-wrapper').next('.multi-file-upload-preview');
               const variationFiles = [];
-              $previewArea.find('.multi-file-box').each(function() {
+              $previewArea.find('.multi-file-box').each(function () {
                 const $fileBox = jQuery(this);
                 const merchiFileData = $fileBox.attr('data-merchi-file');
                 if (merchiFileData) {
@@ -992,13 +992,13 @@ function initializeWhenReady() {
     // Function to initialgize
     function initialize() {
       fetchProductDetails()
-      .then(() => {
-        initializeHandlers();
-        calculateAndUpdatePrice();
-      })
-      .catch(error => {
-        initializeHandlers();
-      });
+        .then(() => {
+          initializeHandlers();
+          calculateAndUpdatePrice();
+        })
+        .catch(error => {
+          initializeHandlers();
+        });
     }
 
     // Remove any existing initialization
@@ -1011,7 +1011,7 @@ function initializeWhenReady() {
     initialize();
 
     // Move the click handler here so gatherFormData is in scope
-    $(document).on('click', '.single_add_to_cart_button', async function(e) {
+    $(document).on('click', '.single_add_to_cart_button', async function (e) {
       e.preventDefault();
       e.stopImmediatePropagation(); // Ensure only this handler runs
       // Validate form before proceeding
@@ -1042,12 +1042,12 @@ function initializeWhenReady() {
             ...merchiCartJson,
             cartItems: cartItems.map(item => ({
               ...item,
-              product: {id: item.product.id},
-              taxType: item.taxType ? {id: item.taxType.id} : undefined,
+              product: { id: item.product.id },
+              taxType: item.taxType ? { id: item.taxType.id } : undefined,
               variations: item.variations,
               variationsGroups: item.variationsGroups,
             })),
-            domain: {id: merchiCartJson?.domain?.id},
+            domain: { id: merchiCartJson?.domain?.id },
           };
           localStorage.setItem('MerchiCart', JSON.stringify(updatedCartJson)); //use the patchcart method here from merchi_public_custom.js
         } catch (error) {
@@ -1132,13 +1132,13 @@ function initializeWhenReady() {
             sessionStorage.setItem('merchiCartSuccess', '1');
             // Reload the page and scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });
-            // window.location.reload();
+            window.location.reload();
             // Do NOT show the success message here
             // Do NOT submit the form here
             // Cart fragment refresh will happen on reload
           },
           error: function (jqXHR, textStatus, errorThrown) {
-            console.error('AJAX Error!', {jqXHR, textStatus, errorThrown});
+            console.error('AJAX Error!', { jqXHR, textStatus, errorThrown });
             setLoadingState(false);
             if (jqXHR && jqXHR.responseText) {
               console.error('AJAX Error Response Text:', jqXHR.responseText);
@@ -1161,8 +1161,8 @@ function initializeWhenReady() {
     }
 
     // Remove malformed group-field-set elements on page load (run ASAP)
-    jQuery(function() {
-      jQuery('.group-field-set').each(function() {
+    jQuery(function () {
+      jQuery('.group-field-set').each(function () {
         if (jQuery(this).find('.custom-field').length === 0) {
           jQuery(this).remove();
         }
@@ -1170,7 +1170,7 @@ function initializeWhenReady() {
     });
 
     // Debug: Log whenever a new .group-field-set is added to the DOM
-    jQuery(function() {
+    jQuery(function () {
       const observer = new MutationObserver(mutations => {
         mutations.forEach(mutation => {
           mutation.addedNodes.forEach(node => {
@@ -1191,13 +1191,13 @@ initializeWhenReady();
 function validateForm() {
   const errors = [];
   const $form = jQuery('.merchi-product-form');
-  
+
   // Validate required fields
-  $form.find('.custom-field[data-required="true"]').each(function() {
+  $form.find('.custom-field[data-required="true"]').each(function () {
     const $container = jQuery(this);
     const $input = $container.find('input, select, textarea').first();
     const fieldName = $input.data('field-name') || 'Field';
-    
+
     if ($input.is('input[type="radio"], input[type="checkbox"]')) {
       const $checked = $container.find('input:checked');
       if ($checked.length === 0) {
@@ -1215,7 +1215,7 @@ function validateForm() {
   });
 
   // Validate quantities
-  jQuery('.group-quantity').each(function() {
+  jQuery('.group-quantity').each(function () {
     const $input = jQuery(this);
     const quantity = parseInt($input.val());
     if (isNaN(quantity) || quantity < 1) {

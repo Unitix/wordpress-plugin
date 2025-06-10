@@ -1,5 +1,6 @@
 import { MERCHI_SDK } from './merchi_sdk';
 import { cartEmbed, getCookieByName } from './utils';
+import('./merchi_cart_sync.js');
 
 const MERCHI = MERCHI_SDK();
 // const site_url = scriptData.site_url
@@ -277,6 +278,9 @@ async function initOrSyncCart() {
       const localCartStringified = JSON.stringify(localCartData);
       const serverCartStringified = JSON.stringify(serverCartDataForCompare);
 
+      console.log("MERCHI_LOG: localCartStringified", localCartStringified);
+      console.log("MERCHI_LOG: serverCartStringified", serverCartStringified);
+
       if (localCartStringified !== serverCartStringified) {
         try {
           // Use the server version as the source of truth
@@ -516,6 +520,15 @@ function showSuccessMessage() {
 //   }
 // });
 
+
+// function mapCartKeyToSku(cartItemKey) {
+//   try {
+//     const data = JSON.parse(localStorage.storeApiCartData || '{}');
+//     const hit = (data.items || []).find(it => it.key === cartItemKey);
+//     return hit ? String(hit.sku ?? hit.product_id ?? hit.id) : null;
+//   } catch { return null; }
+// }
+
 // Function to handle cart item removal
 async function handleCartItemRemoval(cartItemKey) {
   const cartLockKey = 'merchi_cart_operation_lock';
@@ -593,6 +606,11 @@ jQuery(document).on('removed_from_cart', function (event, cartItemKey) {
   handleCartItemRemoval(cartItemKey);
 });
 
+document.addEventListener('wc-blocks_removed_from_cart', function (e) {
+  const key = e.detail?.cartItemKey || e.detail?.itemKey;
+  if (key) handleCartItemRemoval(key);
+});
+
 // Function to handle Merchi cart item removal response
 function handleMerchiCartItemRemoved(response) {
   if (response.success && response.data.event === 'merchi_cart_item_removed') {
@@ -662,3 +680,4 @@ jQuery(document).ajaxSuccess(function (event, xhr, settings) {
 setInterval(() => {
   COOKIE_MANAGER.syncWithLocalStorage();
 }, 60000); // Check every minute
+

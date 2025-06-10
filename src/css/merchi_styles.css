@@ -1539,7 +1539,7 @@ body.single-product #cart-count {
 }
 
 #shipmentList>li>.wc-block-components-checkout-step__description {
-  margin-bottom: .2rem;
+  margin-bottom: .5rem;
 }
 
 .shipping-options-loading {
