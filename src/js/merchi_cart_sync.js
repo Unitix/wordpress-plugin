@@ -2,18 +2,6 @@ import { patchCart } from './merchi_public_custom.js';
 
 const PATCH_DISABLED = false;
 
-function logCartCounts(label = '') {
-  try {
-    const merchiLen = JSON.parse(localStorage.MerchiCart || '{}')
-      .cartItems?.length ?? 'N/A';
-    const wooLen = JSON.parse(localStorage.storeApiCartData || '{}')
-      .items?.length ?? 'N/A';
-    console.log(`[MerchiSync] ${label}  MerchiCart:${merchiLen}  storeApiCartData:${wooLen}`);
-  } catch (e) {
-    console.warn('[MerchiSync] logCartCounts error:', e);
-  }
-}
-
 // SKU Filtering && clear cart Logic
 function reconcileMerchiWithStore({ items }) {
   if (!Array.isArray(items)) return;
@@ -28,11 +16,8 @@ function reconcileMerchiWithStore({ items }) {
     merchi.cartItems = [];
     localStorage.setItem('MerchiCart', JSON.stringify(merchi));
     try { window.COOKIE_MANAGER?.syncWithLocalStorage?.(); } catch { }
-    console.log('[MerchiSync] after reconcile (cart emptied)');
-    logCartCounts('after reconcile');
     if (!PATCH_DISABLED) {
       patchCart(merchi)
-        .then(() => console.log('[MerchiSync] PATCH OK - cart emptied'))
         .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
     }
     return;
@@ -52,11 +37,8 @@ function reconcileMerchiWithStore({ items }) {
 
   localStorage.setItem('MerchiCart', JSON.stringify(merchi));
   try { window.COOKIE_MANAGER?.syncWithLocalStorage?.(); } catch { }
-  console.log('[MerchiSync] after reconcile');
-  logCartCounts('after reconcile');
   if (!PATCH_DISABLED) {
     patchCart(merchi)
-      .then(() => console.log('[MerchiSync] PATCH OK - items filtered'))
       .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
   }
 }
@@ -74,7 +56,6 @@ setInterval(() => {
 
   // woo has items && now empty: clear merchi cart
   if (len === 0 && prevLen > 0) {
-    console.log('[POLL] Woo items len = 0 → empty cart');
     reconcileMerchiWithStore({ items: [] });
     prevLen = 0;
     lastSignature = '';
@@ -84,7 +65,6 @@ setInterval(() => {
   const sig = JSON.stringify(items.map(i => [i.sku, i.quantity]).sort());
   if (sig !== lastSignature) {
     lastSignature = sig;
-    console.log('[POLL] Woo items len =', len);
     reconcileMerchiWithStore({ items });
   }
   prevLen = len;
