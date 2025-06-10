@@ -1,5 +1,6 @@
 import { MERCHI_SDK } from './merchi_sdk';
 import { cartEmbed, getCookieByName } from './utils';
+import('./merchi_cart_sync.js');
 
 const MERCHI = MERCHI_SDK();
 // const site_url = scriptData.site_url
@@ -11,7 +12,7 @@ const COOKIE_MANAGER = {
   // Cookie names
   CART_COOKIE: `cart-${scriptData.merchi_domain}`,
   CART_ID_COOKIE: 'cstCartId',
-  
+
   // Set cookie with proper domain and path
   setCookie(name, value, days) {
     const date = new Date();
@@ -72,11 +73,11 @@ async function localStorageUpdateCartEnt(cartEnd) {
 export async function patchCart(cartJson, embed = cartEmbed) {
   const cleanedCartJson = {
     ...cartJson,
-    domain: {id: cartJson.domain.id},
+    domain: { id: cartJson.domain.id },
     cartItems: cartJson.cartItems.map(item => ({
       ...item,
-      product: {id: item.product.id},
-      taxType: item.taxType ? {id: item.taxType.id} : undefined,
+      product: { id: item.product.id },
+      taxType: item.taxType ? { id: item.taxType.id } : undefined,
       variations: item.variations,
       variationsGroups: item.variationsGroups,
     })),
@@ -519,7 +520,7 @@ function showSuccessMessage() {
 // Function to handle cart item removal
 async function handleCartItemRemoval(cartItemKey) {
   const cartLockKey = 'merchi_cart_operation_lock';
-  
+
   // Check if another cart operation is in progress
   if (localStorage.getItem(cartLockKey)) {
     console.warn("MERCHI_LOG: Another cart operation is in progress. Waiting...");
@@ -541,28 +542,28 @@ async function handleCartItemRemoval(cartItemKey) {
     }
 
     const cartJson = JSON.parse(merchiCart);
-    
+
     // Store the current cart state for potential rollback
     const currentCartState = merchiCart;
-    
+
     // Filter out the removed item from cartItems
     cartJson.cartItems = cartJson.cartItems.filter(item => item.id !== cartItemKey);
-    
+
     try {
       // Update the cart using patchCart
       await patchCart(cartJson);
-      
+
       // If cart is empty, clear both localStorage and cookies
       if (cartJson.cartItems.length === 0) {
         localStorage.removeItem('MerchiCart');
         COOKIE_MANAGER.clearCartCookies();
       }
-      
+
       // Trigger a refresh of the cart fragments
       jQuery(document.body).trigger("wc_fragment_refresh");
     } catch (error) {
       console.error('Error updating cart:', error);
-      
+
       // Attempt rollback if the update fails
       try {
         localStorage.setItem('MerchiCart', currentCartState);
@@ -570,7 +571,7 @@ async function handleCartItemRemoval(cartItemKey) {
       } catch (rollbackError) {
         console.error('Failed to rollback cart state:', rollbackError);
       }
-      
+
       // Show error message to user
       jQuery(document.body).trigger('wc_add_to_cart_error', [{
         message: 'Failed to update cart. Please try again.'
@@ -589,7 +590,7 @@ async function handleCartItemRemoval(cartItemKey) {
 }
 
 // Add event listener for cart item removal
-jQuery(document).on('removed_from_cart', function(event, cartItemKey) {
+jQuery(document).on('removed_from_cart', function (event, cartItemKey) {
   handleCartItemRemoval(cartItemKey);
 });
 
@@ -597,7 +598,7 @@ jQuery(document).on('removed_from_cart', function(event, cartItemKey) {
 function handleMerchiCartItemRemoved(response) {
   if (response.success && response.data.event === 'merchi_cart_item_removed') {
     const { item_id, cart_id, cart_length, item_data } = response.data;
-    
+
     // Get the current cart from localStorage
     const merchiCart = localStorage.getItem('MerchiCart');
     if (!merchiCart) {
@@ -607,10 +608,10 @@ function handleMerchiCartItemRemoved(response) {
 
     try {
       const cartJson = JSON.parse(merchiCart);
-      
+
       // Filter out the removed item from cartItems
       cartJson.cartItems = cartJson.cartItems.filter(item => item.id !== item_id);
-      
+
       // Update the cart using patchCart
       patchCart(cartJson).then(response => {
         if (!response.success) {
@@ -621,12 +622,12 @@ function handleMerchiCartItemRemoved(response) {
           }]);
           return;
         }
-        
+
         // If cart is empty, clear localStorage
         if (cart_length <= 1) {
           localStorage.removeItem('MerchiCart');
         }
-        
+
         // Trigger a refresh of the cart fragments
         jQuery(document.body).trigger("wc_fragment_refresh");
       }).catch(error => {
@@ -647,7 +648,7 @@ function handleMerchiCartItemRemoved(response) {
 }
 
 // Add event listener for the AJAX response
-jQuery(document).ajaxSuccess(function(event, xhr, settings) {
+jQuery(document).ajaxSuccess(function (event, xhr, settings) {
   try {
     const response = JSON.parse(xhr.responseText);
     if (response.success && response.data && response.data.event === 'merchi_cart_item_removed') {
@@ -662,3 +663,4 @@ jQuery(document).ajaxSuccess(function(event, xhr, settings) {
 setInterval(() => {
   COOKIE_MANAGER.syncWithLocalStorage();
 }, 60000); // Check every minute
+

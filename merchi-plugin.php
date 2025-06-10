@@ -1148,11 +1148,11 @@ function send_id_for_add_cart(){
             $cart = $_POST['item'];
             error_log('Cart data: ' . print_r($cart, true));
             
-            if (!isset($cart['cartId'])) {
-                error_log('Error: No cartId in cart data');
-                echo json_encode(array('success' => false, 'error' => 'No cartId provided'));
-                exit;
-            }
+            // if (!isset($cart['cartId'])) {
+            //     error_log('Error: No cartId in cart data');
+            //     echo json_encode(array('success' => false, 'error' => 'No cartId provided'));
+            //     exit;
+            // }
 
 			      $merchi_cart_json = $cart['merchiCartJson'];
 			      $merchi_cart_token = $merchi_cart_json['token'];

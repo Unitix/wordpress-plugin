@@ -645,29 +645,29 @@ span.round-tab:hover {
 }
 
 .image-select-checkmark {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: #000;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-    border: 2px solid #fff;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #000;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .image-select-checkmark:after {
-    content: "✓";
-    color: white;
-    font-size: 18px;
-    font-weight: bold;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  content: "✓";
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 .image-select-input:checked+.image-select-label .image-select-checkmark {
@@ -1081,12 +1081,12 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 }
 
 .add-group-button {
-    background-color: #0066cc;
-    transition: background-color 0.3s;
+  background-color: #0066cc;
+  transition: background-color 0.3s;
 }
 
 .add-group-button:hover {
-    background-color: #0052a3;
+  background-color: #0052a3;
 }
 
 .single_add_to_cart_button {
@@ -1121,7 +1121,7 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 }
 
 .delete-group-button {
-    background-color: #dc3545;
+  background-color: #dc3545;
 }
 
 .delete-group-button:hover {
@@ -1379,7 +1379,7 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   color: white;
   padding: 15px 25px;
   border-radius: 4px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
   z-index: 10;
   display: flex;
   align-items: center;
@@ -1387,16 +1387,19 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   animation: slideDown 0.5s ease-out;
   transition: opacity 1s ease-out;
 }
+
 .merchi-success-message a {
   color: white;
   text-decoration: underline;
   margin-left: 5px;
 }
+
 @keyframes slideDown {
   from {
     opacity: 0;
     transform: translateY(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1418,6 +1421,7 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   opacity: 0.8;
   transition: opacity 0.2s;
 }
+
 .merchi-success-close:hover,
 .merchi-success-close:focus {
   opacity: 1;
@@ -1430,26 +1434,117 @@ body.single-product #cart-count {
 
 /* Variation Details Styles */
 .item-variations {
-    margin: 8px 0;
-    font-size: 13px;
+  margin: 8px 0;
+  font-size: 13px;
 }
 
 .variation-detail {
-    margin: 4px 0;
-    color: #666;
-    line-height: 1.4;
+  margin: 4px 0;
+  color: #666;
+  line-height: 1.4;
 }
 
 .variation-label {
-    font-weight: 500;
-    color: #444;
+  font-weight: 500;
+  color: #444;
 }
 
 .variation-value {
-    color: #666;
+  color: #666;
 }
 
 .variation-quantity {
-    color: #888;
-    font-style: italic;
+  color: #888;
+  font-style: italic;
+}
+
+/* ShippingOptions */
+
+#shipmentList,
+#shipmentList ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.shipping-option {
+  margin-bottom: 1.5rem;
+}
+
+.shipping-code {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 300;
+  margin-top: .35rem;
+  margin-bottom: .35rem;
+  color: var(--wp--preset--color--contrast, #111111);
+}
+
+.shipping-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  height: 3rem;
+  padding: 1rem 0.75rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: var(--wc-form-border-radius, 4px);
+  cursor: pointer;
+  transition: box-shadow .2s;
+}
+
+.shipping-card:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
+}
+
+.shipping-card.selected {
+  border-color: #000;
+}
+
+.shipping-card::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  border: 2px solid #e0e0e0;
+  border-radius: 2px;
+  background: transparent;
+  transition: background-color .2s, border-color .2s;
+}
+
+.shipping-card.selected::after {
+  background: #000;
+  border-color: #000;
+  mask: url("data:image/svg+xml,%3Csvg fill='white' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6.173 11.414 3.05 8.293l-.707.707 3.828 3.828 7.78-7.78-.707-.708-7.071 7.071z'/%3E%3C/svg%3E") center/16px 16px no-repeat;
+}
+
+.shipping-radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.shipping-title {
+  font-size: 1rem;
+  color: #121212B2;
+  transition: color .2s;
+}
+
+.shipping-card.selected .shipping-title {
+  color: var(--wp--preset--color--contrast);
+}
+
+#shipmentList>li>.wc-block-components-checkout-step__description {
+  margin-bottom: .5rem;
+}
+
+.shipping-options-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 180px;
 }
