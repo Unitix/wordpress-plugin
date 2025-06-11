@@ -556,6 +556,10 @@ function initializeWhenReady() {
 
     // Get the Merchi product ID from the page
     jQuery('#get-quote-button').on('click', async function() {
+      if (!validateForm()) {
+        console.log('Form validation failed');
+        return;
+      }
       const formData = await gatherFormData();
       window.toggleMerchiCheckout({...formData});
     });
@@ -1237,18 +1241,21 @@ function validateForm() {
     const $container = jQuery(this);
     const $input = $container.find('input, select, textarea').first();
     const fieldName = $input.data('field-name') || 'Field';
-    
+    // Remove any previous per-field error message
+    $container.find('.field-error-message').remove();
     if ($input.is('input[type="radio"], input[type="checkbox"]')) {
       const $checked = $container.find('input:checked');
       if ($checked.length === 0) {
         errors.push(`${fieldName} is required`);
         $container.addClass('field-error');
+        $container.append(`<div class="field-error-message">${fieldName} is required</div>`);
       } else {
         $container.removeClass('field-error');
       }
     } else if (!$input.val()) {
       errors.push(`${fieldName} is required`);
       $input.addClass('field-error');
+      $input.after(`<div class="field-error-message">${fieldName} is required</div>`);
     } else {
       $input.removeClass('field-error');
     }
@@ -1272,7 +1279,7 @@ function validateForm() {
     if ($errorContainer.length === 0) {
       jQuery('<div class="form-error-container"></div>').insertAfter('.merchi-product-form');
     }
-    $errorContainer.html(errors.map(error => `<div class="form-error">${error}</div>`).join(''));
+    $errorContainer.html('<div class="form-error">Please enter the required fields</div>');
     return false;
   } else {
     $errorContainer.remove();
