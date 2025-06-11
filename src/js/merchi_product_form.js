@@ -232,51 +232,63 @@ function initializeWhenReady() {
                 break;
               }
             }
-            
             if (!exists) {
               try {
                 // Upload file to Merchi first
                 const merchiFile = await uploadFileToMerchi(file);
                 const merchiFileJson = merchiSdk.toJson(merchiFile);
-                
                 // Add to DataTransfer
                 dt.items.add(file);
-                
-                // Create file box with Merchi data
-                var $fileBox = jQuery('<div class="multi-file-box" style="display: flex; align-items: center; margin-bottom: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 8px;"></div>');
-                
-                // Add Merchi file data attributes
-                $fileBox.attr({
-                  'data-merchi-file': JSON.stringify(merchiFileJson),
-                  'data-download-url': merchiFileJson.downloadUrl,
-                  'data-view-url': merchiFileJson.viewUrl,
-                  'data-mimetype': merchiFileJson.mimetype
-                });
+                // Store Merchi file data on the file object for later preview rendering
+                file._merchiFileJson = merchiFileJson;
+              } catch (error) {
+                console.error('Error processing file:', error);
+                alert('Failed to upload file: ' + file.name);
+              }
+            }
+          }
 
-                var $removeBtn = jQuery('<span class="file-upload-remove" style="margin-left: 10px; cursor: pointer; font-size: 20px; color: #d00;">&times;</span>');
-                $removeBtn.on('click', function(e) {
-                  e.stopPropagation();
-                  var newDT = new DataTransfer();
-                  Array.from(dt.files).forEach(function(f, i) {
-                    if (f.name !== file.name || f.size !== file.size) {
-                      newDT.items.add(f);
-                    }
-                  });
-                  $input[0]._dt = newDT;
-                  $input[0].files = newDT.files;
-                  $fileBox.remove();
-                  if ($previewArea.find('.multi-file-box').length === 0) {
-                    $previewArea.empty();
-                  } else {
-                    updateFileCount($previewArea);
-                  }
-                  $input.trigger('change');
-                });
+          // Update input files
+          $input[0].files = dt.files;
 
-                if (file.type.startsWith('image/')) {
-                  // Use Merchi viewUrl for images
+          // Re-render the preview area to show all files in dt.files
+          $previewArea.empty();
+          Array.from(dt.files).forEach(function(file) {
+            var merchiFileJson = file._merchiFileJson;
+            if (!merchiFileJson) return; // Only show files with Merchi data
+            var $fileBox = jQuery('<div class="multi-file-box" style="display: flex; align-items: center; margin-bottom: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 8px;"></div>');
+            $fileBox.attr({
+              'data-merchi-file': JSON.stringify(merchiFileJson),
+              'data-download-url': merchiFileJson.downloadUrl,
+              'data-view-url': merchiFileJson.viewUrl,
+              'data-mimetype': merchiFileJson.mimetype
+            });
+            var $removeBtn = jQuery('<span class="file-upload-remove" style="margin-left: 10px; cursor: pointer; font-size: 20px; color: #d00;">&times;</span>');
+            $removeBtn.on('click', function(e) {
+              e.stopPropagation();
+              var newDT = new DataTransfer();
+              Array.from(dt.files).forEach(function(f) {
+                if (f.name !== file.name || f.size !== file.size) {
+                  newDT.items.add(f);
+                }
+              });
+              $input[0]._dt = newDT;
+              $input[0].files = newDT.files;
+              // Re-render preview area after removal
+              $previewArea.empty();
+              Array.from(newDT.files).forEach(function(f) {
+                var mfj = f._merchiFileJson;
+                if (!mfj) return;
+                var $fb = jQuery('<div class="multi-file-box" style="display: flex; align-items: center; margin-bottom: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 8px;"></div>');
+                $fb.attr({
+                  'data-merchi-file': JSON.stringify(mfj),
+                  'data-download-url': mfj.downloadUrl,
+                  'data-view-url': mfj.viewUrl,
+                  'data-mimetype': mfj.mimetype
+                });
+                if (f.type && f.type.startsWith('image/')) {
                   var $img = jQuery('<img />', {
-                    src: merchiFileJson.viewUrl,
+                    src: mfj.viewUrl,
                     css: {
                       'max-width': '60px',
                       'max-height': '60px',
@@ -286,31 +298,43 @@ function initializeWhenReady() {
                       'box-shadow': '0 1px 4px rgba(0,0,0,0.08)'
                     }
                   });
-                  $fileBox.prepend($img);
+                  $fb.prepend($img);
                 } else {
                   var $fileIcon = jQuery('<span style="font-size: 32px; margin-right: 10px;">📄</span>');
-                  $fileBox.prepend($fileIcon);
+                  $fb.prepend($fileIcon);
                 }
-
-                var $fileName = jQuery('<span style="font-weight: bold; font-size:0.5em; color: #333;">' + file.name + '</span>');
-                var $downloadBtn = jQuery('<a style="margin-left: 10px; font-size: 18px; text-decoration: none;" href="' + merchiFileJson.downloadUrl + '" download>⬇️</a>');
-                
-                $fileBox.append($fileName).append($downloadBtn).append($removeBtn);
-                $previewArea.append($fileBox);
-                
-                // Update file count display
-                updateFileCount($previewArea);
-              } catch (error) {
-                console.error('Error processing file:', error);
-                // Optionally show error to user
-                alert('Failed to upload file: ' + file.name);
-              }
+                var $fileName = jQuery('<span style="font-weight: bold; font-size:0.5em; color: #333;">' + f.name + '</span>');
+                var $downloadBtn = jQuery('<a style="margin-left: 10px; font-size: 18px; text-decoration: none;" href="' + mfj.downloadUrl + '" download>⬇️</a>');
+                $fb.append($fileName).append($downloadBtn);
+                $previewArea.append($fb);
+              });
+              updateFileCount($previewArea);
+              $input.trigger('change');
+            });
+            if (file.type && file.type.startsWith('image/')) {
+              var $img = jQuery('<img />', {
+                src: merchiFileJson.viewUrl,
+                css: {
+                  'max-width': '60px',
+                  'max-height': '60px',
+                  'object-fit': 'contain',
+                  'margin-right': '10px',
+                  'border-radius': '4px',
+                  'box-shadow': '0 1px 4px rgba(0,0,0,0.08)'
+                }
+              });
+              $fileBox.prepend($img);
+            } else {
+              var $fileIcon = jQuery('<span style="font-size: 32px; margin-right: 10px;">📄</span>');
+              $fileBox.prepend($fileIcon);
             }
-          }
-          
-          // Update input files
-          $input[0].files = dt.files;
-          
+            var $fileName = jQuery('<span style="font-weight: bold; font-size:0.5em; color: #333;">' + file.name + '</span>');
+            var $downloadBtn = jQuery('<a style="margin-left: 10px; font-size: 18px; text-decoration: none;" href="' + merchiFileJson.downloadUrl + '" download>⬇️</a>');
+            $fileBox.append($fileName).append($downloadBtn).append($removeBtn);
+            $previewArea.append($fileBox);
+          });
+          updateFileCount($previewArea);
+
           // Always show icon and instruction
           $wrapper.find('.upload-icon').show();
           $wrapper.find('.upload-instruction, .upload-types').show();
@@ -880,9 +904,8 @@ function initializeWhenReady() {
             }
           });
 
-          // Set both the value (file names) and variationFiles
-          value = variationFiles.map(file => file.id).join(',');
-          // Add the variationFiles array to the variation object
+          // Store the full file objects for cart and API
+          value = variationFiles;
           variationsArray[variationIndex].variationFiles = variationFiles;
         }
 
@@ -924,6 +947,7 @@ function initializeWhenReady() {
             if (!variationFieldData) return;
 
             let value = $input.val();
+            let variationFilesForGroup = undefined; // Initialize here
             // Handle checkboxes, radios, files, etc. as in your processVariations
             if ($input.is('select')) {
               value = $input.val();
@@ -960,7 +984,9 @@ function initializeWhenReady() {
                   }
                 }
               });
-              value = variationFiles.map(file => file.id).join(',');
+              // Store the full file objects for cart and API
+              value = variationFiles;
+              variationFilesForGroup = variationFiles;
             }
 
             groupVariations.push({
@@ -968,7 +994,8 @@ function initializeWhenReady() {
                 id: variationFieldData.id,
                 name: variationFieldData.name
               },
-              value: value
+              value: value,
+              ...(variationFilesForGroup ? { variationFiles: variationFilesForGroup } : {})
             });
           });
 
@@ -1080,7 +1107,20 @@ function initializeWhenReady() {
                   key = variation.variationField.id || variation.variationField.name || vi;
                 }
                 if (variation && (variation.value !== undefined)) {
-                  groupObj[key] = variation.value;
+                  // If this is a file upload field, store the full file object(s)
+                  if (
+                    Array.isArray(variation.value) &&
+                    variation.value.length > 0 &&
+                    variation.value[0] &&
+                    typeof variation.value[0] === 'object' &&
+                    variation.value[0].id &&
+                    variation.value[0].name &&
+                    variation.value[0].downloadUrl
+                  ) {
+                    groupObj[key] = variation.value; // Store array of file objects
+                  } else {
+                    groupObj[key] = variation.value;
+                  }
                 }
               });
             }
@@ -1132,7 +1172,7 @@ function initializeWhenReady() {
             sessionStorage.setItem('merchiCartSuccess', '1');
             // Reload the page and scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });
-            // window.location.reload();
+            window.location.reload();
             // Do NOT show the success message here
             // Do NOT submit the form here
             // Cart fragment refresh will happen on reload

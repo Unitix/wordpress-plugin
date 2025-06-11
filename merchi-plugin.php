@@ -1227,51 +1227,38 @@ function send_id_for_add_cart(){
                 
                 $cart_item_data = array('selection'=>array());
                 // Build the selection array as in the reference
-                if (isset($cartItem['variations']) && isset($cartItem['objExtras'])) {
-                    $merchi_product_data = get_post_meta($product_id, '_merchi_product_data', true);
-                    if (!is_array($merchi_product_data)) {
-                        $merchi_product_data = array();
-                    }
-                    $ordered_field_ids = array();
-                    if (!empty($merchi_product_data['product']['groupVariationFields']) && is_array($merchi_product_data['product']['groupVariationFields'])) {
-                        foreach ($merchi_product_data['product']['groupVariationFields'] as $field) {
-                            if (isset($field['id'])) {
-                                $ordered_field_ids[] = $field['id'];
+                if (isset($cartItem['variations'])) {
+                    foreach ($cartItem['variations'] as $i => $variationGroup) {
+                        $group = array();
+                        // Map all key-value pairs from variationGroup
+                        if (is_array($variationGroup)) {
+                            foreach ($variationGroup as $field_id => $value) {
+                                $group[$field_id] = $value;
                             }
                         }
-                    }
-                    if (!empty($merchi_product_data['product']['independentVariationFields']) && is_array($merchi_product_data['product']['independentVariationFields'])) {
-                        foreach ($merchi_product_data['product']['independentVariationFields'] as $field) {
-                            if (isset($field['id'])) {
-                                $ordered_field_ids[] = $field['id'];
-                            }
-                        }
-                    }
-                    if (is_array($cartItem['variations'])) {
-                        foreach ($cartItem['variations'] as $i => $variationGroup) {
-                            $group = array();
-                            if (is_array($variationGroup)) {
-                                $j = 0;
-                                foreach ($variationGroup as $varValue) {
-                                    $field_id = isset($ordered_field_ids[$j]) ? $ordered_field_ids[$j] : $j;
-                                    $group[$field_id] = $varValue;
-                                    $j++;
-                                }
-                            }
-                            if (isset($cartItem['objExtras'][$i]) && is_array($cartItem['objExtras'][$i])) {
-                                $k = 0;
-                                foreach ($cartItem['objExtras'][$i] as $extraKey => $extraValue) {
-                                    if ($extraKey === 'quantity') {
-                                        $group['quantity'] = $extraValue;
-                                    } else {
-                                        $field_id = isset($ordered_field_ids[$j + $k]) ? $ordered_field_ids[$j + $k] : ($j + $k);
+                        // Map objExtras by field ID if present
+                        if (isset($cartItem['objExtras'][$i]) && is_array($cartItem['objExtras'][$i])) {
+                            foreach ($cartItem['objExtras'][$i] as $extraKey => $extraValue) {
+                                if ($extraKey === 'quantity') {
+                                    $group['quantity'] = $extraValue;
+                                } else {
+                                    // Try to find the field ID by matching the key to the field name
+                                    $field_id = null;
+                                    foreach ($ordered_fields as $fid => $field) {
+                                        if (isset($field['name']) && $field['name'] === $extraKey) {
+                                            $field_id = $fid;
+                                            break;
+                                        }
+                                    }
+                                    if ($field_id !== null) {
                                         $group[$field_id] = $extraValue;
-                                        $k++;
+                                    } else {
+                                        $group[$extraKey] = $extraValue; // fallback
                                     }
                                 }
                             }
-                            $cart_item_data['selection'][] = $group;
                         }
+                        $cart_item_data['selection'][] = $group;
                     }
                 }
                 $quantity = $cartItem['quantity'];
@@ -1472,6 +1459,7 @@ function filter_woocommerce_get_item_data( $cart_data, $cart_item = null ) {
 
     // Build option value maps for select/radio fields
     $option_value_map = array();
+    $field_option_label_map = array(); // field_id => [option_id => label]
     if (!empty($merchi_product_data['product'])) {
         $product = $merchi_product_data['product'];
         $fields = array();
@@ -1483,9 +1471,11 @@ function filter_woocommerce_get_item_data( $cart_data, $cart_item = null ) {
         }
         foreach ($fields as $field) {
             if (!empty($field['options'])) {
+                $field_id = $field['id'];
                 foreach ($field['options'] as $option) {
                     if (isset($option['id']) && isset($option['value'])) {
                         $option_value_map[$option['id']] = $option['value'];
+                        $field_option_label_map[$field_id][$option['id']] = $option['value'];
                     }
                 }
             }
@@ -1512,20 +1502,109 @@ function filter_woocommerce_get_item_data( $cart_data, $cart_item = null ) {
                     $field_label_str = is_string($field_label) ? $field_label : (string)$field_label;
                     // Use field label from mapping if available
                     $label = isset($field_labels[$field_label_str]) ? $field_labels[$field_label_str] : ucfirst(str_replace('_', ' ', $field_label_str));
-                    // If value is an option ID or array of IDs, use the mapped value(s)
-                    if (is_array($field_value)) {
-                        $value = implode(', ', array_map(function($v) use ($option_value_map) {
-                            return isset($option_value_map[$v]) ? esc_html($option_value_map[$v]) : esc_html($v);
-                        }, $field_value));
-                    } elseif (isset($option_value_map[$field_value])) {
-                        $value = esc_html($option_value_map[$field_value]);
-                    } elseif (preg_match('/^#([A-Fa-f0-9]{6})$/', $field_value)) {
-                        $value = '<span style="display:inline-block;width:16px;height:16px;background:' . esc_attr($field_value) . ';border:1px solid #ccc;vertical-align:middle;margin-right:4px;"></span> ' . esc_html($field_value);
-                    } elseif (filter_var($field_value, FILTER_VALIDATE_URL)) {
-                        $value = '<a href="' . esc_url($field_value) . '" target="_blank">' . basename($field_value) . '</a>';
-                    } else {
-                        $value = esc_html($field_value);
+
+                    // Field-specific option label mapping
+                    $field_id = $field_label_str;
+                    $field_options = isset($field_option_label_map[$field_id]) ? $field_option_label_map[$field_id] : array();
+
+                    // --- Look for sibling variationFiles for this field ---
+                    $variationFiles = null;
+                    if (is_array($group)) {
+                        foreach ($group as $k => $v) {
+                            if (is_array($v) && isset($v['variationField']['id']) && isset($v['variationFiles']) && $v['variationField']['id'] == $field_label_str) {
+                                $variationFiles = $v['variationFiles'];
+                                break;
+                            }
+                        }
                     }
+                    if ($variationFiles && is_array($variationFiles)) {
+                        $file_links = array();
+                        foreach ($variationFiles as $file) {
+                            if (isset($file['downloadUrl']) && isset($file['name'])) {
+                                $file_links[] = '<a href="' . esc_url($file['downloadUrl']) . '" target="_blank">' . esc_html($file['name']) . '</a>';
+                            }
+                        }
+                        $value = implode(', ', $file_links);
+                    }
+                    // Handle file upload data (array of file objects)
+                    elseif (is_array($field_value) && isset($field_value[0]['name']) && isset($field_value[0]['downloadUrl'])) {
+                        $file_links = array();
+                        foreach ($field_value as $file) {
+                            if (isset($file['downloadUrl']) && isset($file['name'])) {
+                                $file_links[] = '<a href="' . esc_url($file['downloadUrl']) . '" target="_blank">' . esc_html($file['name']) . '</a>';
+                            }
+                        }
+                        $value = implode(', ', $file_links);
+                    }
+                    // Handle file upload data (variationFiles property)
+                    elseif (isset($field_value['variationFiles']) && is_array($field_value['variationFiles'])) {
+                        $file_links = array();
+                        foreach ($field_value['variationFiles'] as $file) {
+                            if (isset($file['downloadUrl']) && isset($file['name'])) {
+                                $file_links[] = '<a href="' . esc_url($file['downloadUrl']) . '" target="_blank">' . esc_html($file['name']) . '</a>';
+                            }
+                        }
+                        $value = implode(', ', $file_links);
+                    }
+                    // Handle regular file URLs
+                    elseif (filter_var($field_value, FILTER_VALIDATE_URL)) {
+                        $value = '<a href="' . esc_url($field_value) . '" target="_blank">' . basename($field_value) . '</a>';
+                    }
+                    // Handle option values and fallback for file IDs, using field-specific mapping
+                    elseif (is_array($field_value)) {
+                        // Only show labels that exist in this field's options
+                        $labels = array();
+                        foreach ($field_value as $v) {
+                            if (isset($field_options[$v])) {
+                                $labels[] = esc_html($field_options[$v]);
+                            }
+                        }
+                        if (empty($labels)) {
+                            continue; // skip if no valid labels
+                        }
+                        $value = implode(', ', $labels);
+                        $cart_data[] = array(
+                            'name' => $label,
+                            'value' => $value,
+                            'display' => '',
+                        );
+                        continue;
+                    }
+                    // Handle single option value for fields with options
+                    if (!empty($field_options)) {
+                        if (isset($field_options[$field_value])) {
+                            $value = esc_html($field_options[$field_value]);
+                            $cart_data[] = array(
+                                'name' => $label,
+                                'value' => $value,
+                                'display' => '',
+                            );
+                        }
+                        // If not found, skip
+                        continue;
+                    }
+                    // Handle color values
+                    if (is_string($field_value) && preg_match('/^#([A-Fa-f0-9]{6})$/', $field_value)) {
+                        $value = '<span style="display:inline-block;width:16px;height:16px;background:' . esc_attr($field_value) . ';border:1px solid #ccc;vertical-align:middle;margin-right:4px;"></span> ' . esc_html($field_value);
+                        $cart_data[] = array(
+                            'name' => $label,
+                            'value' => $value,
+                            'display' => '',
+                        );
+                        continue;
+                    }
+                    // Handle URLs
+                    if (is_string($field_value) && filter_var($field_value, FILTER_VALIDATE_URL)) {
+                        $value = '<a href="' . esc_url($field_value) . '" target="_blank">' . basename($field_value) . '</a>';
+                        $cart_data[] = array(
+                            'name' => $label,
+                            'value' => $value,
+                            'display' => '',
+                        );
+                        continue;
+                    }
+                    // Default case (show value)
+                    $value = esc_html($field_value);
                     $cart_data[] = array(
                         'name' => $label,
                         'value' => $value,
