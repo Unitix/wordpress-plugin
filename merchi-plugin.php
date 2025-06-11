@@ -138,19 +138,24 @@ function merchi_mount_point() {
 // Navneet Code starts here.
 
 function custom_override_woocommerce_template($template, $template_name, $template_path) {
-    if ($template_name === 'checkout/form-checkout.php') {
-        // Path to your custom template inside the plugin
-        return plugin_dir_path(__FILE__) . 'woocommerce/checkout/form-checkout.php';
-    } else if ($template_name === 'checkout/thankyou.php') {
-	    	return plugin_dir_path(__FILE__) . 'woocommerce/checkout/thankyou.php';
-	  }
-    return $template;
+		switch ($template_name) {
+			case 'checkout/form-checkout.php':
+				return plugin_dir_path(__FILE__) . 'woocommerce/checkout/form-checkout.php';
+			case 'checkout/thankyou.php':
+				return plugin_dir_path(__FILE__) . 'woocommerce/checkout/thankyou.php';
+			case 'cart/cart.php':
+				return plugin_dir_path(__FILE__) . 'woocommerce/cart/form-cart.php';
+			default:
+				return $template;
+		}
 }
 add_filter('woocommerce_locate_template', 'custom_override_woocommerce_template', 10, 3);
 
 add_action( 'cst_woocommerce_checkout_order_review', 'woocommerce_order_review', 10 );
 
 add_filter( 'woocommerce_billing_fields', 'bbloomer_move_checkout_email_field' );
+
+
  
 function bbloomer_move_checkout_email_field( $address_fields ) {
     $address_fields['billing_email']['priority'] = 1;

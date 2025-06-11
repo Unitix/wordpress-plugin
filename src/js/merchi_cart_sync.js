@@ -27,14 +27,6 @@ function reconcileMerchiWithStore({ items }) {
   const raw = localStorage.getItem('MerchiCart');
   if (!raw) return;
   const merchi = JSON.parse(raw);
-
-  const wooSkus = new Set(items.map(i => String(i.sku)));
-  const before = merchi.cartItems.length;
-  merchi.cartItems = merchi.cartItems.filter(ci =>
-    wooSkus.has(String(ci.product?.id))
-  );
-  if (merchi.cartItems.length === before) return;
-
   localStorage.setItem('MerchiCart', JSON.stringify(merchi));
   try { window.COOKIE_MANAGER?.syncWithLocalStorage?.(); } catch { }
   if (!PATCH_DISABLED) {
