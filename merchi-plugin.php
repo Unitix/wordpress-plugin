@@ -155,6 +155,21 @@ add_action( 'cst_woocommerce_checkout_order_review', 'woocommerce_order_review',
 
 add_filter( 'woocommerce_billing_fields', 'bbloomer_move_checkout_email_field' );
 
+// add_action( 'template_redirect', function () {
+
+//     if ( ! is_cart() && ! is_checkout() ) {
+//         return;                     
+//     }
+
+//     wp_enqueue_script(
+//         'merchi-react-init',                                           
+//         plugins_url( 'dist/js/woocommerce_cart_checkout.js', dirname( __FILE__, 2 ) ),
+//         [ 'react', 'react-dom' ],
+//         filemtime( plugin_dir_path( dirname( __FILE__, 2 ) ) . 'dist/js/woocommerce_cart_checkout.js' ),
+//         true
+//     );
+// }, 20 );
+
 
  
 function bbloomer_move_checkout_email_field( $address_fields ) {
@@ -639,10 +654,7 @@ function merchi_enqueue_wc_block_styles() {
 
 	if ( wp_style_is( $handle, 'registered' ) ) {
 			wp_enqueue_style( $handle );
-			return;
-	}
-
-	if ( class_exists( 'WooCommerce' ) ) {
+	} else if ( class_exists( 'WooCommerce' ) ) {
 			wp_register_style(
 					$handle,
 					trailingslashit( WC()->plugin_url() ) . $rel_path,
@@ -651,6 +663,23 @@ function merchi_enqueue_wc_block_styles() {
 			);
 			wp_enqueue_style( $handle );
 	}
+
+	 if ( is_cart() ) {                         
+        $handle   = 'wc-blocks-cart-style';
+        $rel_path = 'assets/client/blocks/cart.css';
+
+        if ( wp_style_is( $handle, 'registered' ) ) {
+            wp_enqueue_style( $handle );
+        } elseif ( class_exists( 'WooCommerce' ) ) {
+            wp_register_style(
+                $handle,
+                trailingslashit( WC()->plugin_url() ) . $rel_path,
+                array( 'wc-blocks-style' ),
+                WC_VERSION
+            );
+            wp_enqueue_style( $handle );
+        }
+    }
 }
 add_action( 'wp_enqueue_scripts', 'merchi_enqueue_wc_block_styles' );
 

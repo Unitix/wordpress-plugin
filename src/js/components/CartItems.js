@@ -18,13 +18,15 @@ export default function CartItems({ cartItems, onRemove }) {
         </thead>
         <tbody>
           {cartItems.map(item => {
-            const { product = {}, quantity = 1, totalCost = 0, subtotalCost = 0 } = item;
+            const { product = {}, quantity = 1 } = item;
             const thumb =
               product.featureImage?.viewUrl ||
               product.previewImageUrl ||
               product.image ||
               'https://woocommerce.com/wp-content/plugins/woocommerce/assets/images/placeholder.png';
             const name = product.name || 'Product';
+            const unitPrice = item.subtotalCost ?? item.totalCost ?? item.totalcost ?? 0;
+            const total = unitPrice * quantity;
 
             return (
               <tr key={product.id || Math.random()} className="wc-block-cart-items__row" tabIndex={-1}>
@@ -33,25 +35,23 @@ export default function CartItems({ cartItems, onRemove }) {
                 </td>
                 <td className="wc-block-cart-item__product">
                   <div className="wc-block-cart-item__wrap">
-                    <a className="wc-block-components-product-name" href={product.url || '#'}>{name}</a>
+                    <span className="wc-block-components-product-name">{name}</span>
                     <div className="wc-block-cart-item__prices">
-                      <span className="price wc-block-components-product-price">
-                        <span className="wc-block-components-product-price__value">{`$${subtotalCost}`}</span>
+                      <span className="wc-block-components-product-price merchi-unit-price">
+                        <span className="wc-block-formatted-money-amount wc-block-components-formatted-money-amount">{`$${unitPrice}`}</span>
                       </span>
                     </div>
                     <div className="wc-block-cart-item__quantity">
-                      <div className="wc-block-components-quantity-selector">
-                        <div style={{ marginTop: 4 }}>
-                          Qty:&nbsp;{quantity}
-                        </div>
-                        <button
-                          className="wc-block-cart-item__remove-link"
-                          aria-label={`Remove ${name} from cart`}
-                          onClick={() => onRemove(item)}
-                        >
-                          Remove item
-                        </button>
+                      <div style={{ marginTop: 4 }}>
+                        Quantity:&nbsp;{quantity}
                       </div>
+                      <button
+                        className="wc-block-cart-item__remove-link"
+                        aria-label={`Remove ${name} from cart`}
+                        onClick={() => onRemove(item)}
+                      >
+                        Remove item
+                      </button>
                     </div>
                   </div>
                 </td>
@@ -59,7 +59,7 @@ export default function CartItems({ cartItems, onRemove }) {
                 <td className="wc-block-cart-item__total">
                   <span className="price wc-block-components-product-price">
                     <span className="wc-block-components-product-price__value">
-                      {`$${totalCost}`}
+                      {`$${total}`}
                     </span>
                   </span>
                 </td>

@@ -1,10 +1,9 @@
 import React from 'react';
+import CouponPanel from './CouponPanel';
 
 export default function CartTotals({ cart }) {
-  const subtotal = cart.totalCost ?? 0;
-  const shipping = cart.shippingCost ?? 0;
-  const tax = cart.taxAmount ?? 0;
-  const total = subtotal + shipping + tax;
+  const subtotal = cart.cartItemsSubtotalCost ?? 0;
+  const total = cart.cartItemsTotalCost ?? 0;
 
   return (
     <div className="wc-block-components-sidebar wc-block-cart__sidebar wp-block-woocommerce-cart-totals-block">
@@ -12,20 +11,14 @@ export default function CartTotals({ cart }) {
         <h2 className="wp-block-woocommerce-cart-order-summary-heading-block wc-block-cart__totals-title">
           Cart totals
         </h2>
-
+        <CouponPanel />
         <div className="wp-block-woocommerce-cart-order-summary-totals-block">
-          {[
-            ['Subtotal', subtotal],
-            ['Shipping', shipping],
-            ['Tax', tax],
-          ].map(([label, value]) => (
-            <div key={label} className="wc-block-components-totals-wrapper">
-              <div className="wc-block-components-totals-item">
-                <span className="wc-block-components-totals-item__label">{label}</span>
-                <span className="wc-block-components-totals-item__value">{`$${value}`}</span>
-              </div>
+          <div className="wc-block-components-totals-wrapper">
+            <div className="wc-block-components-totals-item">
+              <span className="wc-block-components-totals-item__label">Subtotal</span>
+              <span className="wc-block-components-totals-item__value">{`$${subtotal}`}</span>
             </div>
-          ))}
+          </div>
 
           <div className="wc-block-components-totals-wrapper">
             <div className="wc-block-components-totals-item wc-block-components-totals-footer-item">
@@ -37,7 +30,10 @@ export default function CartTotals({ cart }) {
 
         <div className="wc-block-cart__submit wp-block-woocommerce-proceed-to-checkout-block">
           <div className="wc-block-cart__submit-container">
-            <a href="/checkout" className="wc-block-components-button wp-element-button wc-block-cart__submit-button contained">
+            <a
+              href="/checkout"
+              className="wc-block-components-button wp-element-button wc-block-cart__submit-button contained"
+            >
               <span className="wc-block-components-button__text">Proceed to Checkout</span>
             </a>
           </div>
