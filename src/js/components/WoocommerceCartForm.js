@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { patchCart } from '../merchi_public_custom';
 import CartItems from './CartItems';
 import CartTotals from './CartTotals';
+
+import { ensureWooNonce, fetchWooNonce, updateWooNonce } from '../utils';
 
 const readCart = () => {
   try {
@@ -44,32 +46,93 @@ export default function WoocommerceCartForm() {
     };
   }, []);
 
-  const handleRemove = (item) => {
+  const findWooKeyBySku = (sku) => {
+    const store = JSON.parse(localStorage.storeApiCartData || '{}');
+    return (store.items || []).find((i) => String(i.sku) === String(sku))?.key;
+  };
+
+  const handleRemove = useCallback(async (item) => {
+    // const wooKey = item.key;
+    // if (!wooKey) return console.warn('Missing Woo item key');
+    const wooKey = findWooKeyBySku(item.product?.id);
+    if (!wooKey) {
+      console.warn('Missing Woo item key, cannot sync mini-cart');
+      return;
+    }
+
+    // // remove items from mini cart
+    // let res;
+    // try {
+    //   res = await fetch('/wp-json/wc/store/v1/cart/remove-item', {
+    //     method: 'POST',
+    //     credentials: 'same-origin',
+    //     headers: {
+    //       'Content-Type': 'application/json',
+    //       'Nonce': window.wcSettings?.nonce || '31d7ef87ff',
+    //     },
+    //     body: JSON.stringify({ key: wooKey }),
+    //   });
+    // } catch (err) {
+    //   console.warn('[Cart] Woo remove-item failed:', err);
+    //   return;
+    // }
+    // console.log('res', res);
+    // if (!res.ok) {
+    //   console.warn('[Cart] Woo remove-item error:', res.status);
+    //   return;
+    // }
+
+    // get current valid nonce
+    const nonce = await ensureWooNonce();
+
+    async function postRemove(n) {
+      return fetch('/wp-json/wc/store/v1/cart/remove-item', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'Nonce': n },
+        body: JSON.stringify({ key: wooKey }),
+      });
+    }
+
+    let res = await postRemove(nonce);
+    if (res.status === 403) {
+      const fresh = await fetchWooNonce();
+      res = await postRemove(fresh);
+    }
+    if (!res.ok) {
+      console.warn('[Cart] Woo remove-item error:', res.status);
+      return;
+    }
+
+    updateWooNonce(res);
+
+    const wooCart = await res.json();
+    localStorage.storeApiCartData = JSON.stringify(wooCart);
+
     const updatedItems = cart.cartItems.filter(
-      ci => ci.product?.id !== item.product?.id
+      ci => String(ci.product?.id) !== String(item.product?.id)
     );
 
-    const subtotalCost = updatedItems.reduce(
-      (sum, i) => sum + ((i.subtotalCost ?? i.cost ?? i.totalCost ?? 0) * i.quantity),
-      0
-    );
-    const totalCost = updatedItems.reduce(
-      (sum, i) =>
-        sum + ((i.totalCost ?? i.subtotalCost ?? i.cost ?? 0) * i.quantity),
-      0
-    );
-    const updated = {
+    const subtotalCost = updatedItems.reduce((sum, i) =>
+      sum + ((i.subtotalCost ?? i.cost ?? i.totalCost ?? 0) * i.quantity), 0);
+    const totalCost = updatedItems.reduce((sum, i) =>
+      sum + ((i.totalCost ?? i.subtotalCost ?? i.cost ?? 0) * i.quantity), 0);
+
+    const updatedCart = {
       ...cart,
       cartItems: updatedItems,
       cartItemsSubtotalCost: subtotalCost,
       cartItemsTotalCost: totalCost,
     };
-    setCart(updated);
-    localStorage.setItem('MerchiCart', JSON.stringify(updated));
-    patchCart(updated)
-      .then(() => setCart(readCart()))
-      .catch(e => console.warn('[Cart] patchCart error:', e.response?.status || e));
-  };
+
+    localStorage.setItem('MerchiCart', JSON.stringify(updatedCart));
+    setCart(updatedCart);
+
+    patchCart(updatedCart).catch(e =>
+      console.warn('[Cart] patchCart error:', e?.response?.status || e)
+    );
+  }, [cart]);
+
 
   if (loading) {
     return (
@@ -116,4 +179,4 @@ export default function WoocommerceCartForm() {
       </div>
     </main>
   );
-}
+} 

@@ -25,22 +25,21 @@ export default function CartItems({ cartItems, onRemove }) {
               product.image ||
               'https://woocommerce.com/wp-content/plugins/woocommerce/assets/images/placeholder.png';
             const name = product.name || 'Product';
-            const unitPrice = item.subtotalCost ?? item.totalCost ?? item.totalcost ?? 0;
-            const total = unitPrice * quantity;
+            const total = item.totalCost ?? item.cost ?? 0;
 
             return (
-              <tr key={product.id || Math.random()} className="wc-block-cart-items__row" tabIndex={-1}>
+              <tr key={item.key ?? product.id} className="wc-block-cart-items__row" tabIndex={-1}>
                 <td className="wc-block-cart-item__image" aria-hidden="true">
                   <a href={product.url || '#'} tabIndex={-1}><img src={thumb} alt="" /></a>
                 </td>
                 <td className="wc-block-cart-item__product">
                   <div className="wc-block-cart-item__wrap">
                     <span className="wc-block-components-product-name">{name}</span>
-                    <div className="wc-block-cart-item__prices">
+                    {/* <div className="wc-block-cart-item__prices">
                       <span className="wc-block-components-product-price merchi-unit-price">
-                        <span className="wc-block-formatted-money-amount wc-block-components-formatted-money-amount">{`$${unitPrice}`}</span>
+                        <span className="wc-block-formatted-money-amount wc-block-components-formatted-money-amount">{`$${unitPrice.toFixed(2)}`}</span>
                       </span>
-                    </div>
+                    </div> */}
                     <div className="wc-block-cart-item__quantity">
                       <div style={{ marginTop: 4 }}>
                         Quantity:&nbsp;{quantity}
@@ -59,7 +58,7 @@ export default function CartItems({ cartItems, onRemove }) {
                 <td className="wc-block-cart-item__total">
                   <span className="price wc-block-components-product-price">
                     <span className="wc-block-components-product-price__value">
-                      {`$${total}`}
+                      {`$${total.toFixed(2)}`}
                     </span>
                   </span>
                 </td>
