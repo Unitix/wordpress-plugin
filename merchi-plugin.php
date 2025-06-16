@@ -2152,8 +2152,9 @@ function fetch_products_from_merchi() {
     $offset = isset($_POST['offset']) ? intval($_POST['offset']) : 0;
     $limit = 25;
 
-    // Build the API URL
-    $api_url = esc_url_raw($api_url."v6/products/?apiKey=$api_key&inDomain=$domain_id&limit=$limit&offset=$offset&q=$q");
+    // Build the API URL with embed for featureImage
+    $embed = urlencode(json_encode(['featureImage' => new stdClass()]));
+    $api_url = esc_url_raw($api_url."v6/products/?apiKey=$api_key&inDomain=$domain_id&limit=$limit&offset=$offset&q=$q&embed=$embed");
 
 
     // Make the external API request
@@ -2169,8 +2170,18 @@ function fetch_products_from_merchi() {
     $body = wp_remote_retrieve_body($response);
     $products = json_decode($body, true);
 
-    // Return the products to the JavaScript function
+    // Add thumbnailUrl to each product if possible
     if (isset($products['products']) && !empty($products['products'])) {
+        foreach ($products['products'] as &$item) {
+            if (isset($item['product']['featureImage']['id']) && isset($item['product']['featureImage']['mimetype'])) {
+                $featureImage = $item['product']['featureImage'];
+                $fileType = explode('/', $featureImage['mimetype'])[1];
+                $item['product']['thumbnailUrl'] = MERCHI_URL . "v6/product-public-file/download/" . $featureImage['id'] . "." . $fileType;
+            } else {
+                $item['product']['thumbnailUrl'] = '';
+            }
+        }
+        unset($item);
         wp_send_json_success($products);
     } else {
         wp_send_json_error(['message' => 'No products found']);

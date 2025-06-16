@@ -85,10 +85,54 @@ function fetchProducts() {
         const dropdownContent = jQuery("#search_results");
         products.forEach((item) => {
           const { product } = item;
-          const { bestPrice, id, name } = product;
+          const { bestPrice, id, name, thumbnailUrl } = product;
           const div = jQuery("<div>");
-          div.text(name);
           div.addClass("search-result");
+          // Add image if available
+          if (thumbnailUrl) {
+            const img = jQuery("<img>")
+              .attr("src", thumbnailUrl)
+              .addClass("merchi-thumb-img")
+              .css({
+                width: "32px",
+                height: "32px",
+                "object-fit": "cover",
+                "margin-right": "8px",
+                "vertical-align": "middle",
+                "border-radius": "4px",
+                border: "1px solid #eee"
+              });
+            // Hover preview logic
+            img.on("mouseenter", function(e) {
+              let preview = jQuery("#merchi-thumb-preview");
+              if (preview.length === 0) {
+                preview = jQuery('<div id="merchi-thumb-preview"></div>');
+                jQuery("body").append(preview);
+              }
+              preview.html('<img src="' + thumbnailUrl + '" style="max-width:160px; max-height:160px; border-radius:8px; border:1px solid #ccc; box-shadow:0 2px 8px rgba(0,0,0,0.15);">');
+              preview.css({
+                position: "fixed",
+                top: e.clientY + 10 + "px",
+                left: e.clientX + 10 + "px",
+                display: "block",
+                "z-index": 99999,
+                background: "#fff",
+                padding: "4px"
+              });
+            });
+            img.on("mousemove", function(e) {
+              jQuery("#merchi-thumb-preview").css({
+                top: e.clientY + 10 + "px",
+                left: e.clientX + 10 + "px"
+              });
+            });
+            img.on("mouseleave", function() {
+              jQuery("#merchi-thumb-preview").remove();
+            });
+            div.append(img);
+          }
+          // Add product name
+          div.append(jQuery("<span>").text(name));
           div.on("click", function () {
             jQuery("#custom_value_field").val(name);
             hiddenProductIdField.value = id;
