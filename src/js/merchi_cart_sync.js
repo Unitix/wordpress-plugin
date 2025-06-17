@@ -3,7 +3,7 @@ import { patchCart } from './merchi_public_custom.js';
 const PATCH_DISABLED = true;
 
 // SKU Filtering && clear cart Logic
-function reconcileMerchiWithStore({ items }) {
+async function reconcileMerchiWithStore({ items }) {
   if (!Array.isArray(items)) return;
 
   // woo cart empty: sync clear merchi cart
@@ -15,18 +15,20 @@ function reconcileMerchiWithStore({ items }) {
 
     merchi.cartItems = [];
     localStorage.setItem('MerchiCart', JSON.stringify(merchi));
-    try { window.COOKIE_MANAGER?.syncWithLocalStorage?.(); } catch { }
-    if (!PATCH_DISABLED) {
-      patchCart(merchi)
-        .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
+    try { window.COOKIE_MANAGER?.syncWithLocalStorage?.(); } catch { 
+      console.log('error', error);
     }
     return;
   }
 
   // woo cart has items: filter by sku
   const raw = localStorage.getItem('MerchiCart');
+
+  console.log('raw', raw);
   if (!raw) return;
   const merchi = JSON.parse(raw);
+
+  console.log('merchi', merchi);
 
   const wooSkus = new Set(items.map(i => String(i.sku)));
   const before = merchi.cartItems.length;
@@ -36,10 +38,8 @@ function reconcileMerchiWithStore({ items }) {
   if (merchi.cartItems.length === before) return;
 
   localStorage.setItem('MerchiCart', JSON.stringify(merchi));
-  try { window.COOKIE_MANAGER?.syncWithLocalStorage?.(); } catch { }
-  if (!PATCH_DISABLED) {
-    patchCart(merchi)
-      .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
+  try { window.COOKIE_MANAGER?.syncWithLocalStorage?.(); } catch { 
+    console.log('error', error);
   }
 }
 
