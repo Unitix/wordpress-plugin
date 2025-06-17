@@ -138,19 +138,39 @@ function merchi_mount_point() {
 // Navneet Code starts here.
 
 function custom_override_woocommerce_template($template, $template_name, $template_path) {
-    if ($template_name === 'checkout/form-checkout.php') {
-        // Path to your custom template inside the plugin
-        return plugin_dir_path(__FILE__) . 'woocommerce/checkout/form-checkout.php';
-    } else if ($template_name === 'checkout/thankyou.php') {
-	    	return plugin_dir_path(__FILE__) . 'woocommerce/checkout/thankyou.php';
-	  }
-    return $template;
+		switch ($template_name) {
+			case 'checkout/form-checkout.php':
+				return plugin_dir_path(__FILE__) . 'woocommerce/checkout/form-checkout.php';
+			case 'checkout/thankyou.php':
+				return plugin_dir_path(__FILE__) . 'woocommerce/checkout/thankyou.php';
+			case 'cart/cart.php':
+				return plugin_dir_path(__FILE__) . 'woocommerce/cart/form-cart.php';
+			default:
+				return $template;
+		}
 }
 add_filter('woocommerce_locate_template', 'custom_override_woocommerce_template', 10, 3);
 
 add_action( 'cst_woocommerce_checkout_order_review', 'woocommerce_order_review', 10 );
 
 add_filter( 'woocommerce_billing_fields', 'bbloomer_move_checkout_email_field' );
+
+// add_action( 'template_redirect', function () {
+
+//     if ( ! is_cart() && ! is_checkout() ) {
+//         return;                     
+//     }
+
+//     wp_enqueue_script(
+//         'merchi-react-init',                                           
+//         plugins_url( 'dist/js/woocommerce_cart_checkout.js', dirname( __FILE__, 2 ) ),
+//         [ 'react', 'react-dom' ],
+//         filemtime( plugin_dir_path( dirname( __FILE__, 2 ) ) . 'dist/js/woocommerce_cart_checkout.js' ),
+//         true
+//     );
+// }, 20 );
+
+
  
 function bbloomer_move_checkout_email_field( $address_fields ) {
     $address_fields['billing_email']['priority'] = 1;
@@ -634,10 +654,7 @@ function merchi_enqueue_wc_block_styles() {
 
 	if ( wp_style_is( $handle, 'registered' ) ) {
 			wp_enqueue_style( $handle );
-			return;
-	}
-
-	if ( class_exists( 'WooCommerce' ) ) {
+	} else if ( class_exists( 'WooCommerce' ) ) {
 			wp_register_style(
 					$handle,
 					trailingslashit( WC()->plugin_url() ) . $rel_path,
@@ -646,6 +663,23 @@ function merchi_enqueue_wc_block_styles() {
 			);
 			wp_enqueue_style( $handle );
 	}
+
+	 if ( is_cart() ) {                         
+        $handle   = 'wc-blocks-cart-style';
+        $rel_path = 'assets/client/blocks/cart.css';
+
+        if ( wp_style_is( $handle, 'registered' ) ) {
+            wp_enqueue_style( $handle );
+        } elseif ( class_exists( 'WooCommerce' ) ) {
+            wp_register_style(
+                $handle,
+                trailingslashit( WC()->plugin_url() ) . $rel_path,
+                array( 'wc-blocks-style' ),
+                WC_VERSION
+            );
+            wp_enqueue_style( $handle );
+        }
+    }
 }
 add_action( 'wp_enqueue_scripts', 'merchi_enqueue_wc_block_styles' );
 
@@ -657,7 +691,7 @@ function enqueue_admin_customfiles($hook)
 	if ('edit-tags.php' == $hook || 'term.php' == $hook) {
 		wp_enqueue_media();
 	}
-	wp_enqueue_script('custom-admin-script', plugin_dir_url(__FILE__) . 'custom.js', array('cst-jquery-ui'), null, true);
+	wp_enqueue_script('custom-admin-script', plugin_dir_url(__FILE__) . 'dist/js/wordpress_merchi_dashboard.js', array('cst-jquery-ui'), null, true);
 	wp_localize_script('custom-admin-script', 'frontendajax', array('ajaxurl' => admin_url('admin-ajax.php')));
 	wp_enqueue_script('custom-merchi-script', MERCHI_BASE_URL.'/static/js/dist/merchi-init.js', array(), null, true);
 	wp_localize_script('custom-admin-script', 'scriptData', array(
@@ -1227,51 +1261,38 @@ function send_id_for_add_cart(){
                 
                 $cart_item_data = array('selection'=>array());
                 // Build the selection array as in the reference
-                if (isset($cartItem['variations']) && isset($cartItem['objExtras'])) {
-                    $merchi_product_data = get_post_meta($product_id, '_merchi_product_data', true);
-                    if (!is_array($merchi_product_data)) {
-                        $merchi_product_data = array();
-                    }
-                    $ordered_field_ids = array();
-                    if (!empty($merchi_product_data['product']['groupVariationFields']) && is_array($merchi_product_data['product']['groupVariationFields'])) {
-                        foreach ($merchi_product_data['product']['groupVariationFields'] as $field) {
-                            if (isset($field['id'])) {
-                                $ordered_field_ids[] = $field['id'];
+                if (isset($cartItem['variations'])) {
+                    foreach ($cartItem['variations'] as $i => $variationGroup) {
+                        $group = array();
+                        // Map all key-value pairs from variationGroup
+                        if (is_array($variationGroup)) {
+                            foreach ($variationGroup as $field_id => $value) {
+                                $group[$field_id] = $value;
                             }
                         }
-                    }
-                    if (!empty($merchi_product_data['product']['independentVariationFields']) && is_array($merchi_product_data['product']['independentVariationFields'])) {
-                        foreach ($merchi_product_data['product']['independentVariationFields'] as $field) {
-                            if (isset($field['id'])) {
-                                $ordered_field_ids[] = $field['id'];
-                            }
-                        }
-                    }
-                    if (is_array($cartItem['variations'])) {
-                        foreach ($cartItem['variations'] as $i => $variationGroup) {
-                            $group = array();
-                            if (is_array($variationGroup)) {
-                                $j = 0;
-                                foreach ($variationGroup as $varValue) {
-                                    $field_id = isset($ordered_field_ids[$j]) ? $ordered_field_ids[$j] : $j;
-                                    $group[$field_id] = $varValue;
-                                    $j++;
-                                }
-                            }
-                            if (isset($cartItem['objExtras'][$i]) && is_array($cartItem['objExtras'][$i])) {
-                                $k = 0;
-                                foreach ($cartItem['objExtras'][$i] as $extraKey => $extraValue) {
-                                    if ($extraKey === 'quantity') {
-                                        $group['quantity'] = $extraValue;
-                                    } else {
-                                        $field_id = isset($ordered_field_ids[$j + $k]) ? $ordered_field_ids[$j + $k] : ($j + $k);
+                        // Map objExtras by field ID if present
+                        if (isset($cartItem['objExtras'][$i]) && is_array($cartItem['objExtras'][$i])) {
+                            foreach ($cartItem['objExtras'][$i] as $extraKey => $extraValue) {
+                                if ($extraKey === 'quantity') {
+                                    $group['quantity'] = $extraValue;
+                                } else {
+                                    // Try to find the field ID by matching the key to the field name
+                                    $field_id = null;
+                                    foreach ($ordered_fields as $fid => $field) {
+                                        if (isset($field['name']) && $field['name'] === $extraKey) {
+                                            $field_id = $fid;
+                                            break;
+                                        }
+                                    }
+                                    if ($field_id !== null) {
                                         $group[$field_id] = $extraValue;
-                                        $k++;
+                                    } else {
+                                        $group[$extraKey] = $extraValue; // fallback
                                     }
                                 }
                             }
-                            $cart_item_data['selection'][] = $group;
                         }
+                        $cart_item_data['selection'][] = $group;
                     }
                 }
                 $quantity = $cartItem['quantity'];
@@ -1472,6 +1493,7 @@ function filter_woocommerce_get_item_data( $cart_data, $cart_item = null ) {
 
     // Build option value maps for select/radio fields
     $option_value_map = array();
+    $field_option_label_map = array(); // field_id => [option_id => label]
     if (!empty($merchi_product_data['product'])) {
         $product = $merchi_product_data['product'];
         $fields = array();
@@ -1483,9 +1505,11 @@ function filter_woocommerce_get_item_data( $cart_data, $cart_item = null ) {
         }
         foreach ($fields as $field) {
             if (!empty($field['options'])) {
+                $field_id = $field['id'];
                 foreach ($field['options'] as $option) {
                     if (isset($option['id']) && isset($option['value'])) {
                         $option_value_map[$option['id']] = $option['value'];
+                        $field_option_label_map[$field_id][$option['id']] = $option['value'];
                     }
                 }
             }
@@ -1512,20 +1536,109 @@ function filter_woocommerce_get_item_data( $cart_data, $cart_item = null ) {
                     $field_label_str = is_string($field_label) ? $field_label : (string)$field_label;
                     // Use field label from mapping if available
                     $label = isset($field_labels[$field_label_str]) ? $field_labels[$field_label_str] : ucfirst(str_replace('_', ' ', $field_label_str));
-                    // If value is an option ID or array of IDs, use the mapped value(s)
-                    if (is_array($field_value)) {
-                        $value = implode(', ', array_map(function($v) use ($option_value_map) {
-                            return isset($option_value_map[$v]) ? esc_html($option_value_map[$v]) : esc_html($v);
-                        }, $field_value));
-                    } elseif (isset($option_value_map[$field_value])) {
-                        $value = esc_html($option_value_map[$field_value]);
-                    } elseif (preg_match('/^#([A-Fa-f0-9]{6})$/', $field_value)) {
-                        $value = '<span style="display:inline-block;width:16px;height:16px;background:' . esc_attr($field_value) . ';border:1px solid #ccc;vertical-align:middle;margin-right:4px;"></span> ' . esc_html($field_value);
-                    } elseif (filter_var($field_value, FILTER_VALIDATE_URL)) {
-                        $value = '<a href="' . esc_url($field_value) . '" target="_blank">' . basename($field_value) . '</a>';
-                    } else {
-                        $value = esc_html($field_value);
+
+                    // Field-specific option label mapping
+                    $field_id = $field_label_str;
+                    $field_options = isset($field_option_label_map[$field_id]) ? $field_option_label_map[$field_id] : array();
+
+                    // --- Look for sibling variationFiles for this field ---
+                    $variationFiles = null;
+                    if (is_array($group)) {
+                        foreach ($group as $k => $v) {
+                            if (is_array($v) && isset($v['variationField']['id']) && isset($v['variationFiles']) && $v['variationField']['id'] == $field_label_str) {
+                                $variationFiles = $v['variationFiles'];
+                                break;
+                            }
+                        }
                     }
+                    if ($variationFiles && is_array($variationFiles)) {
+                        $file_links = array();
+                        foreach ($variationFiles as $file) {
+                            if (isset($file['downloadUrl']) && isset($file['name'])) {
+                                $file_links[] = '<a href="' . esc_url($file['downloadUrl']) . '" target="_blank">' . esc_html($file['name']) . '</a>';
+                            }
+                        }
+                        $value = implode(', ', $file_links);
+                    }
+                    // Handle file upload data (array of file objects)
+                    elseif (is_array($field_value) && isset($field_value[0]['name']) && isset($field_value[0]['downloadUrl'])) {
+                        $file_links = array();
+                        foreach ($field_value as $file) {
+                            if (isset($file['downloadUrl']) && isset($file['name'])) {
+                                $file_links[] = '<a href="' . esc_url($file['downloadUrl']) . '" target="_blank">' . esc_html($file['name']) . '</a>';
+                            }
+                        }
+                        $value = implode(', ', $file_links);
+                    }
+                    // Handle file upload data (variationFiles property)
+                    elseif (isset($field_value['variationFiles']) && is_array($field_value['variationFiles'])) {
+                        $file_links = array();
+                        foreach ($field_value['variationFiles'] as $file) {
+                            if (isset($file['downloadUrl']) && isset($file['name'])) {
+                                $file_links[] = '<a href="' . esc_url($file['downloadUrl']) . '" target="_blank">' . esc_html($file['name']) . '</a>';
+                            }
+                        }
+                        $value = implode(', ', $file_links);
+                    }
+                    // Handle regular file URLs
+                    elseif (filter_var($field_value, FILTER_VALIDATE_URL)) {
+                        $value = '<a href="' . esc_url($field_value) . '" target="_blank">' . basename($field_value) . '</a>';
+                    }
+                    // Handle option values and fallback for file IDs, using field-specific mapping
+                    elseif (is_array($field_value)) {
+                        // Only show labels that exist in this field's options
+                        $labels = array();
+                        foreach ($field_value as $v) {
+                            if (isset($field_options[$v])) {
+                                $labels[] = esc_html($field_options[$v]);
+                            }
+                        }
+                        if (empty($labels)) {
+                            continue; // skip if no valid labels
+                        }
+                        $value = implode(', ', $labels);
+                        $cart_data[] = array(
+                            'name' => $label,
+                            'value' => $value,
+                            'display' => '',
+                        );
+                        continue;
+                    }
+                    // Handle single option value for fields with options
+                    if (!empty($field_options)) {
+                        if (isset($field_options[$field_value])) {
+                            $value = esc_html($field_options[$field_value]);
+                            $cart_data[] = array(
+                                'name' => $label,
+                                'value' => $value,
+                                'display' => '',
+                            );
+                        }
+                        // If not found, skip
+                        continue;
+                    }
+                    // Handle color values
+                    if (is_string($field_value) && preg_match('/^#([A-Fa-f0-9]{6})$/', $field_value)) {
+                        $value = '<span style="display:inline-block;width:16px;height:16px;background:' . esc_attr($field_value) . ';border:1px solid #ccc;vertical-align:middle;margin-right:4px;"></span> ' . esc_html($field_value);
+                        $cart_data[] = array(
+                            'name' => $label,
+                            'value' => $value,
+                            'display' => '',
+                        );
+                        continue;
+                    }
+                    // Handle URLs
+                    if (is_string($field_value) && filter_var($field_value, FILTER_VALIDATE_URL)) {
+                        $value = '<a href="' . esc_url($field_value) . '" target="_blank">' . basename($field_value) . '</a>';
+                        $cart_data[] = array(
+                            'name' => $label,
+                            'value' => $value,
+                            'display' => '',
+                        );
+                        continue;
+                    }
+                    // Default case (show value)
+                    $value = esc_html($field_value);
                     $cart_data[] = array(
                         'name' => $label,
                         'value' => $value,
@@ -2073,8 +2186,9 @@ function fetch_products_from_merchi() {
     $offset = isset($_POST['offset']) ? intval($_POST['offset']) : 0;
     $limit = 25;
 
-    // Build the API URL
-    $api_url = esc_url_raw($api_url."v6/products/?apiKey=$api_key&inDomain=$domain_id&limit=$limit&offset=$offset&q=$q");
+    // Build the API URL with embed for featureImage
+    $embed = urlencode(json_encode(['featureImage' => new stdClass()]));
+    $api_url = esc_url_raw($api_url."v6/products/?apiKey=$api_key&inDomain=$domain_id&limit=$limit&offset=$offset&q=$q&embed=$embed");
 
 
     // Make the external API request
@@ -2090,8 +2204,18 @@ function fetch_products_from_merchi() {
     $body = wp_remote_retrieve_body($response);
     $products = json_decode($body, true);
 
-    // Return the products to the JavaScript function
+    // Add thumbnailUrl to each product if possible
     if (isset($products['products']) && !empty($products['products'])) {
+        foreach ($products['products'] as &$item) {
+            if (isset($item['product']['featureImage']['id']) && isset($item['product']['featureImage']['mimetype'])) {
+                $featureImage = $item['product']['featureImage'];
+                $fileType = explode('/', $featureImage['mimetype'])[1];
+                $item['product']['thumbnailUrl'] = MERCHI_URL . "v6/product-public-file/download/" . $featureImage['id'] . "." . $fileType;
+            } else {
+                $item['product']['thumbnailUrl'] = '';
+            }
+        }
+        unset($item);
         wp_send_json_success($products);
     } else {
         wp_send_json_error(['message' => 'No products found']);

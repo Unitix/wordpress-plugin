@@ -99,7 +99,7 @@ class ProductPage extends BaseController {
         return ($a['position'] ?? 0) <=> ($b['position'] ?? 0);
     });
 
-    echo '<div class="custom-variation-options merchi_product_form">';
+    echo '<div class="custom-variation-options merchi-product-form">';
 
     foreach ($fields as $index => $field) {
         if ($field['type'] === 'attribute') {
@@ -129,7 +129,7 @@ class ProductPage extends BaseController {
 			return ($a['position'] ?? 0) <=> ($b['position'] ?? 0);
 		});
 
-		echo '<div id="grouped-fields-container" class="merchi_product_form">';
+		echo '<div id="grouped-fields-container" class="merchi-product-form">';
 		echo '<h3>Grouped Options</h3>';
 
 		echo '<div class="group-field-set" data-group-index="0">';
@@ -265,7 +265,7 @@ class ProductPage extends BaseController {
 			// Encode variation field data for data attribute
 			$variation_field_json = esc_attr(json_encode($variation_field_data));
 
-			$html = '<div class="custom-field">';
+			$html = '<div class="custom-field' . (!empty($field['required']) ? '" data-required="true"' : '"') . '>';
 
 			// Add variation field data to all input elements
 			$common_data_attrs = ' data-variation-field=\''.$variation_field_json.'\'';
@@ -450,7 +450,7 @@ class ProductPage extends BaseController {
 		$variation_unit_cost = $field['variationUnitCost'] ?? 0;
 		$variation_cost = $field['variationCost'] ?? 0;
 
-		$html = '<div class="custom-field">';
+		$html = '<div class="custom-field' . (!empty($field['required']) ? '" data-required="true"' : '"') . '>';
 		$html .= "<label for='{$slug}'>{$label} {$this->cost_label_content($variation_unit_cost, $variation_cost)}</label>";
 		$field_name = $name_prefix . '.variations[' . $field_index . ']';
 
