@@ -17,14 +17,11 @@ async function createClient(MERCHI, clientJson, cartJson) {
       : undefined;
 
     const clientEnt = MERCHI.fromJson(
-      new MERCHI.User(),
+      new MERCHI.Client(),
       { ...clientJson, registeredUnderDomains }
     );
 
-    const data = MERCHI.serialise(clientEnt, null, null, null, { excludeOld: false })[0];
-
-    console.log('data', data);
-
+    const data = serialise(clientEnt, null, null, null, { excludeOld: false })[0];
     const request = new MERCHI.Request();
     request.resource('/public_user_create/');
     request.method('POST');
@@ -72,8 +69,6 @@ const WoocommerceCheckoutForm = () => {
   const [shipmentOptionsLoading, setShipmentOptionsLoading] = useState(false);
 
   const MERCHI = MERCHI_SDK();
-
-  console.log('Merchi:', MERCHI);
 
   async function getShippingGroup() {
     const merchi_api_url = MERCHI_API_URL();
@@ -138,9 +133,6 @@ const WoocommerceCheckoutForm = () => {
       shipping_postcode
     } = getValues();
 
-    // Get MerchiCart data from localStorage
-    // const merchiCartData = JSON.parse(localStorage.getItem('MerchiCart') || '{}');
-    
     let cartEnt = MERCHI.fromJson(new MERCHI.Cart(), cart);
     try {
       // try update or create new client
@@ -156,50 +148,24 @@ const WoocommerceCheckoutForm = () => {
         );
         cartEnt.client(newCartClient);
       }
-
       const addressEnt = new MERCHI.Address()
         .lineOne(shipping_address_1)
         .lineTwo(shipping_address_2)
         .city(shipping_city)
         .postcode(shipping_postcode)
-        .country(selectedShippingCountry?.iso2);
-        // .state(selectedShippingState?.iso2);
-
+        .country(selectedShippingCountry?.iso2)
+        .state(selectedShippingState?.iso2);
       cartEnt.receiverAddress(addressEnt);
-      
-   
+      cartEnt = await patchCart(cartEnt);
 
-      //convert cartEnt to json
-      const cartJson = MERCHI.toJson(cartEnt);
-
-      //delete the id of cart item from cartItems
-      cartJson.cartItems.forEach(item => {
-        delete item.id;
-      });
-
-      
-      console.log("cartJson", cartJson);
-      // Patch the cart data to Merchi server
-      await patchCart(cartJson)
-      .then(response => {
-        console.log('[MerchiSync] Patch cart data:', response);
-      })
-      .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
-      
-      // Update localStorage with the patched cart data
-      localStorage.setItem('MerchiCart', JSON.stringify(MERCHI.toJson(cartEnt)));
-
-      // Comment out payment step for testing
-      // const merchi_api_url = MERCHI_API_URL();
-      // const response = await fetch(`${merchi_api_url}v6/stripe/payment_intent/cart/${cartEnt.id()}/?cart_token=${cartEnt.token()}`);
-      // const data = await response.json();
-      // setStripeClientSecret(data.stripeClientSecret);
-      // setCurrentStep('payment');
-
-      // Directly proceed to order confirmation
-      // window.location.href = '/checkout/order-confirmation';
+      const merchi_api_url = MERCHI_API_URL();
+      // Get Stripe client secret
+      const response = await fetch(`${merchi_api_url}v6/stripe/payment_intent/cart/${cartEnt.id()}/?cart_token=${cartEnt.token()}`);
+      const data = await response.json();
+      setStripeClientSecret(data.stripeClientSecret);
+      setCurrentStep('payment');
     } catch (error) {
-      console.error('Error updating cart:', error);
+      console.error('Error creating client:', error);
     } finally {
       setOrderLoading(false);
     }
@@ -225,8 +191,7 @@ const WoocommerceCheckoutForm = () => {
       <div className='wc-block-components-sidebar-layout wc-block-checkout is-large'>
         <div className="wc-block-components-main wc-block-checkout__main wp-block-woocommerce-checkout-fields-block">
           {currentStep === 'details' ? (
-            
-            <form onSubmit={handleSubmit(placeOrder)} className='wc-block-components-form wc-block-checkout__form' >
+            <form onSubmit={handleSubmit(placeOrder)} className='wc-block-components-form wc-block-checkout__form'>
               <fieldset className="wc-block-checkout__contact-fields wp-block-woocommerce-checkout-contact-information-block wc-block-components-checkout-step" id="contact-fields">
                 <legend className="screen-reader-text">Contact information</legend>
                 <div className="wc-block-components-checkout-step__heading">
@@ -250,7 +215,7 @@ const WoocommerceCheckoutForm = () => {
                           type="text"
                           id="billing_first_name"
                           className="wc-block-components-text-input__input input-text"
-                          {...register("client.name", { required: "Full name is required" })}
+                          {...register("cart.client.name", { required: "Full name is required" })}
                         />
                         {errors.cart?.client?.name &&
                           <div className="wc-block-components-validation-error" role="alert">
@@ -415,11 +380,11 @@ const WoocommerceCheckoutForm = () => {
               >
                 ← Back to Details
               </button>
-              {/* <StripePaymentForm
+              <StripePaymentForm
                 clientSecret={stripeClientSecret}
                 onPaymentSuccess={handlePaymentSuccess}
                 onPaymentError={handlePaymentError}
-              /> */}
+              />
             </div>
           )}
         </div>
