@@ -657,7 +657,7 @@ function enqueue_admin_customfiles($hook)
 	if ('edit-tags.php' == $hook || 'term.php' == $hook) {
 		wp_enqueue_media();
 	}
-	wp_enqueue_script('custom-admin-script', plugin_dir_url(__FILE__) . 'custom.js', array('cst-jquery-ui'), null, true);
+	wp_enqueue_script('custom-admin-script', plugin_dir_url(__FILE__) . 'dist/js/wordpress_merchi_dashboard.js', array('cst-jquery-ui'), null, true);
 	wp_localize_script('custom-admin-script', 'frontendajax', array('ajaxurl' => admin_url('admin-ajax.php')));
 	wp_enqueue_script('custom-merchi-script', MERCHI_BASE_URL.'/static/js/dist/merchi-init.js', array(), null, true);
 	wp_localize_script('custom-admin-script', 'scriptData', array(
