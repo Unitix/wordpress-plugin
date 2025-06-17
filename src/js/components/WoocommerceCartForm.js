@@ -18,13 +18,6 @@ export default function WoocommerceCartForm() {
   const [cart, setCart] = useState(readCart());
   const [loading, setLoading] = useState(true);
 
-  // useEffect(() => {
-  //   const onStorage = e => e.key === 'MerchiCart' && setCart(readCart());
-  //   window.addEventListener('storage', onStorage);
-  //   return () => window.removeEventListener('storage', onStorage);
-
-  // }, []);
-
   useEffect(() => {
     const onStorage = e =>
       e.key === 'MerchiCart' && setCart(readCart());
@@ -52,35 +45,11 @@ export default function WoocommerceCartForm() {
   };
 
   const handleRemove = useCallback(async (item) => {
-    // const wooKey = item.key;
-    // if (!wooKey) return console.warn('Missing Woo item key');
     const wooKey = findWooKeyBySku(item.product?.id);
     if (!wooKey) {
       console.warn('Missing Woo item key, cannot sync mini-cart');
       return;
     }
-
-    // // remove items from mini cart
-    // let res;
-    // try {
-    //   res = await fetch('/wp-json/wc/store/v1/cart/remove-item', {
-    //     method: 'POST',
-    //     credentials: 'same-origin',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Nonce': window.wcSettings?.nonce || '31d7ef87ff',
-    //     },
-    //     body: JSON.stringify({ key: wooKey }),
-    //   });
-    // } catch (err) {
-    //   console.warn('[Cart] Woo remove-item failed:', err);
-    //   return;
-    // }
-    // console.log('res', res);
-    // if (!res.ok) {
-    //   console.warn('[Cart] Woo remove-item error:', res.status);
-    //   return;
-    // }
 
     // get current valid nonce
     const nonce = await ensureWooNonce();
