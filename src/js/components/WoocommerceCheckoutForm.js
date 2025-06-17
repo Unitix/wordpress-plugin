@@ -156,7 +156,26 @@ const WoocommerceCheckoutForm = () => {
         .country(selectedShippingCountry?.iso2)
         .state(selectedShippingState?.iso2);
       cartEnt.receiverAddress(addressEnt);
-      cartEnt = await patchCart(cartEnt);
+      
+      //convert cartEnt to json
+      const cartJson = MERCHI.toJson(cartEnt);
+
+      //delete the id of cart item from cartItems
+      cartJson.cartItems.forEach(item => {
+        delete item.id;
+      });
+
+      
+      console.log("cartJson", cartJson);
+      // Patch the cart data to Merchi server
+      await patchCart(cartJson)
+      .then(response => {
+        console.log('[MerchiSync] Patch cart data:', response);
+      })
+      .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
+      
+      // Update localStorage with the patched cart data
+      localStorage.setItem('MerchiCart', JSON.stringify(MERCHI.toJson(cartEnt)));
 
       const merchi_api_url = MERCHI_API_URL();
       // Get Stripe client secret
@@ -164,6 +183,7 @@ const WoocommerceCheckoutForm = () => {
       const data = await response.json();
       setStripeClientSecret(data.stripeClientSecret);
       setCurrentStep('payment');
+
     } catch (error) {
       console.error('Error creating client:', error);
     } finally {
