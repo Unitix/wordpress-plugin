@@ -1,10 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 export default function CouponPanel() {
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState('');
 
+  const wrapperRef = useRef(null);
+  const handleFocus = () => {
+    wrapperRef.current?.classList.add('is-active');
+  };
+  const handleBlur = (e) => {
+    if (!e.target.value.trim()) {
+      wrapperRef.current?.classList.remove('is-active');
+    }
+  };
+
+  const handleChange = (e) => {
+    const val = e.target.value;
+    setCode(val);
+  };
+
   const toggle = () => setOpen((o) => !o);
+
+  useEffect(() => {
+    if (open && wrapperRef.current && code.trim()) {
+      wrapperRef.current.classList.add('is-active');
+    }
+  }, [open, code]);
 
   return (
     <div className="wp-block-woocommerce-checkout-order-summary-coupon-form-block wc-block-components-totals-wrapper">
@@ -52,14 +73,19 @@ export default function CouponPanel() {
                       e.preventDefault();
                     }}
                   >
-                    <div className="wc-block-components-text-input wc-block-components-totals-coupon__input">
+                    <div
+                      ref={wrapperRef}
+                      className="wc-block-components-text-input wc-block-components-totals-coupon__input">
                       <input
                         id="wc-block-components-totals-coupon__input-coupon"
                         className="wc-block-components-text-input__input"
                         type="text"
                         aria-label="Enter code"
+                        placeholder=" "
                         value={code}
-                        onChange={(e) => setCode(e.target.value)}
+                        onFocus={handleFocus}
+                        onBlur={handleBlur}
+                        onChange={handleChange}
                       />
                       <label
                         htmlFor="wc-block-components-totals-coupon__input-coupon"

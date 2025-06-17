@@ -1,8 +1,5 @@
 import { patchCart } from './merchi_public_custom.js';
 
-// Global variable to store patch data
-window.lastPatchCartData = null;
-
 const PATCH_DISABLED = true;
 
 // SKU Filtering && clear cart Logic

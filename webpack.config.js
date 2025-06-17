@@ -8,7 +8,8 @@ module.exports = {
     'export_products': './src/js/export_products.js',
     'merchi_checkout_init': './src/js/merchi_checkout_init.js',
     'merchi_public_custom': './src/js/merchi_public_custom.js',
-    'woocommerce_cart_checkout': './src/js/woocommerce_cart_checkout.js'
+    'woocommerce_cart_checkout': './src/js/woocommerce_cart_checkout.js',
+    'wordpress_merchi_dashboard': './src/js/wordpress_merchi_dashboard.js'
   },
   output: {
     filename: '[name].js',

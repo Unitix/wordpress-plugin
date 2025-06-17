@@ -1548,3 +1548,12 @@ body.single-product #cart-count {
   align-items: center;
   min-height: 180px;
 }
+
+.wc-cart-loading {
+  min-height: 40vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+}
