@@ -167,8 +167,6 @@ const WoocommerceCheckoutForm = () => {
 
       cartEnt.receiverAddress(addressEnt);
       
-   
-
       //convert cartEnt to json
       const cartJson = MERCHI.toJson(cartEnt);
 
