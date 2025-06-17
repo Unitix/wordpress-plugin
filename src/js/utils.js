@@ -126,3 +126,24 @@ export default function useWooActive() {
     };
   }, []);
 }
+
+// Woo Store Nonce helper
+let wooNonceCache = '';
+
+export async function fetchWooNonce() {
+  const r = await fetch('/wp-json/wc/store/v1/cart', { credentials: 'same-origin' });
+  wooNonceCache = r.headers.get('Nonce') || '';
+  return wooNonceCache;
+}
+
+export async function ensureWooNonce() {
+  if (wooNonceCache) return wooNonceCache;
+  return fetchWooNonce();
+}
+
+export function updateWooNonce(res) {
+  const n = res.headers?.get?.('Nonce');
+  if (n) wooNonceCache = n;
+}
+
+
