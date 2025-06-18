@@ -46,14 +46,13 @@ export default function WoocommerceCheckoutFormSideCart() {
     cart.cartItemsSubtotalCost ??
     cart.cartItems.reduce(
       (sum, i) =>
-        sum + ((i.subtotalCost ?? i.cost ?? i.totalCost ?? 0) * i.quantity),
+        sum + (i.subtotalCost ?? (i.cost ?? 0) * i.quantity),
       0
     );
   const total =
     cart.cartItemsTotalCost ??
     cart.cartItems.reduce(
-      (sum, i) =>
-        sum + ((i.totalCost ?? i.subtotalCost ?? i.cost ?? 0) * i.quantity),
+      (sum, i) => sum + (i.totalCost ?? 0),
       0
     );
 
@@ -67,7 +66,7 @@ export default function WoocommerceCheckoutFormSideCart() {
           <div className="wp-block-woocommerce-checkout-order-summary-cart-items-block wc-block-components-totals-wrapper">
             <div className="wc-block-components-order-summary is-large">
               <div className="wc-block-components-order-summary__content">
-                {cart.cartItems.map((item) => {
+                {cart.cartItems.map((item, index) => {
                   const { product = {}, quantity = 1, totalCost = 0 } = item;
                   const thumb =
                     product.featureImage?.viewUrl ||
@@ -79,7 +78,7 @@ export default function WoocommerceCheckoutFormSideCart() {
 
                   return (
                     <div
-                      key={`${product.id}-${item.id}`}
+                      key={`${product.id}-${index}`}
                       className="wc-block-components-order-summary-item"
                     >
                       <div className="wc-block-components-order-summary-item__image">

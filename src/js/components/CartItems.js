@@ -17,7 +17,7 @@ export default function CartItems({ cartItems, onRemove }) {
           </tr>
         </thead>
         <tbody>
-          {cartItems.map(item => {
+          {cartItems.map((item) => {
             const { product = {}, quantity = 1 } = item;
             const thumb =
               product.featureImage?.viewUrl ||
@@ -28,7 +28,7 @@ export default function CartItems({ cartItems, onRemove }) {
             const total = item.totalCost ?? item.cost ?? 0;
 
             return (
-              <tr key={item.key ?? product.id} className="wc-block-cart-items__row" tabIndex={-1}>
+              <tr key={item.cartUid ?? item.key ?? product.id} className="wc-block-cart-items__row" tabIndex={-1}>
                 <td className="wc-block-cart-item__image" aria-hidden="true">
                   <a href={product.url || '#'} tabIndex={-1}><img src={thumb} alt="" /></a>
                 </td>

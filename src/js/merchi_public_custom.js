@@ -127,7 +127,6 @@ export async function patchCart(cartJson, embed = cartEmbed) {
     );
   });
 }
-
 // All PATCH requests should now be handled by the backend via send_id_for_add_cart.
 
 function setCookie(name, value, days) {

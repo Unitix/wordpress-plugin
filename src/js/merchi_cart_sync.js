@@ -14,6 +14,9 @@ function reconcileMerchiWithStore({ items }) {
     if (merchi.cartItems.length === 0) return;
 
     merchi.cartItems = [];
+    merchi.cartItemsSubtotalCost = 0;
+    merchi.cartItemsTaxAmount = 0;
+    merchi.cartItemsTotalCost = 0;
     localStorage.setItem('MerchiCart', JSON.stringify(merchi));
     try { window.COOKIE_MANAGER?.syncWithLocalStorage?.(); } catch { }
     if (!PATCH_DISABLED) {
@@ -34,6 +37,13 @@ function reconcileMerchiWithStore({ items }) {
     wooSkus.has(String(ci.product?.id))
   );
   if (merchi.cartItems.length === before) return;
+
+  merchi.cartItemsSubtotalCost = merchi.cartItems.reduce(
+    (s, i) => s + (i.subtotalCost ?? i.cost ?? 0), 0);
+  merchi.cartItemsTotalCost = merchi.cartItems.reduce(
+    (s, i) => s + (i.totalCost ?? i.subtotalCost ?? i.cost ?? 0), 0);
+  merchi.cartItemsTaxAmount = merchi.cartItems.reduce(
+    (s, i) => s + (i.taxAmount ?? 0), 0);
 
   localStorage.setItem('MerchiCart', JSON.stringify(merchi));
   try { window.COOKIE_MANAGER?.syncWithLocalStorage?.(); } catch { }
