@@ -146,4 +146,22 @@ export function updateWooNonce(res) {
   if (n) wooNonceCache = n;
 }
 
+export const shouldShow = (v) => {
+  if (v.variationField?.fieldType === 5) return false;           // Number Field
+  if (Array.isArray(v.selectedOptions) && v.selectedOptions.length) return true;
+  if (typeof v.value === 'string' && v.value.trim() !== '') return true;
+  if (typeof v.value === 'number') return true;
+  return false;
+};
 
+export const buildOptionMap = (product = {}) => {
+  const fields = [
+    ...(product.groupVariationFields || []),
+    ...(product.independentVariationFields || []),
+  ];
+  const map = new Map();
+  fields.forEach((f) =>
+    (f.options || []).forEach((o) => map.set(String(o.id), o.value))
+  );
+  return map;
+};

@@ -5,6 +5,7 @@ import CartTotals from './CartTotals';
 
 import { ensureWooNonce, fetchWooNonce, updateWooNonce } from '../utils';
 
+// read cart from local storage
 const readCart = () => {
   try {
     const data = JSON.parse(localStorage.getItem('MerchiCart')) || {};
@@ -23,9 +24,11 @@ export default function WoocommerceCartForm() {
       e.key === 'MerchiCart' && setCart(readCart());
     window.addEventListener('storage', onStorage);
 
+    // sync with the backend
     (async () => {
       try {
         const patched = await patchCart(readCart());
+        // update the cart in local storage
         setCart(JSON.parse(localStorage.getItem('MerchiCart')) || patched);
       } catch (e) {
         console.warn('[Cart] patchCart error:', e.response?.status || e);
@@ -54,6 +57,7 @@ export default function WoocommerceCartForm() {
     // get current valid nonce
     const nonce = await ensureWooNonce();
 
+    // send request to WooCommerce
     async function postRemove(n) {
       return fetch('/wp-json/wc/store/v1/cart/remove-item', {
         method: 'POST',

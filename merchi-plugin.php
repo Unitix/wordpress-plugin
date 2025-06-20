@@ -1575,15 +1575,23 @@ function filter_woocommerce_get_item_data( $cart_data, $cart_item = null ) {
                     'name' => 'Field',
                     'value' => esc_html($group),
                 );
-            }
-        }
+            }}
     }
     return $cart_data;
 }
 add_filter( 'woocommerce_get_item_data', 'filter_woocommerce_get_item_data', 99, 2 );
 
-
 add_filter( 'woocommerce_add_to_cart_fragments', 'cart_count_fragments_wp', 10, 1 );
+
+add_action( 'wp_footer', function () {
+	?>
+	<style>
+		.wc-block-cart-item__quantity .wc-block-components-quantity-selector {
+			display: none !important;
+		}
+	</style>
+	<?php
+}, 9999 );  
 
 function cart_count_fragments_wp( $fragments ) {
 	if(WC()->cart->get_cart_contents_count()){

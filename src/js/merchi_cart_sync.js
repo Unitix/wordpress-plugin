@@ -1,6 +1,6 @@
 import { patchCart } from './merchi_public_custom.js';
 
-const PATCH_DISABLED = true;
+const PATCH_DISABLED = false;
 
 // SKU Filtering && clear cart Logic
 function reconcileMerchiWithStore({ items }) {

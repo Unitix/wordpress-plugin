@@ -2,8 +2,17 @@ import React from 'react';
 import CouponPanel from './CouponPanel';
 
 export default function CartTotals({ cart }) {
-  const subtotal = cart.cartItemsSubtotalCost ?? 0;
-  const total = cart.cartItemsTotalCost ?? 0;
+  const subtotal = +(cart.cartItemsSubtotalCost ?? cart.subtotalCost ?? 0);
+  const total = +(cart.cartItemsTotalCost ?? cart.totalCost ?? 0);
+
+  const taxRaw =
+    cart.cartItemsTaxAmount ??
+    cart.taxAmount ??
+    (total > subtotal ? total - subtotal : 0);
+
+  const tax = (+taxRaw).toFixed(2);
+  const subtotalFmt = subtotal.toFixed(2);
+  const totalFmt = total.toFixed(2);
 
   return (
     <div className="wc-block-components-sidebar wc-block-cart__sidebar wp-block-woocommerce-cart-totals-block">
@@ -16,14 +25,21 @@ export default function CartTotals({ cart }) {
           <div className="wc-block-components-totals-wrapper">
             <div className="wc-block-components-totals-item">
               <span className="wc-block-components-totals-item__label">Subtotal</span>
-              <span className="wc-block-components-totals-item__value">{`$${subtotal}`}</span>
+              <span className="wc-block-components-totals-item__value">{`$${subtotalFmt}`}</span>
+            </div>
+          </div>
+
+          <div className="wc-block-components-totals-wrapper">
+            <div className="wc-block-components-totals-item">
+              <span className="wc-block-components-totals-item__label">Tax</span>
+              <span className="wc-block-components-totals-item__value">{`$${tax}`}</span>
             </div>
           </div>
 
           <div className="wc-block-components-totals-wrapper">
             <div className="wc-block-components-totals-item wc-block-components-totals-footer-item">
               <span className="wc-block-components-totals-item__label">Total</span>
-              <span className="wc-block-components-totals-item__value">{`$${total}`}</span>
+              <span className="wc-block-components-totals-item__value">{`$${totalFmt}`}</span>
             </div>
           </div>
         </div>
