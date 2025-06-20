@@ -70,6 +70,39 @@ async function localStorageUpdateCartEnt(cartEnd) {
   localStorage.setItem("MerchiCart", JSON.stringify(MERCHI.toJson(cartEnd)));
 }
 
+export function cleanVariationJson(v) {
+  const {
+    variationField = {},
+    ...rest
+  } = v;
+
+  return {
+    ...rest,
+    id: undefined,
+    variationField: variationField?.id
+      ? { id: variationField.id }
+      : undefined,
+  };
+  // const variation = { ...v };
+  // variation.variationFiles = v.variationFiles ? v.variationFiles : [];
+  // return { ...variation, id: undefined };
+}
+
+export function cleanVariationGroupJson(g) {
+  const {
+    quantity = 0,
+    variations = [],
+    ...rest
+  } = g;
+  const _variations = variations.map(cleanVariationJson);
+  const _quantity = quantity ? quantity : 0;
+  return {
+    ...rest,
+    quantity: _quantity,
+    variations: _variations
+  };
+}
+
 export async function patchCart(cartJson, embed = cartEmbed) {
   const cleanedCartJson = {
     ...cartJson,
@@ -79,10 +112,12 @@ export async function patchCart(cartJson, embed = cartEmbed) {
       product: { id: item.product.id },
       taxType: item.taxType ? { id: item.taxType.id } : undefined,
       variations: item.variations,
-      variationsGroups: item.variationsGroups,
+      variationsGroups: (item.variationsGroups || []).map(cleanVariationGroupJson),
     })),
   }
   const cartEnt = MERCHI.fromJson(new MERCHI.Cart(), cleanedCartJson);
+  console.log('[patchCart] cleanedCartJson', cleanedCartJson);
+
   cartEnt.token(cartJson.token);
 
   // Store the current cart state for potential rollback
@@ -127,7 +162,6 @@ export async function patchCart(cartJson, embed = cartEmbed) {
     );
   });
 }
-
 // All PATCH requests should now be handled by the backend via send_id_for_add_cart.
 
 function setCookie(name, value, days) {

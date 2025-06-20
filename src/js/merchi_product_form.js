@@ -1059,6 +1059,15 @@ function initializeWhenReady() {
         let cartId = null;
         let totalQuantity = variationsGroups.length ? 0 : quantity;
 
+        // use querySelector to get the main image and assign it to featureImage
+        const pageImg = document.querySelector(
+          '.woocommerce-product-gallery__image img, .woocommerce-product-gallery__wrapper img, meta[property="og:image"]'
+        )?.src;
+
+        if (pageImg && !formData.product.featureImage) {
+          formData.product.featureImage = { viewUrl: pageImg };
+        }
+
         // Get the cart in local storage
         const merchiCart = localStorage.getItem('MerchiCart');
         let merchiCartJson;
@@ -1068,17 +1077,51 @@ function initializeWhenReady() {
           merchiCartJson = JSON.parse(merchiCart);
           cartId = merchiCartJson.id;
           // Add the new item to the cart
+
+          // fill the basic quantity and price fields to formData
+          formData.quantity = variationsGroups.length ? 0 : quantity;
+          formData.subtotalCost = (formData.cost ?? 0) * formData.quantity;
+          formData.totalCost = (formData.totalCost ?? formData.cost ?? 0) * formData.quantity;
+
           const cartItems = [...merchiCartJson.cartItems, formData];
+
+          // calculate the subtotal and total cost of the cart items (based on variationsGroups)
+          const cartItemsSubtotalCost = cartItems.reduce((sum, it) => {
+            if (Array.isArray(it.variationsGroups) && it.variationsGroups.length) {
+              return sum + it.variationsGroups.reduce((s, g) => s + (g.groupCost ?? 0), 0);
+            }
+            return sum + (it.subtotalCost ?? (it.cost ?? 0) * (it.quantity ?? 1));
+          }, 0);
+
+          const cartItemsTotalCost = cartItems.reduce((sum, it) => {
+            if (Array.isArray(it.variationsGroups) && it.variationsGroups.length) {
+              return sum + it.variationsGroups.reduce((s, g) => s + (g.groupCost ?? 0), 0);
+            }
+            return sum + (it.totalCost ?? it.subtotalCost ?? (it.cost ?? 0) * (it.quantity ?? 1));
+          }, 0);
+
           updatedCartJson = {
             ...merchiCartJson,
             cartItems: cartItems.map(item => ({
               ...item,
-              product: {id: item.product.id},
-              taxType: item.taxType ? {id: item.taxType.id} : undefined,
+
+              // product: { id: item.product.id },
+              product: {
+                id: item.product?.id,
+                name: item.product?.name,
+                featureImage: item.product?.featureImage
+                  ?? item.product?.images?.[0]
+                  ?? undefined,
+              },
+              subtotalCost: item.subtotalCost,
+              totalCost: item.totalCost,
+              taxType: item.taxType ? { id: item.taxType.id } : undefined,
               variations: item.variations,
               variationsGroups: item.variationsGroups,
             })),
-            domain: {id: merchiCartJson?.domain?.id},
+            cartItemsSubtotalCost,
+            cartItemsTotalCost,
+            domain: { id: merchiCartJson?.domain?.id },
           };
           localStorage.setItem('MerchiCart', JSON.stringify(updatedCartJson)); //use the patchcart method here from merchi_public_custom.js
         } catch (error) {
@@ -1133,6 +1176,10 @@ function initializeWhenReady() {
 
             cartItems[0].variations.push(groupObj);
             cartItems[0].objExtras.push(groupExtras);
+
+            formData.quantity = totalQuantity;
+            formData.subtotalCost = (formData.cost ?? 0) * totalQuantity;
+            formData.totalCost = (formData.totalCost ?? formData.cost ?? 0) * totalQuantity;
           });
         }
 
@@ -1154,7 +1201,6 @@ function initializeWhenReady() {
           cartItems[0].variations.push(obj);
           cartItems[0].objExtras.push(objExtras);
         }
-
         cartItems[0].quantity = totalQuantity;
         const cartPayload = {
           cartId: cartId,
