@@ -85,10 +85,54 @@ function fetchProducts() {
         const dropdownContent = jQuery("#search_results");
         products.forEach((item) => {
           const { product } = item;
-          const { bestPrice, id, name } = product;
+          const { bestPrice, id, name, thumbnailUrl } = product;
           const div = jQuery("<div>");
-          div.text(name);
           div.addClass("search-result");
+          // Add image if available
+          if (thumbnailUrl) {
+            const img = jQuery("<img>")
+              .attr("src", thumbnailUrl)
+              .addClass("merchi-thumb-img")
+              .css({
+                width: "32px",
+                height: "32px",
+                "object-fit": "cover",
+                "margin-right": "8px",
+                "vertical-align": "middle",
+                "border-radius": "4px",
+                border: "1px solid #eee"
+              });
+            // Hover preview logic
+            img.on("mouseenter", function(e) {
+              let preview = jQuery("#merchi-thumb-preview");
+              if (preview.length === 0) {
+                preview = jQuery('<div id="merchi-thumb-preview"></div>');
+                jQuery("body").append(preview);
+              }
+              preview.html('<img src="' + thumbnailUrl + '" style="max-width:160px; max-height:160px; border-radius:8px; border:1px solid #ccc; box-shadow:0 2px 8px rgba(0,0,0,0.15);">');
+              preview.css({
+                position: "fixed",
+                top: e.clientY + 10 + "px",
+                left: e.clientX + 10 + "px",
+                display: "block",
+                "z-index": 99999,
+                background: "#fff",
+                padding: "4px"
+              });
+            });
+            img.on("mousemove", function(e) {
+              jQuery("#merchi-thumb-preview").css({
+                top: e.clientY + 10 + "px",
+                left: e.clientX + 10 + "px"
+              });
+            });
+            img.on("mouseleave", function() {
+              jQuery("#merchi-thumb-preview").remove();
+            });
+            div.append(img);
+          }
+          // Add product name
+          div.append(jQuery("<span>").text(name));
           div.on("click", function () {
             jQuery("#custom_value_field").val(name);
             hiddenProductIdField.value = id;
@@ -119,6 +163,8 @@ function fetchProducts() {
                       },
                       success: function (response) {
                           if (response.success) {
+                              // Show success message on the Add Product page
+                              showMerchiSuccessMessage(response.message || 'Product and variations created successfully!');
                               console.log("Variations created successfully:", response.message);
                           } else {
                               console.error("Error:", response.message);
@@ -386,15 +432,9 @@ setImageUpload($('#taxonomy_image'), $('#taxonomy-image-preview'), $('.remove_im
     $("#loader").css("margin-top", "-50px");
   }
 
-  if (jQuery(".post-new-php.post-type-product").length > 0) {
-    jQuery("#publish").trigger("click");
-    document.getElementsByClassName("wrap")[0].style.filter = "blur(2.5px)";
-    yourMethod();
-  }
   jQuery("#wp-admin-bar-new-content").on("click", function () {
     setTimeout(function () {
       if (jQuery(".post-new-php.post-type-product").length > 0) {
-        jQuery("#publish").trigger("click");
       }
     }, 5000);
   });
@@ -518,3 +558,21 @@ setImageUpload($('#taxonomy_image'), $('#taxonomy-image-preview'), $('.remove_im
     });
   });
 });
+
+// Add this helper function near the top or bottom of the file
+function showMerchiSuccessMessage(message) {
+    // Remove any existing message
+    jQuery('#merchi-success-message').remove();
+    // Insert new message after the main page title (h1 inside .wrap)
+    var $wrapH1 = jQuery('.wrap h1');
+    if ($wrapH1.length) {
+        $wrapH1.after(
+            '<div id="merchi-success-message" style="margin:10px 0;padding:10px;background:#d4edda;color:#155724;border:1px solid #c3e6cb;border-radius:4px;">' +
+            message +
+            '</div>'
+        );
+        setTimeout(function() {
+            jQuery('#merchi-success-message').fadeOut();
+        }, 5000);
+    }
+}
