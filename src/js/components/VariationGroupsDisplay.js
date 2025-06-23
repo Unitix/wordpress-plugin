@@ -49,16 +49,17 @@ export default function VariationGroupsDisplay({ product, variationsGroups = [] 
 
                 return (
                   <li key={`${gIdx}-${i}`} className={`wc-block-components-product-details__${slug}`}>
-                    <span className="wc-block-components-product-details__name" style={{ fontWeight: 400 }}>
+                    <span className="wc-block-components-product-details__name" style={{ fontWeight: 400, marginRight: 4 }}>
                       {label}: </span>
-                    <span className="wc-block-components-product-details__value">{value}</span>
+                    <span className="wc-block-components-product-details__value"
+                      style={{ whiteSpace: 'nowrap' }}>{value}</span>
                   </li>
                 );
               })}
 
             {'quantity' in group && (
               <li key={`${gIdx}-qty`} className="wc-block-components-product-details__quantity">
-                <span className="wc-block-components-product-details__name" style={{ fontWeight: 400 }}>
+                <span className="wc-block-components-product-details__name" style={{ fontWeight: 400, marginRight: 4 }}>
                   Quantity: </span>
                 <span className="wc-block-components-product-details__value">{group.quantity}</span>
               </li>
