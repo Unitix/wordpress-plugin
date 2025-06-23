@@ -103,7 +103,21 @@ export function cleanVariationGroupJson(g) {
   };
 }
 
-export async function patchCart(cartJson, embed = cartEmbed) {
+export async function patchCart(cartJson, embed = cartEmbed, options = {}) {
+
+  // const isCartPage = () => {
+  //   const currentPath = window.location.pathname.toLowerCase();
+  //   return currentPath.includes('/cart') ||
+  //     currentPath.includes('cart.php') ||
+  //     !currentPath.includes('/checkout');
+  // };
+
+  // Default options
+  const {
+    includeShippingFields = false, // Explicit control over shipping fields
+    preserveShippingInLocalStorage = true // Whether to preserve shipping data in localStorage
+  } = options;
+
   const cleanedCartJson = {
     ...cartJson,
     domain: { id: cartJson.domain.id },
@@ -114,7 +128,35 @@ export async function patchCart(cartJson, embed = cartEmbed) {
       variations: item.variations,
       variationsGroups: (item.variationsGroups || []).map(cleanVariationGroupJson),
     })),
+  };
+
+  // if (isCartPage()) {
+  //   // Remove shipping-related fields that cause 403 on cart pages
+  //   delete cleanedCartJson.shipmentGroups;
+  //   delete cleanedCartJson.selectedQuote;
+  //   delete cleanedCartJson.receiverAddress;
+  // } else {
+  //   // On checkout pages, ensure these fields exist (even if empty) for proper quoting
+  //   cleanedCartJson.shipmentGroups = cartJson.shipmentGroups || [];
+  //   cleanedCartJson.selectedQuote = cartJson.selectedQuote || null;
+  //   cleanedCartJson.receiverAddress = cartJson.receiverAddress || null;
+  // }
+
+  // keep or remove shipping fields based on options parameter 
+  if (!includeShippingFields) {
+    // Remove shipping-related fields that may cause 403 errors
+    delete cleanedCartJson.shipmentGroups;
+    delete cleanedCartJson.selectedQuote;
+    delete cleanedCartJson.receiverAddress;
+    console.log('[patchCart] Excluding shipping fields from patch request');
+  } else {
+    // Include shipping fields (for checkout scenarios)
+    cleanedCartJson.shipmentGroups = cartJson.shipmentGroups || [];
+    cleanedCartJson.selectedQuote = cartJson.selectedQuote || null;
+    cleanedCartJson.receiverAddress = cartJson.receiverAddress || null;
+    console.log('[patchCart] Including shipping fields in patch request');
   }
+
   const cartEnt = MERCHI.fromJson(new MERCHI.Cart(), cleanedCartJson);
   console.log('[patchCart] cleanedCartJson', cleanedCartJson);
 
@@ -128,6 +170,26 @@ export async function patchCart(cartJson, embed = cartEmbed) {
       (cartEnt) => {
         try {
           const _cartJson = MERCHI.toJson(cartEnt);
+
+          // Preserve shipping data in localStorage if requested
+          if (!includeShippingFields && preserveShippingInLocalStorage && currentCartState) {
+            try {
+              const originalCart = JSON.parse(currentCartState);
+              // Merge back the shipping data that was excluded from the patch
+              if (originalCart.shipmentGroups) {
+                _cartJson.shipmentGroups = originalCart.shipmentGroups;
+              }
+              if (originalCart.selectedQuote) {
+                _cartJson.selectedQuote = originalCart.selectedQuote;
+              }
+              if (originalCart.receiverAddress) {
+                _cartJson.receiverAddress = originalCart.receiverAddress;
+              }
+            } catch (mergeError) {
+              console.warn('[patchCart] Could not merge shipping data back:', mergeError);
+            }
+          }
+
           // Update localStorage
           localStorage.setItem("MerchiCart", JSON.stringify(_cartJson));
           // Sync cookies with localStorage
@@ -315,7 +377,7 @@ async function initOrSyncCart() {
       if (localCartStringified !== serverCartStringified) {
         try {
           // Use the server version as the source of truth
-          const patchedCart = await patchCart(serverCartDataForCompare);
+          const patchedCart = await patchCart(serverCartDataForCompare, cartEmbed, { includeShippingFields: false });
           return patchedCart;
         } catch (error) {
           console.error("MERCHI_LOG: Exception during the cart patch operation:", error);
@@ -585,7 +647,7 @@ async function handleCartItemRemoval(cartItemKey) {
 
     try {
       // Update the cart using patchCart
-      await patchCart(cartJson);
+      await patchCart(cartJson, cartEmbed, { includeShippingFields: false });
 
       // If cart is empty, clear both localStorage and cookies
       if (cartJson.cartItems.length === 0) {
@@ -647,7 +709,7 @@ function handleMerchiCartItemRemoved(response) {
       cartJson.cartItems = cartJson.cartItems.filter(item => item.id !== item_id);
 
       // Update the cart using patchCart
-      patchCart(cartJson).then(response => {
+      patchCart(cartJson, cartEmbed, { includeShippingFields: false }).then(response => {
         if (!response.success) {
           console.error('Error updating cart:', response.error);
           // Show error message to user

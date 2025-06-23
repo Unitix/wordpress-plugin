@@ -20,7 +20,7 @@ function reconcileMerchiWithStore({ items }) {
     localStorage.setItem('MerchiCart', JSON.stringify(merchi));
     try { window.COOKIE_MANAGER?.syncWithLocalStorage?.(); } catch { }
     if (!PATCH_DISABLED) {
-      patchCart(merchi)
+      patchCart(merchi, null, { includeShippingFields: false })
         .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
     }
     return;
@@ -48,7 +48,7 @@ function reconcileMerchiWithStore({ items }) {
   localStorage.setItem('MerchiCart', JSON.stringify(merchi));
   try { window.COOKIE_MANAGER?.syncWithLocalStorage?.(); } catch { }
   if (!PATCH_DISABLED) {
-    patchCart(merchi)
+    patchCart(merchi, null, { includeShippingFields: false })
       .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
   }
 }

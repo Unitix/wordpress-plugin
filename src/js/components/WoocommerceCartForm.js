@@ -27,7 +27,7 @@ export default function WoocommerceCartForm() {
     // sync with the backend
     (async () => {
       try {
-        const patched = await patchCart(readCart());
+        const patched = await patchCart(readCart(), cart.cartEmbed, { includeShippingFields: false });
         // update the cart in local storage
         setCart(JSON.parse(localStorage.getItem('MerchiCart')) || patched);
       } catch (e) {
@@ -117,7 +117,7 @@ export default function WoocommerceCartForm() {
     localStorage.setItem('MerchiCart', JSON.stringify(updatedCart));
     setCart(updatedCart);
 
-    patchCart(updatedCart).catch(e =>
+    patchCart(updatedCart, cart.cartEmbed, { includeShippingFields: false }).catch(e =>
       console.warn('[Cart] patchCart error:', e?.response?.status || e)
     );
   }, [cart]);

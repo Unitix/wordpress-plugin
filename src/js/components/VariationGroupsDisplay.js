@@ -50,8 +50,7 @@ export default function VariationGroupsDisplay({ product, variationsGroups = [] 
                 return (
                   <li key={`${gIdx}-${i}`} className={`wc-block-components-product-details__${slug}`}>
                     <span className="wc-block-components-product-details__name" style={{ fontWeight: 400 }}>
-                      {label}:
-                    </span>{' '}
+                      {label}: </span>
                     <span className="wc-block-components-product-details__value">{value}</span>
                   </li>
                 );
@@ -60,8 +59,7 @@ export default function VariationGroupsDisplay({ product, variationsGroups = [] 
             {'quantity' in group && (
               <li key={`${gIdx}-qty`} className="wc-block-components-product-details__quantity">
                 <span className="wc-block-components-product-details__name" style={{ fontWeight: 400 }}>
-                  Quantity:
-                </span>{' '}
+                  Quantity: </span>
                 <span className="wc-block-components-product-details__value">{group.quantity}</span>
               </li>
             )}

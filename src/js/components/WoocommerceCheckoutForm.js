@@ -102,7 +102,7 @@ const WoocommerceCheckoutForm = () => {
       shipmentGroups: [],
     };
     try {
-      const cartEnt = await patchCart(cartJson);
+      const cartEnt = await patchCart(cartJson, null, { includeShippingFields: true });
       const _cartJson = MERCHI.toJson(cartEnt);
       setCart(_cartJson);
       await getShippingGroup();
@@ -156,7 +156,8 @@ const WoocommerceCheckoutForm = () => {
         .country(selectedShippingCountry?.iso2)
         .state(selectedShippingState?.iso2);
       cartEnt.receiverAddress(addressEnt);
-      cartEnt = await patchCart(cartEnt);
+      const cartEmbed = MERCHI.toJson(cartEnt);
+      cartEnt = await patchCart(cartEnt, cartEmbed, { includeShippingFields: true });
 
       const merchi_api_url = MERCHI_API_URL();
       // Get Stripe client secret
