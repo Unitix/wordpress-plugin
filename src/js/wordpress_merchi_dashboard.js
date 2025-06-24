@@ -78,7 +78,7 @@ function fetchProducts() {
     },
     beforeSend: function () {
       loadingData = true;
-    },
+    }, 
     success: (response) => {
       if (response.success && response.data.products.length > 0) {
         const { products } = response.data;
@@ -142,44 +142,79 @@ function fetchProducts() {
             selectedValueDisplay.style.display = "inline-block";
             customValueField.style.display = "inline-block";
             dropdownContent.hide();
-            jQuery.ajax({
-              url: frontendajax.ajaxurl,
-              type: "POST",
-              data: {
-                action: "save_product_meta",
-                wooProductId: wooProductId,
-                selectedId: id,
-                selectedName: name,
-                selectedPrice: bestPrice,
-              },
-              success: function (response) {
-                if (response.success) {
-                  jQuery.ajax({
-                      url: frontendajax.ajaxurl,
-                      type: "POST",
-                      data: {
-                          action: "fetch_merchi_product",
-                          wooProductId: wooProductId
-                      },
-                      success: function (response) {
-                          if (response.success) {
-                              console.log("Variations created successfully:", response.message);
-                          } else {
-                              console.error("Error:", response.message);
-                          }
+            const wooProductId = scriptData.woo_product_id;
+            if(wooProductId) {
+              jQuery.ajax({
+                url: frontendajax.ajaxurl,
+                type: "POST",
+                data: {
+                  action: "save_product_meta",
+                  wooProductId: wooProductId,
+                  selectedId: id,
+                  selectedName: name,
+                  selectedPrice: bestPrice,
+                },
+                success: function (response) {
+                  if (response.success) {
+                    jQuery.ajax({
+                        url: frontendajax.ajaxurl,
+                        type: "POST",
+                        data: {
+                            action: "fetch_merchi_product",
+                            wooProductId: wooProductId
+                        },
+                        success: function (response) {
+                            if (response.success) {
+                                // Try to get the view URL for the current product
+                                var postId = jQuery('#post_ID').val();
+                                var viewUrl = '';
+                                if (postId) {
+                                    // Default WooCommerce product permalink structure
+                                    viewUrl = window.location.origin + '/?post_type=product&p=' + postId;
+                                }
+                                showMerchiSuccessMessage('Product published.', viewUrl);
+                                // Remove blur/loader immediately
+                                hideCentralLoader();
+                                console.log("Variations created successfully:", response.message);
+                            } else {
+                                console.error("Error:", response.message);
+                            }
+                        }
+                    });
+                  } else {
+                    console.error(
+                      "Failed to save product meta:",
+                      response.data.message
+                    );
+                  }
+                },
+                error: function (error) {
+                  console.error("Error saving product meta:", error);
+                },
+              });
+            } else {
+              jQuery.ajax({
+                  url: frontendajax.ajaxurl,
+                  type: "POST",
+                  data: {
+                      action: "create_product_from_merchi",
+                      merchiProductId: id,
+                      merchiProductName: name,
+                      merchiProductPrice: bestPrice
+                  },
+                  success: function(response) {
+                      if (response.success) {
+                          showMerchiSuccessMessage(response.data.message || 'Product created successfully! Redirecting...');
+                          window.location.href = response.data.edit_url;
+                      } else {
+                          console.error("Error creating product:", response.data.message);
                       }
-                  });
-                } else {
-                  console.error(
-                    "Failed to save product meta:",
-                    response.data.message
-                  );
-                }
-              },
-              error: function (error) {
-                console.error("Error saving product meta:", error);
-              },
-            });
+                  },
+                  error: function(error) {
+                      console.error("Error creating product:", error);
+                  }
+              });
+            }
           });
           dropdownContent.append(div);
         });
@@ -227,8 +262,47 @@ function attachprodcuttitle(product_title, product_id) {
   });
 }
 
+// Utility to show/hide the 'images uploading' banner
+function showImagesUploadingBanner() {
+  if (!document.getElementById('images-uploading-banner')) {
+    const banner = document.createElement('div');
+    banner.id = 'images-uploading-banner';
+    banner.style.position = 'fixed';
+    banner.style.top = '20px';
+    banner.style.right = '20px';
+    banner.style.background = '#fffbe5';
+    banner.style.color = '#856404';
+    banner.style.border = '1px solid #ffeeba';
+    banner.style.padding = '12px 24px';
+    banner.style.borderRadius = '6px';
+    banner.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+    banner.style.zIndex = 99999;
+    banner.innerHTML = '<span style="margin-right:8px;">⏳</span>Images are still uploading...';
+    document.body.appendChild(banner);
+  }
+}
+function hideImagesUploadingBanner() {
+  const banner = document.getElementById('images-uploading-banner');
+  if (banner) banner.remove();
+}
+
+// Track outstanding image uploads
+let outstandingImageUploads = 0;
+function startImageUpload() {
+  outstandingImageUploads++;
+  showImagesUploadingBanner();
+}
+function finishImageUpload() {
+  outstandingImageUploads = Math.max(0, outstandingImageUploads - 1);
+  if (outstandingImageUploads === 0) {
+    hideImagesUploadingBanner();
+  }
+}
+
+// Patch attachfeatureMedia and attachMedia to use the new logic
 function attachfeatureMedia(imageUrl, inputString, msg) {
   var postId = jQuery("#post_ID").val();
+  startImageUpload();
   jQuery.ajax({
     method: "POST",
     url: frontendajax.ajaxurl,
@@ -244,15 +318,18 @@ function attachfeatureMedia(imageUrl, inputString, msg) {
         document.getElementById("_thumbnail_id").value = response;
         jQuery("#_thumbnail_id").trigger("change");
       }
+      finishImageUpload();
     },
     error: function (error) {
       console.error("Error attaching media:", error);
+      finishImageUpload();
     },
   });
 }
 
 function attachMedia(imageUrl, inputString, msg) {
   var postId = jQuery("#post_ID").val();
+  startImageUpload();
   jQuery.ajax({
     method: "POST",
     url: frontendajax.ajaxurl,
@@ -267,47 +344,99 @@ function attachMedia(imageUrl, inputString, msg) {
       if (response) {
         document.getElementById("product_image_gallery").value = response;
         jQuery("#product_image_gallery").trigger("change");
-        document.getElementsByClassName("loader")[0].style.display = "none";
-        document.getElementsByClassName("wrap")[0].style.filter = "none";
-        //location.reload();
+        // Remove loader/blur is now handled after product creation, not here
       }
+      finishImageUpload();
     },
     error: function (error) {
       console.error("Error attaching media:", error);
+      finishImageUpload();
     },
   });
 }
 
-function spinner() {
+// Update or create a single loader spinner at the top center
+function showCentralLoader() {
+  let loader = document.getElementById('central-loader');
+  if (!loader) {
+    loader = document.createElement('div');
+    loader.id = 'central-loader';
+    loader.style.position = 'fixed';
+    loader.style.top = '60px';
+    loader.style.left = '50%';
+    loader.style.transform = 'translateX(-50%)';
+    loader.style.zIndex = '100000';
+    loader.style.display = 'flex';
+    loader.style.justifyContent = 'center';
+    loader.style.alignItems = 'center';
+    loader.innerHTML = '<div style="width:64px;height:64px;border:8px solid #eee;border-top:8px solid #3498db;border-radius:50%;animation:spin 1s linear infinite;"></div>';
+    document.body.appendChild(loader);
+  } else {
+    loader.style.display = 'flex';
+  }
+}
+function hideCentralLoader() {
+  let loader = document.getElementById('central-loader');
+  if (loader) loader.style.display = 'none';
+  // Also remove blur from the main content
+  var wrapElements = document.getElementsByClassName('wrap');
+  if (wrapElements.length > 0) {
+    wrapElements[0].style.filter = 'none';
+  }
+}
+// Add spinner keyframes if not present
+(function addSpinnerKeyframes() {
+  if (!document.getElementById('central-loader-spinner-style')) {
+    const style = document.createElement('style');
+    style.id = 'central-loader-spinner-style';
+    style.innerHTML = '@keyframes spin {0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}';
+    document.head.appendChild(style);
+  }
+})();
+
+// Patch spinner() and yourMethod() to use the new loader
+window.spinner = function() {
   var postId = jQuery("#post_ID").val();
   jQuery.ajax({
     method: "POST",
-    url: frontendajax.ajaxurl, // Assuming frontendajax.ajaxurl contains the correct URL
+    url: frontendajax.ajaxurl,
     data: {
       action: "save_flag_for_show_meta",
       postId: postId,
+      nonce: frontendajax.nonce
     },
     success: function (response) {
-      if (response && response === "success") {
+      if (response && response === "Meta updated successfully.") {
         var elements = document.getElementsByClassName("show-after-selection");
         for (var i = 0; i < elements.length; i++) {
           elements[i].style.display = "block";
         }
       } else {
-        console.log("Failed to update meta.");
+        console.log("Failed to update meta:", response);
       }
     },
-    error: function (error) {
+    error: function (xhr, status, error) {
       console.error("Error updating meta:", error);
+      console.error("Status:", status);
+      console.error("Response:", xhr.responseText);
     },
   });
+  showCentralLoader();
+  var wrapElements = document.getElementsByClassName("wrap");
+  if (wrapElements.length > 0) {
+    wrapElements[0].style.filter = "blur(1.5px)";
+  }
+}
 
-  document.getElementsByClassName("loader")[0].style.display = "block";
-  document.getElementsByClassName("wrap")[0].style.filter = "blur(1.5px)";
+// Patch yourMethod to use the new loader
+function yourMethod() {
+  document.getElementsByClassName("wrap")[0].style.filter = "blur(2.5px)";
+  showCentralLoader();
 }
 
 //gc code start here
 jQuery(document).ready(function ($) {
+
 
   function setImageUpload(inputField, preview, removeBtn) {
     var fileFrame;
@@ -339,9 +468,9 @@ jQuery(document).ready(function ($) {
         inputField.val('');
         $(this).hide();
     });
-}
+  }
 
-setImageUpload($('#taxonomy_image'), $('#taxonomy-image-preview'), $('.remove_image_button'));
+  setImageUpload($('#taxonomy_image'), $('#taxonomy-image-preview'), $('.remove_image_button'));
 
   $("#remove_selected_value").on("click", function () {
     // Hide the 'selected_value_display' element
@@ -424,21 +553,17 @@ setImageUpload($('#taxonomy_image'), $('#taxonomy-image-preview'), $('.remove_im
     }
   });
 
-  function yourMethod() {
-    document.getElementsByClassName("wrap")[0].style.filter = "blur(2.5px)";
-    document.getElementsByClassName("loader")[0].style.display = "block";
-    $("#loader").css("margin-top", "-50px");
-  }
-
+  /*
   if (jQuery(".post-new-php.post-type-product").length > 0) {
     jQuery("#publish").trigger("click");
     document.getElementsByClassName("wrap")[0].style.filter = "blur(2.5px)";
     yourMethod();
   }
+  */
   jQuery("#wp-admin-bar-new-content").on("click", function () {
     setTimeout(function () {
       if (jQuery(".post-new-php.post-type-product").length > 0) {
-        jQuery("#publish").trigger("click");
+        //jQuery("#publish").trigger("click");
       }
     }, 5000);
   });
@@ -561,4 +686,54 @@ setImageUpload($('#taxonomy_image'), $('#taxonomy-image-preview'), $('.remove_im
       }
     });
   });
+
+  // Fix duplicate nonce fields issue
+  function fixDuplicateNonceFields() {
+    var nonceFields = $('input[name="woocommerce_meta_nonce"]');
+    if (nonceFields.length > 1) {
+      console.log('Found duplicate nonce fields, hiding extras');
+      // Keep only the first one, hide the rest
+      nonceFields.not(':first').hide();
+    }
+  }
+
+  // Run on page load
+  fixDuplicateNonceFields();
+
+  // Run when DOM changes (for dynamic content)
+  var observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+      if (mutation.type === 'childList') {
+        fixDuplicateNonceFields();
+      }
+    });
+  });
+
+  // Start observing
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
 });
+
+// Update showMerchiSuccessMessage to accept a message and optional link
+function showMerchiSuccessMessage(message, viewUrl) {
+    // Remove any existing message
+    jQuery('#merchi-success-message').remove();
+    // Insert new message after the main page title (h1 inside .wrap)
+    var $wrapH1 = jQuery('.wrap h1');
+    var linkHtml = '';
+    if (viewUrl) {
+        linkHtml = ' <a href="' + viewUrl + '" style="text-decoration:underline;" target="_blank" rel="noopener">View Product</a>';
+    }
+    if ($wrapH1.length) {
+        $wrapH1.after(
+            '<div id="merchi-success-message" style="margin:10px 0;padding:10px 16px;background:#fff;border-left:4px solid #46b450;color:#23282d;box-shadow:0 1px 1px rgba(0,0,0,0.04);font-size:15px;">' +
+            '<span style="font-weight:600;">Product published.</span>' + linkHtml +
+            '</div>'
+        );
+        setTimeout(function() {
+            jQuery('#merchi-success-message').fadeOut();
+        }, 7000);
+    }
+}
