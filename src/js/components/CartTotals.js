@@ -36,6 +36,31 @@ export default function CartTotals({ cart }) {
             </div>
           </div>
 
+          <div class="wp-block-woocommerce-cart-order-summary-discount-block wc-block-components-totals-wrapper">
+            <div class="wc-block-components-totals-item wc-block-components-totals-discount">
+              <span class="wc-block-components-totals-item__label">Discount</span>
+              <span class="wc-block-formatted-money-amount wc-block-components-formatted-money-amount wc-block-components-totals-item__value">-$1.00</span>
+              <div class="wc-block-components-totals-item__description">
+                <div class="">
+                  <div class="" aria-hidden="false">
+                    <ul class="wc-block-components-totals-discount__coupon-list">
+                      <li class="wc-block-components-totals-discount__coupon-list-item is-removable wc-block-components-chip wc-block-components-chip--radius-large">
+                        <span aria-hidden="true" class="wc-block-components-chip__text">test123</span>
+                        <span class="screen-reader-text">Coupon: test123</span>
+                        <button class="wc-block-components-chip__remove" aria-label="Remove coupon &quot;test123&quot;">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" role="img" class="wc-block-components-chip__remove-icon" aria-hidden="true" focusable="false">
+                            <path d="M12 13.06l3.712 3.713 1.061-1.06L13.061 12l3.712-3.712-1.06-1.06L12 10.938 8.288 7.227l-1.061 1.06L10.939 12l-3.712 3.712 1.06 1.061L12 13.061z">
+                            </path>
+                          </svg>
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="wc-block-components-totals-wrapper">
             <div className="wc-block-components-totals-item wc-block-components-totals-footer-item">
               <span className="wc-block-components-totals-item__label">Total</span>
