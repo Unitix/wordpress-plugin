@@ -1,14 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { MERCHI_SDK } from '../merchi_sdk';
 import { patchCart } from '../merchi_public_custom';
 
-export default function CouponPanel() {
+const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [appliedCodes, setAppliedCodes] = useState([]);
 
+  const [appliedCodes, setAppliedCodes] = useState([]);
   const [totals, setTotals] = useState({
     subtotal: 0,
     discount: 0,
@@ -18,6 +18,10 @@ export default function CouponPanel() {
 
   const wrapperRef = useRef(null);
   const merchi = MERCHI_SDK();
+
+  useImperativeHandle(ref, () => ({
+    removeDiscountCode
+  }));
 
   const handleFocus = () => {
     wrapperRef.current?.classList.add('is-active');
@@ -59,7 +63,7 @@ export default function CouponPanel() {
       subtotal,
       discount,
       tax,
-      total: subtotal - discount + tax,
+      total: Number(cart.totalCost ?? 0),
     });
   };
 
@@ -147,6 +151,8 @@ export default function CouponPanel() {
               const updated = await patchCart(cartData);
               syncTotalsFromCart(updated || cartData);
               console.log('Successfully synced discount items to server');
+
+              setOpen(false);
             } catch (patchError) {
               console.error('Failed to sync discount items to server:', patchError);
             }
@@ -221,7 +227,12 @@ export default function CouponPanel() {
   useEffect(() => {
     const merchiCart = localStorage.getItem('MerchiCart');
     if (merchiCart) {
-      syncTotalsFromCart(JSON.parse(merchiCart));
+      const cartData = JSON.parse(merchiCart);
+      syncTotalsFromCart(cartData);
+
+      if (cartData.discountItems && cartData.discountItems.length > 0) {
+        setAppliedCodes(cartData.discountItems);
+      }
     }
   }, []);
 
@@ -230,6 +241,12 @@ export default function CouponPanel() {
       wrapperRef.current.classList.add('is-active');
     }
   }, [open, code]);
+
+  useEffect(() => {
+    if (onTotalsChange) {
+      onTotalsChange({ totals, appliedCodes });
+    }
+  }, [totals, appliedCodes, onTotalsChange]);
 
   return (
     <div className="wp-block-woocommerce-checkout-order-summary-coupon-form-block wc-block-components-totals-wrapper">
@@ -319,7 +336,7 @@ export default function CouponPanel() {
                     </div>
                   )}
 
-                  {/* appliedCodes */}
+                  {/* appliedCodes
                   {appliedCodes.length > 0 && (
                     <div style={{ marginTop: '16px' }}>
                       <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>
@@ -365,7 +382,7 @@ export default function CouponPanel() {
                         </div>
                       ))}
                     </div>
-                  )}
+                  )} */}
                 </div>
               </div>
             </div>
@@ -374,4 +391,6 @@ export default function CouponPanel() {
       </div>
     </div>
   );
-}
+});
+
+export default CouponPanel;
