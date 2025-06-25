@@ -125,6 +125,7 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
         const isAlreadyApplied = appliedCodes.some(c => c.code === discountCode);
         if (isAlreadyApplied) {
           setError('This discount code is already applied');
+          setLoading(false);
           return;
         }
 
@@ -134,31 +135,38 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
           cost: Number(discountItem.cost ?? 0)
         };
 
-        setAppliedCodes(prev => [...prev, newDiscountItem]);
-        setCode('');
-
         // Update localStorage cart with discount items
         try {
           const merchiCart = localStorage.getItem('MerchiCart');
           if (merchiCart) {
             const cartData = JSON.parse(merchiCart);
-            cartData.discountItems = [...(cartData.discountItems || []), newDiscountItem];
+            const updatedDiscountItems = [...(cartData.discountItems || []), newDiscountItem];
+            cartData.discountItems = updatedDiscountItems;
             localStorage.setItem('MerchiCart', JSON.stringify(cartData));
             console.log('Updated cart with discount items');
 
             // Sync discount items to server
             try {
               const updated = await patchCart(cartData);
-              syncTotalsFromCart(updated || cartData);
-              console.log('Successfully synced discount items to server');
 
+              // Only update all states after server sync is complete
+              setAppliedCodes(updatedDiscountItems);
+              syncTotalsFromCart(updated || cartData);
+              setCode('');
               setOpen(false);
+
+              console.log('Successfully synced discount items to server');
             } catch (patchError) {
               console.error('Failed to sync discount items to server:', patchError);
+              // Revert localStorage changes if server sync fails
+              cartData.discountItems = cartData.discountItems.filter(item => item.code !== newDiscountItem.code);
+              localStorage.setItem('MerchiCart', JSON.stringify(cartData));
+              setError('Failed to apply discount code. Please try again.');
             }
           }
         } catch (error) {
           console.error('Error updating localStorage cart with discount:', error);
+          setError('Failed to apply discount code. Please try again.');
         }
 
       } else {
@@ -192,30 +200,65 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
     }
   };
 
-  const removeDiscountCode = (index) => {
-    const updatedCodes = appliedCodes.filter((_, i) => i !== index);
-    setAppliedCodes(updatedCodes);
+  const removeDiscountCode = async (index) => {
+    const codeToRemove = appliedCodes[index];
+    if (!codeToRemove) return;
 
-    // Update localStorage cart
+    setLoading(true);
+    setError('');
+
     try {
-      const merchiCart = localStorage.getItem('MerchiCart');
-      if (merchiCart) {
-        const cartData = JSON.parse(merchiCart);
-        cartData.discountItems = updatedCodes;
-        localStorage.setItem('MerchiCart', JSON.stringify(cartData));
+      // read cart then remove the local one
+      const raw = localStorage.getItem('MerchiCart');
+      if (!raw) throw new Error('cart missing');
+      const cartData = JSON.parse(raw);
+      const remain = cartData.discountItems.filter((_, i) => i !== index);
+      cartData.discountItems = remain;
+      localStorage.setItem('MerchiCart', JSON.stringify(cartData));
 
-        // Sync removal to server
-        patchCart(cartData)
-          .then((updated) => {
-            syncTotalsFromCart(updated || cartData);
-            console.log('Successfully synced discount removal to server');
-          })
-          .catch((patchError) => {
-            console.error('Failed to sync discount removal to server:', patchError);
-          });
-      }
-    } catch (error) {
-      console.error('Error updating localStorage cart after discount removal:', error);
+      // refresh the UI
+      cartData.discountedAmount = 0;
+      cartData.totalCost =
+        (cartData.subtotalCost ?? 0) + (cartData.taxAmount ?? 0);
+
+      setAppliedCodes(remain);
+      syncTotalsFromCart(cartData);
+
+      // sync to the server
+      const cartId = cartData.id;
+      const cartToken = cartData.token;
+      const apiUrl = window.scriptData?.merchi_url || 'https://api.staging.merchi.co/';
+      const codesStr = remain.map(i => i.code).join(',');
+
+      const url = `${apiUrl}v6/carts/${cartId}/check_discount_code/` +
+        `?cart_token=${cartToken}&codes=${encodeURIComponent(codesStr)}`;
+
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      // write the new totals back
+      const server = await res.json();
+      cartData.discountItems = server.items || remain;
+      cartData.discountedAmount = server.discountedAmount ?? 0;
+      cartData.totalCost = server.totalCost ??
+        ((cartData.subtotalCost ?? 0) + (cartData.taxAmount ?? 0));
+
+      localStorage.setItem('MerchiCart', JSON.stringify(cartData));
+      syncTotalsFromCart(cartData);
+      console.log('Discount removed & server synced');
+
+    } catch (e) {
+      console.error(e);
+      setError('Failed to remove discount code, please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -358,11 +401,11 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
                         >
                           <span>
                             <strong>{item.code}</strong>
-                            {item.description && ` - ${item.description}`}
+                            {item.description &&  - ${item.description}}
                             {item.cost !== undefined && (
                               item.cost === 0
                                 ? ' (Applied)'
-                                : ` (-$${item.cost.toFixed(2)})`
+                                :  (-$${item.cost.toFixed(2)})
                             )}
                           </span>
                           <button
