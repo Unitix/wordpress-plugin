@@ -14,6 +14,9 @@ const PaymentForm = ({ onPaymentSuccess, onPaymentError }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+
+  const orderConfirmationUrl = `${window.location.origin}/thankyou`;
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -28,7 +31,7 @@ const PaymentForm = ({ onPaymentSuccess, onPaymentError }) => {
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/checkout/order-confirmation`,
+          return_url: orderConfirmationUrl,
         },
         redirect: 'if_required'
       });
