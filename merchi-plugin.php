@@ -114,7 +114,10 @@ add_filter('woocommerce_widget_cart_is_hidden', '__return_true');
 add_filter('woocommerce_is_purchasable', function($res, $obj){
 	return $obj->exists() && ( 'publish' === $obj->get_status() || current_user_can( 'edit_post', $obj->get_id() ) ) ;
 }, 10, 2);
-
+add_filter('private_title_format', 'remove_protected_private_prefix');
+function remove_protected_private_prefix($title) {
+    return '%s';
+}
 // Add live or Mergi URL to the footer
 add_action( 'wp_footer', 'add_merchi_url' );
 add_action( 'admin_footer', 'add_merchi_url' );
