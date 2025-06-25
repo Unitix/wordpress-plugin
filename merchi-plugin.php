@@ -805,16 +805,48 @@ function render_custom_product_meta_box()
         </div>
         <div id="selected_value_display"
             style="display: <?php echo (empty($product_name)) ? 'none' : 'inline-block'; ?>;">
-            <h3 style="margin-left: 5px; cursor: pointer;">
+            <h3 style="cursor: pointer;">
                 <?php echo esc_html($product_name); ?>
             </h3>
         </div>
     </div>
+    <?php if (!empty($post->ID) && $post->post_status !== 'auto-draft') : ?>
     <!-- New Sync with Merchi Button -->
     <div style="margin-top: 10px; text-align: left;">
         <button type="button" id="sync_with_merchi_btn" class="button button-primary">Sync with Merchi</button>
         <span id="sync_merchi_status" style="margin-left: 10px;"></span>
     </div>
+    <script type="text/javascript">
+    jQuery(document).ready(function($) {
+        $('#sync_with_merchi_btn').on('click', function() {
+            var btn = $(this);
+            var status = $('#sync_merchi_status');
+            btn.prop('disabled', true);
+            status.text('Syncing...');
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'fetch_merchi_product',
+                    wooProductId: <?php echo intval($post->ID); ?>
+                },
+                success: function(response) {
+                    if (response.success) {
+                        status.text('Synced successfully!');
+                    } else {
+                        status.text('Sync failed: ' + (response.data && response.data.message ? response.data.message : 'Unknown error'));
+                    }
+                    btn.prop('disabled', false);
+                },
+                error: function(xhr, statusText, errorThrown) {
+                    status.text('Sync failed: ' + errorThrown);
+                    btn.prop('disabled', false);
+                }
+            });
+        });
+    });
+    </script>
+    <?php endif; ?>
     <script type="text/javascript">
     jQuery(document).ready(function($) {
         $('#sync_with_merchi_btn').on('click', function() {
