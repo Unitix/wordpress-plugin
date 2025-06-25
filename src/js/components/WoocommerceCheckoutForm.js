@@ -8,6 +8,7 @@ import StripePaymentForm from './StripePaymentForm';
 import { patchCart } from '../merchi_public_custom';
 import { MERCHI_API_URL, MERCHI_SDK } from '../merchi_sdk';
 import 'react-phone-input-2/lib/style.css';
+import { getCart } from '../merchi_public_custom';
 
 async function createClient(MERCHI, clientJson, cartJson) {
   return new Promise((resolve, reject) => {
@@ -60,7 +61,7 @@ const WoocommerceCheckoutForm = () => {
   // Shipping address state
   const [selectedShippingCountry, setSelectedShippingCountry] = useState(null);
   const [selectedShippingState, setSelectedShippingState] = useState(null);
-
+  const [orderInfo, setOrderInfo] = useState(null);
   const { register, handleSubmit, formState: { errors }, setValue, getValues } = useForm();
 
   const onSubmit = (data) => {
@@ -154,7 +155,23 @@ const WoocommerceCheckoutForm = () => {
           },
           cart
         );
-        cartEnt.client(newCartClient);
+
+        // create a new order object with the new client before reconstructing the cart object for patch
+        setOrderInfo({client: newCartClient.user, 
+          cart: cart, 
+          receiverAddress: {
+          lineOne: shipping_address_1,
+          lineTwo: shipping_address_2,
+          city: shipping_city,
+          postcode: shipping_postcode,
+          country: selectedShippingCountry,
+          state: selectedShippingState,
+        }});
+
+
+        const newCartClientEnt = MERCHI.fromJson(new MERCHI.User(), {id: newCartClient.user.id});
+
+        cartEnt.client(newCartClientEnt);
       }
 
       const addressEnt = new MERCHI.Address()
@@ -172,6 +189,8 @@ const WoocommerceCheckoutForm = () => {
       //convert cartEnt to json
       const cartJson = MERCHI.toJson(cartEnt);
 
+      //reset the cart global state with the new cart json
+      setCart(cartJson);
       //delete the id of cart item from cartItems
       cartJson.cartItems.forEach(item => {
         delete item.id;
@@ -196,6 +215,13 @@ const WoocommerceCheckoutForm = () => {
       // setStripeClientSecret(data.stripeClientSecret);
       // setCurrentStep('payment');
 
+
+      const merchi_api_url = MERCHI_API_URL();
+      const response = await fetch(`${merchi_api_url}v6/stripe/payment_intent/cart/${cartEnt.id()}/?cart_token=${cartEnt.token()}`);
+      const data = await response.json();
+      setStripeClientSecret(data.stripeClientSecret);
+      setCurrentStep('payment');
+
       // Directly proceed to order confirmation
       // window.location.href = '/checkout/order-confirmation';
     } catch (error) {
@@ -206,9 +232,19 @@ const WoocommerceCheckoutForm = () => {
   }
 
   const handlePaymentSuccess = async (paymentIntent) => {
+
+    localStorage.setItem('MerchiOrder', JSON.stringify(orderInfo));
+
     try {
+      //refetch the cart from the server
+      const cartEntrefetched = await getCart(cart.id, cart.token);
+      const cartJsonrefetched = MERCHI.toJson(cartEntrefetched);
+      
+    
       // Handle successful payment
-      window.location.href = '/checkout/order-confirmation';
+      window.location.href = window.location.origin + '/thankyou?merchi_value=' + cartJsonrefetched.totalCost + '&invoice_id=' + cartJsonrefetched.invoice.id + '&email=' + orderInfo.client.emailAddresses[0].emailAddress;
+
+      //parameters merchi value, invoice id, email
     } catch (error) {
       console.error('Error handling successful payment:', error);
     }
@@ -415,11 +451,11 @@ const WoocommerceCheckoutForm = () => {
               >
                 ← Back to Details
               </button>
-              {/* <StripePaymentForm
+              <StripePaymentForm
                 clientSecret={stripeClientSecret}
                 onPaymentSuccess={handlePaymentSuccess}
                 onPaymentError={handlePaymentError}
-              /> */}
+              />
             </div>
           )}
         </div>
