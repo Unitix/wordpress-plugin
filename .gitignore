@@ -1,14 +1,45 @@
-vendor
-wc-api-php-master
-*.DS_Store
+# WordPress specific files
+wp-config.php
+wp-content/advanced-cache.php
+wp-content/backup-db/
+wp-content/backups/
+wp-content/blogs.dir/
+wp-content/cache/
+wp-content/upgrade/
+wp-content/uploads/
+wp-content/mu-plugins/
+wp-content/wp-cache-config.php
+wp-content/plugins/hello.php
+
+# IDE and Editor files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
 *.swp
+*.swo
+.DS_Store
+Thumbs.db
 
-init.php
-.wp-evn.json
--wp-env.json
+# Dependency directories
+node_modules/
+vendor/
 
-# Build output directory
-/dist/
-/node_modules/
-/node_modules/.package-lock.json
-package-lock.json
+# Build directories
+dist/
+build/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# System Files
+.DS_Store
+Thumbs.db
