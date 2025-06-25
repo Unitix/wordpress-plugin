@@ -11,6 +11,17 @@ const hiddenProductNameField = document.getElementById("hidden_product_name");
 const hiddenProductNameprice = document.getElementById("hidden_regular_price");
 const $fetchProductLoadingElement = document.querySelector(".search-icon");
 const searchResults = document.getElementById("search_results");
+let mediaFeatureImageDone = false;
+let mediaImageDone = false;
+let readyToRedirect = false;
+let redirectUrl = null;
+
+function maybeRedirect() {
+  if (readyToRedirect && mediaFeatureImageDone && mediaImageDone && redirectUrl) {
+    window.location = redirectUrl;
+  }
+}
+
 function handleInput() {
   clearTimeout(jQuery.data(this, "timer"));
   const dropdownContent = jQuery("#search_results");
@@ -157,29 +168,26 @@ function fetchProducts() {
                 success: function (response) {
                   if (response.success) {
                     jQuery.ajax({
-                        url: frontendajax.ajaxurl,
-                        type: "POST",
-                        data: {
-                            action: "fetch_merchi_product",
-                            wooProductId: wooProductId
-                        },
-                        success: function (response) {
-                            if (response.success) {
-                                // Try to get the view URL for the current product
-                                var postId = jQuery('#post_ID').val();
-                                var viewUrl = '';
-                                if (postId) {
-                                    // Default WooCommerce product permalink structure
-                                    viewUrl = window.location.origin + '/?post_type=product&p=' + postId;
-                                }
-                                showMerchiSuccessMessage('Product published.', viewUrl);
-                                // Remove blur/loader immediately
-                                hideCentralLoader();
-                                console.log("Variations created successfully:", response.message);
-                            } else {
-                                console.error("Error:", response.message);
-                            }
+                      url: frontendajax.ajaxurl,
+                      type: "POST",
+                      data: {
+                        action: "fetch_merchi_product",
+                        wooProductId: wooProductId
+                      },
+                      success: function (response) {
+                        if (response.success) {
+                          var postId = jQuery('#post_ID').val();
+                          if (postId) {
+                            redirectUrl = '/wp-admin/post.php?post=' + postId + '&action=edit';
+                            readyToRedirect = true;
+                            maybeRedirect();
+                          } else {
+                            window.location.reload();
+                          }
+                        } else {
+                          console.error("Error:", response.message);
                         }
+                      }
                     });
                   } else {
                     console.error(
@@ -204,8 +212,12 @@ function fetchProducts() {
                   },
                   success: function(response) {
                       if (response.success) {
-                          showMerchiSuccessMessage(response.data.message || 'Product created successfully! Redirecting...');
-                          window.location.href = response.data.edit_url;
+                          var editUrl = response.data.edit_url;
+                          if (editUrl) {
+                              window.location = editUrl; // Redirect to the edit post page
+                          } else {
+                              window.location.reload(); // fallback
+                          }
                       } else {
                           console.error("Error creating product:", response.data.message);
                       }
@@ -314,6 +326,8 @@ function attachfeatureMedia(imageUrl, inputString, msg) {
       msg: msg,
     },
     success: function (response) {
+      mediaFeatureImageDone = true;
+      maybeRedirect();
       if (response) {
         document.getElementById("_thumbnail_id").value = response;
         jQuery("#_thumbnail_id").trigger("change");
@@ -321,6 +335,8 @@ function attachfeatureMedia(imageUrl, inputString, msg) {
       finishImageUpload();
     },
     error: function (error) {
+      mediaFeatureImageDone = true;
+      maybeRedirect();
       console.error("Error attaching media:", error);
       finishImageUpload();
     },
@@ -341,6 +357,8 @@ function attachMedia(imageUrl, inputString, msg) {
       msg: msg,
     },
     success: function (response) {
+      mediaImageDone = true;
+      maybeRedirect();
       if (response) {
         document.getElementById("product_image_gallery").value = response;
         jQuery("#product_image_gallery").trigger("change");
@@ -349,6 +367,8 @@ function attachMedia(imageUrl, inputString, msg) {
       finishImageUpload();
     },
     error: function (error) {
+      mediaImageDone = true;
+      maybeRedirect();
       console.error("Error attaching media:", error);
       finishImageUpload();
     },

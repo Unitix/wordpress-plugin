@@ -787,30 +787,65 @@ function render_custom_product_meta_box()
 	$hideDrafting = get_post_meta(get_the_ID(), 'hideDrafting', true);
 ?>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
-<div class="merchi-product-meta-box">
-    <input type="hidden" id="hidden_product_id" name="hidden_product_id" value="<?php echo esc_attr($product_id); ?>">
+    <input type="hidden" id="hidden_product_id" name="hidden_product_id" value="<?php echo esc_attr(
+        $product_id
+    ); ?>">
     <input type="hidden" id="hidden_product_name" name="hidden_product_name"
         value="<?php echo esc_attr($product_name); ?>">
     <input type="hidden" id="hidden_regular_price" name="hidden_regular_price"
         value="<?php echo esc_attr($product_regular_price); ?>">
     <div id="product_meta_box">
-        <div id="search_box" style="display: <?php echo (empty($product_name)) ? 'block' : 'none'; ?>">
+        <div id="search_box" style="display: <?php echo (empty($product_name)) ? 'block' : 'none'; ?>;">
             <input type="text" id="custom_value_field" name="custom_value" list="custom_value_list"
                 placeholder="Enter Product Name">
-				<span class="cst-loader"></span>
+            <span class="cst-loader"></span>
             <span class="search-icon"><i class="fas fa-search"></i></span>
             <div id="search_results" onclick="spinner()"></div>
-            <div class="loader">
-            </div>
+            <div class="loader"></div>
         </div>
         <div id="selected_value_display"
-            style="display: <?php echo (empty($product_name)) ? 'none' : 'inline-block'; ?>">
-            <h3 style="margin-left: 5px; cursor: pointer;"><?php echo esc_html($product_name); ?></h3>
+            style="display: <?php echo (empty($product_name)) ? 'none' : 'inline-block'; ?>;">
+            <h3 style="margin-left: 5px; cursor: pointer;">
+                <?php echo esc_html($product_name); ?>
+            </h3>
         </div>
-        <h1 id="remove_selected_value"
-            style="display: <?php echo (empty($product_name)) ? 'none' : 'inline-block'; ?>; cursor: pointer;">&times;
-        </h1>
     </div>
+    <!-- New Sync with Merchi Button -->
+    <div style="margin-top: 10px; text-align: left;">
+        <button type="button" id="sync_with_merchi_btn" class="button button-primary">Sync with Merchi</button>
+        <span id="sync_merchi_status" style="margin-left: 10px;"></span>
+    </div>
+    <script type="text/javascript">
+    jQuery(document).ready(function($) {
+        $('#sync_with_merchi_btn').on('click', function() {
+            var btn = $(this);
+            var status = $('#sync_merchi_status');
+            btn.prop('disabled', true);
+            status.text('Syncing...');
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'fetch_merchi_product',
+                    wooProductId: <?php echo intval($post->ID); ?>
+                },
+                success: function(response) {
+                    if (response.success) {
+                        status.text('Synced successfully!');
+                    } else {
+                        status.text('Sync failed: ' + (response.data && response.data.message ? response.data.message : 'Unknown error'));
+                    }
+                    btn.prop('disabled', false);
+                },
+                error: function(xhr, statusText, errorThrown) {
+                    status.text('Sync failed: ' + errorThrown);
+                    btn.prop('disabled', false);
+                }
+            });
+        });
+    });
+    </script>
+    <?php /*
     <div class="card-header">Redirect After Success URL</div>
     <div class="card-body text-dark">
         <input type="text" id="redirectAfterSuccessUrl" name="redirectAfterSuccessUrl" placeholder="Redirect URL"
@@ -823,80 +858,79 @@ function render_custom_product_meta_box()
     </div>
     <div class="card-header">Redirect With Value </div>
     <div class="card-body text-dark">
-		<div class="checkbox-container">
-			<label class="checkbox-label">Yes:</label>
-			<input type="checkbox" id="redirectWithValue" name="redirectWithValue"
-				<?php checked($redirectWithValue, 1, true); ?> value="1">
-		</div>
-	</div>
-       
+        <div class="checkbox-container">
+            <label class="checkbox-label">Yes:</label>
+            <input type="checkbox" id="redirectWithValue" name="redirectWithValue"
+                <?php checked($redirectWithValue, 1, true); ?> value="1">
+        </div>
+    </div>
     <div class="card-header">Hide Info</div>
     <div class="card-body text-dark">
-		<div class="checkbox-container">
-			<label class="checkbox-label">Yes:</label>
-			<input type="checkbox" id="hideInfo" name="hideInfo" <?php checked($hideInfo, 1, true); ?> value="1">
-		</div>
+        <div class="checkbox-container">
+            <label class="checkbox-label">Yes:</label>
+            <input type="checkbox" id="hideInfo" name="hideInfo" <?php checked($hideInfo, 1, true); ?> value="1">
+        </div>
     </div>
     <div class="card-header">Hide Preview</div>
     <div class="card-body text-dark">
-		<div class="checkbox-container">
-			<label class="checkbox-label">Yes:</label>
-			<input type="checkbox" id="hidePreview" name="hidePreview" <?php checked($hidePreview, 1, true); ?> value="1">
-		</div>
+        <div class="checkbox-container">
+            <label class="checkbox-label">Yes:</label>
+            <input type="checkbox" id="hidePreview" name="hidePreview" <?php checked($hidePreview, 1, true); ?> value="1">
+        </div>
     </div>
     <div class="card-header">Hide Price</div>
     <div class="card-body text-dark">
-		<div class="checkbox-container">
-			<label class="checkbox-label">Yes:</label>
-			<input type="checkbox" id="hidePrice" name="hidePrice" <?php checked($hidePrice, 1, true); ?> value="1">
-		</div>
-	</div>
+        <div class="checkbox-container">
+            <label class="checkbox-label">Yes:</label>
+            <input type="checkbox" id="hidePrice" name="hidePrice" <?php checked($hidePrice, 1, true); ?> value="1">
+        </div>
+    </div>
     <div class="card-header">Hide Title</div>
     <div class="card-body text-dark">
-		<div class="checkbox-container">
-			<label class="checkbox-label">Yes:</label>
-			<input type="checkbox" id="hideTitle" name="hideTitle" <?php checked($hideTitle, 1, true); ?> value="1">
-		</div>
+        <div class="checkbox-container">
+            <label class="checkbox-label">Yes:</label>
+            <input type="checkbox" id="hideTitle" name="hideTitle" <?php checked($hideTitle, 1, true); ?> value="1">
+        </div>
     </div>
     <div class="card-header">Hide Calculated Price</div>
     <div class="card-body text-dark">
-		<div class="checkbox-container">
-			<label class="checkbox-label">Yes:</label>
-			<input type="checkbox" id="hideCalculatedPrice" name="hideCalculatedPrice"
+        <div class="checkbox-container">
+            <label class="checkbox-label">Yes:</label>
+            <input type="checkbox" id="hideCalculatedPrice" name="hideCalculatedPrice"
             <?php checked($hideCalculatedPrice, 1, true); ?> value="1">
-		</div>
+        </div>
     </div>
     <div class="card-header">Include Bootstrap</div>
     <div class="card-body text-dark">
-		<div class="checkbox-container">
-			<label class="checkbox-label">Yes:</label>
-			<input type="checkbox" id="includeBootstrap" name="includeBootstrap"
+        <div class="checkbox-container">
+            <label class="checkbox-label">Yes:</label>
+            <input type="checkbox" id="includeBootstrap" name="includeBootstrap"
             <?php checked($includeBootstrap, 1, true); ?> value="1">
-		</div>
+        </div>
     </div>
     <div class="card-header">Not Include Default CSS</div>
     <div class="card-body text-dark">
-		<div class="checkbox-container">
-			<label class="checkbox-label">Yes:</label>
-			<input type="checkbox" id="notIncludeDefaultCss" name="notIncludeDefaultCss"
+        <div class="checkbox-container">
+            <label class="checkbox-label">Yes:</label>
+            <input type="checkbox" id="notIncludeDefaultCss" name="notIncludeDefaultCss"
             <?php checked($notIncludeDefaultCss, 1, true); ?> value="1">
-		</div>
+        </div>
     </div>
     <div class="card-header">Invoice Redirect</div>
     <div class="card-body text-dark">
-		<div class="checkbox-container">
-			<label class="checkbox-label">Yes:</label>
-			<input type="checkbox" id="invoiceRedirect" name="invoiceRedirect" <?php checked($invoiceRedirect, 1, true); ?>
+        <div class="checkbox-container">
+            <label class="checkbox-label">Yes:</label>
+            <input type="checkbox" id="invoiceRedirect" name="invoiceRedirect" <?php checked($invoiceRedirect, 1, true); ?>
             value="1">
-		</div>
+        </div>
     </div>
     <div class="card-header">Load Theme</div>
     <div class="card-body text-dark">
-		<div class="checkbox-container">
-			<label class="checkbox-label">Yes:</label>
-			<input type="checkbox" id="loadTheme" name="loadTheme" <?php checked($loadTheme, 1, true); ?> value="1">
-		</div>
-	</div>
+        <div class="checkbox-container">
+            <label class="checkbox-label">Yes:</label>
+            <input type="checkbox" id="loadTheme" name="loadTheme" <?php checked($loadTheme, 1, true); ?> value="1">
+        </div>
+    </div>
     <div class="card-header">Mount Point Id</div>
     <div class="card-body text-dark">
         <input type="text" id="mountPointId" name="mountPointId" placeholder="Mount Point Id"
@@ -904,19 +938,19 @@ function render_custom_product_meta_box()
     </div>
     <div class="card-header">Single Column</div>
     <div class="card-body text-dark">
-		<div class="checkbox-container">
-			<label class="checkbox-label">Yes:</label>
-			<input type="checkbox" id="singleColumn" name="singleColumn" <?php checked($singleColumn, 1, true); ?>
+        <div class="checkbox-container">
+            <label class="checkbox-label">Yes:</label>
+            <input type="checkbox" id="singleColumn" name="singleColumn" <?php checked($singleColumn, 1, true); ?>
             value="1">
-		</div>
-	</div>
+        </div>
+    </div>
     <div class="card-header">Quote Requested Redirect</div>
     <div class="card-body text-dark">
-		<div class="checkbox-container">
-			<label class="checkbox-label">Yes:</label>
-			<input type="checkbox" id="quoteRequestedRedirect" name="quoteRequestedRedirect"
+        <div class="checkbox-container">
+            <label class="checkbox-label">Yes:</label>
+            <input type="checkbox" id="quoteRequestedRedirect" name="quoteRequestedRedirect"
             <?php checked($quoteRequestedRedirect, 1, true); ?> value="1">
-		</div>
+        </div>
     </div>
     <div class="card-header">Google API Public Key</div>
     <div class="card-body text-dark">
@@ -925,20 +959,21 @@ function render_custom_product_meta_box()
     </div>
     <div class="card-header">Allow Add To Cart</div>
     <div class="card-body text-dark">
-		<div class="checkbox-container">
-			<label class="checkbox-label">Yes:</label>
-			<input type="checkbox" id="allowAddToCart" name="allowAddToCart" <?php checked($allowAddToCart, 1, true); ?>
+        <div class="checkbox-container">
+            <label class="checkbox-label">Yes:</label>
+            <input type="checkbox" id="allowAddToCart" name="allowAddToCart" <?php checked($allowAddToCart, 1, true); ?>
             value="1">
-		</div>
+        </div>
     </div>
     <div class="card-header">Hide Drafting</div>
     <div class="card-body text-dark">
-		<div class="checkbox-container">
-			<label class="checkbox-label">Yes:</label>
-			<input type="checkbox" id="hideDrafting" name="hideDrafting" <?php checked($hideDrafting, 1, true); ?> value="1">
-		</div>
-	</div>
-</div>
+        <div class="checkbox-container">
+            <label class="checkbox-label">Yes:</label>
+            <input type="checkbox" id="hideDrafting" name="hideDrafting" <?php checked($hideDrafting, 1, true); ?> value="1">
+        </div>
+    </div>
+    */ ?>
+
 <?php
 }
 /**

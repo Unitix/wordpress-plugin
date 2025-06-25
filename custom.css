@@ -701,3 +701,14 @@ li[class*="wc-block-components-product-details__group-"] {
 input[name="woocommerce_meta_nonce"] + input[name="woocommerce_meta_nonce"] {
     display: none !important;
 }
+
+#sync_with_merchi_btn {
+    margin-bottom: 5px;
+    display: inline-block;
+}
+#sync_merchi_status {
+    display: inline-block;
+    margin-left: 12px;
+    font-weight: 500;
+    color: #2271b1;
+}
