@@ -108,7 +108,7 @@ const WoocommerceCheckoutForm = () => {
       shipmentGroups: [],
     };
     try {
-      const cartEnt = await patchCart(cartJson);
+      const cartEnt = await patchCart(cartJson, null, { includeShippingFields: true });
       const _cartJson = MERCHI.toJson(cartEnt);
       setCart(_cartJson);
       await getShippingGroup();
@@ -183,9 +183,8 @@ const WoocommerceCheckoutForm = () => {
         // .state(selectedShippingState?.iso2);
 
       cartEnt.receiverAddress(addressEnt);
-      
-   
 
+      
       //convert cartEnt to json
       const cartJson = MERCHI.toJson(cartEnt);
 
@@ -214,7 +213,6 @@ const WoocommerceCheckoutForm = () => {
       // const data = await response.json();
       // setStripeClientSecret(data.stripeClientSecret);
       // setCurrentStep('payment');
-
 
       const merchi_api_url = MERCHI_API_URL();
       const response = await fetch(`${merchi_api_url}v6/stripe/payment_intent/cart/${cartEnt.id()}/?cart_token=${cartEnt.token()}`);

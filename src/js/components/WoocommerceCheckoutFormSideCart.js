@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import CouponPanel from './CouponPanel';
-import { patchCart } from '../merchi_public_custom';
+import VariationGroupsDisplay from './VariationGroupsDisplay';
 
 const readCart = () => {
   try {
@@ -13,49 +13,17 @@ const readCart = () => {
 
 export default function WoocommerceCheckoutFormSideCart() {
   const [cart, setCart] = useState(readCart());
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const onStorage = (e) =>
       e.key === 'MerchiCart' && setCart(readCart());
     window.addEventListener('storage', onStorage);
-
-    (async () => {
-      try {
-        const patched = await patchCart(readCart());
-        setCart(JSON.parse(localStorage.getItem('MerchiCart')) || patched);
-      } catch (err) {
-        console.warn('[Checkout] patchCart error:', err?.response?.status || err);
-      } finally {
-        setLoading(false);
-      }
-    })();
-
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  if (loading) {
-    return (
-      <div className="wc-block-components-spinner is-active" role="status">
-        <span className="screen-reader-text">Loading order…</span>
-      </div>
-    );
-  }
-
-  const subtotal =
-    cart.cartItemsSubtotalCost ??
-    cart.cartItems.reduce(
-      (sum, i) =>
-        sum + ((i.subtotalCost ?? i.cost ?? i.totalCost ?? 0) * i.quantity),
-      0
-    );
-  const total =
-    cart.cartItemsTotalCost ??
-    cart.cartItems.reduce(
-      (sum, i) =>
-        sum + ((i.totalCost ?? i.subtotalCost ?? i.cost ?? 0) * i.quantity),
-      0
-    );
+  const subtotal = cart.cartItemsSubtotalCost ?? cart.subtotalCost ?? 0;
+  const total = cart.cartItemsTotalCost ?? cart.totalCost ?? 0;
+  const tax = cart.cartItemsTaxAmount ?? cart.taxAmount ?? 0;
 
   return (
     <div className='wc-block-components-sidebar wc-block-checkout__sidebar wp-block-woocommerce-checkout-totals-block is-sticky is-large'>
@@ -67,19 +35,19 @@ export default function WoocommerceCheckoutFormSideCart() {
           <div className="wp-block-woocommerce-checkout-order-summary-cart-items-block wc-block-components-totals-wrapper">
             <div className="wc-block-components-order-summary is-large">
               <div className="wc-block-components-order-summary__content">
-                {cart.cartItems.map((item) => {
+                {cart.cartItems.map((item, index) => {
                   const { product = {}, quantity = 1, totalCost = 0 } = item;
                   const thumb =
                     product.featureImage?.viewUrl ||
-                    product.previewImageUrl ||
-                    product.image ||
+                    product.images?.[0]?.viewUrl ||
                     'https://woocommerce.com/wp-content/plugins/woocommerce/assets/images/placeholder.png';
+                  const qty = item.quantity ?? 1;
                   const unitPrice = totalCost;
-                  const lineTotal = totalCost * quantity;
+                  const lineTotal = item.totalCost ?? item.subtotalCost ?? item.cost ?? 0;
 
                   return (
                     <div
-                      key={`${product.id}-${item.id}`}
+                      key={`${product.id}-${index}`}
                       className="wc-block-components-order-summary-item"
                     >
                       <div className="wc-block-components-order-summary-item__image">
@@ -101,14 +69,16 @@ export default function WoocommerceCheckoutFormSideCart() {
                       </div>
                       <div className="wc-block-components-order-summary-item__description">
                         <h3 className="wc-block-components-product-name"> {product.name || 'Product'}</h3>
-                        <span className="wc-block-components-order-summary-item__individual-prices price wc-block-components-product-price">
+                        {/* <span className="wc-block-components-order-summary-item__individual-prices price wc-block-components-product-price">
                           <span className="wc-block-formatted-money-amount wc-block-components-formatted-money-amount wc-block-components-product-price__value wc-block-components-order-summary-item__individual-price">${unitPrice}</span>
-                        </span>
+                        </span> */}
                         <div className="wc-block-components-product-metadata">
                           <div className="wc-block-components-product-details">
                             <div className="wc-block-components-product-details__test-field">
-                              <span className="wc-block-components-product-details__name">Test Field:</span>
-                              <span className="wc-block-components-product-details__value">Test Value</span>
+                              <VariationGroupsDisplay
+                                product={product}
+                                variationsGroups={item.variationsGroups}
+                              />
                             </div>
                           </div>
                         </div>
@@ -133,6 +103,17 @@ export default function WoocommerceCheckoutFormSideCart() {
                 <span className="wc-block-components-totals-item__label">Subtotal</span>
                 <span className="wc-block-formatted-money-amount wc-block-components-formatted-money-amount wc-block-components-totals-item__value">${subtotal}</span>
                 <div className="wc-block-components-totals-item__description"></div>
+              </div>
+            </div>
+
+            <div className="wp-block-woocommerce-checkout-order-summary-tax-block wc-block-components-totals-wrapper">
+              <div className="wc-block-components-totals-item">
+                <span className="wc-block-components-totals-item__label">
+                  Tax
+                </span>
+                <span className="wc-block-formatted-money-amount wc-block-components-formatted-money-amount wc-block-components-totals-item__value">
+                  ${tax.toFixed(2)}
+                </span>
               </div>
             </div>
 

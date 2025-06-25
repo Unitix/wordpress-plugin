@@ -5,6 +5,7 @@ import CartTotals from './CartTotals';
 
 import { ensureWooNonce, fetchWooNonce, updateWooNonce } from '../utils';
 
+// read cart from local storage
 const readCart = () => {
   try {
     const data = JSON.parse(localStorage.getItem('MerchiCart')) || {};
@@ -23,9 +24,11 @@ export default function WoocommerceCartForm() {
       e.key === 'MerchiCart' && setCart(readCart());
     window.addEventListener('storage', onStorage);
 
+    // sync with the backend
     (async () => {
       try {
-        const patched = await patchCart(readCart());
+        const patched = await patchCart(readCart(), cart.cartEmbed, { includeShippingFields: false });
+        // update the cart in local storage
         setCart(JSON.parse(localStorage.getItem('MerchiCart')) || patched);
       } catch (e) {
         console.warn('[Cart] patchCart error:', e.response?.status || e);
@@ -54,6 +57,7 @@ export default function WoocommerceCartForm() {
     // get current valid nonce
     const nonce = await ensureWooNonce();
 
+    // send request to WooCommerce
     async function postRemove(n) {
       return fetch('/wp-json/wc/store/v1/cart/remove-item', {
         method: 'POST',
@@ -82,11 +86,27 @@ export default function WoocommerceCartForm() {
       ci => String(ci.product?.id) !== String(item.product?.id)
     );
 
-    const subtotalCost = updatedItems.reduce((sum, i) =>
-      sum + ((i.subtotalCost ?? i.cost ?? i.totalCost ?? 0) * i.quantity), 0);
-    const totalCost = updatedItems.reduce((sum, i) =>
-      sum + ((i.totalCost ?? i.subtotalCost ?? i.cost ?? 0) * i.quantity), 0);
+    // const subtotalCost = updatedItems.reduce((sum, i) =>
+    //   sum + ((i.subtotalCost ?? i.cost ?? i.totalCost ?? 0) * i.quantity), 0);
+    // const totalCost = updatedItems.reduce((sum, i) =>
+    //   sum + ((i.totalCost ?? i.subtotalCost ?? i.cost ?? 0) * i.quantity), 0);
 
+    const subtotalCost = updatedItems.reduce(
+      (sum, i) =>
+        sum +
+        (i.subtotalCost !== undefined
+          ? i.subtotalCost
+          : (i.cost ?? 0) * (i.quantity ?? 1)
+        ),
+      0
+    );
+
+    const totalCost = updatedItems.reduce(
+      (sum, i) =>
+        sum +
+        (i.totalCost !== undefined ? i.totalCost : (i.subtotalCost ?? i.cost ?? 0) * (i.quantity ?? 1)),
+      0
+    );
     const updatedCart = {
       ...cart,
       cartItems: updatedItems,
@@ -97,7 +117,7 @@ export default function WoocommerceCartForm() {
     localStorage.setItem('MerchiCart', JSON.stringify(updatedCart));
     setCart(updatedCart);
 
-    patchCart(updatedCart).catch(e =>
+    patchCart(updatedCart, cart.cartEmbed, { includeShippingFields: false }).catch(e =>
       console.warn('[Cart] patchCart error:', e?.response?.status || e)
     );
   }, [cart]);

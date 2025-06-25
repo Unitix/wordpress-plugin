@@ -1,13 +1,32 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { MERCHI_SDK } from '../merchi_sdk';
+import { patchCart } from '../merchi_public_custom';
 
-export default function CouponPanel() {
+const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const [appliedCodes, setAppliedCodes] = useState([]);
+  const [totals, setTotals] = useState({
+    subtotal: 0,
+    discount: 0,
+    tax: 0,
+    total: 0,
+  });
 
   const wrapperRef = useRef(null);
+  const merchi = MERCHI_SDK();
+
+  useImperativeHandle(ref, () => ({
+    removeDiscountCode
+  }));
+
   const handleFocus = () => {
     wrapperRef.current?.classList.add('is-active');
   };
+
   const handleBlur = (e) => {
     if (!e.target.value.trim()) {
       wrapperRef.current?.classList.remove('is-active');
@@ -17,15 +36,260 @@ export default function CouponPanel() {
   const handleChange = (e) => {
     const val = e.target.value;
     setCode(val);
+    if (error) setError('');
   };
 
   const toggle = () => setOpen((o) => !o);
+
+  // get cart ID
+  const getCartId = () => {
+    try {
+      const merchiCart = localStorage.getItem('MerchiCart');
+      if (merchiCart) {
+        const cartData = JSON.parse(merchiCart);
+        return cartData.id;
+      }
+    } catch (error) {
+      console.error('Error parsing MerchiCart from localStorage:', error);
+    }
+    return null;
+  };
+
+  const syncTotalsFromCart = (cart) => {
+    const subtotal = Number(cart.subtotalCost ?? 0);
+    const discount = Math.abs(Number(cart.discountedAmount ?? 0));
+    const tax = Number(cart.taxAmount ?? 0);
+    setTotals({
+      subtotal,
+      discount,
+      tax,
+      total: Number(cart.totalCost ?? 0),
+    });
+  };
+
+  const validateDiscountCode = async (discountCode) => {
+    if (!discountCode.trim()) {
+      setError('Please enter a discount code');
+      return;
+    }
+
+    const cartId = getCartId();
+    if (!cartId) {
+      setError('Cart not found. Please refresh the page.');
+      return;
+    }
+
+    console.log('Validating discount code:', discountCode);
+    console.log('Cart ID:', cartId);
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const merchiCart = localStorage.getItem('MerchiCart');
+      if (!merchiCart) {
+        setError('Cart data not found. Please refresh the page.');
+        setLoading(false);
+        return;
+      }
+
+      const cartData = JSON.parse(merchiCart);
+      const cartToken = cartData.token;
+
+      const apiUrl = window.scriptData?.merchi_url || 'https://api.staging.merchi.co/';
+      const url = `${apiUrl}v6/carts/${cartId}/check_discount_code/?cart_token=${cartToken}&codes=${encodeURIComponent(discountCode)}`;
+
+      console.log('API URL:', url);
+
+      const fetchResponse = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!fetchResponse.ok) {
+        throw new Error(`HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`);
+      }
+
+      const response = await fetchResponse.json();
+      console.log('API Response:', response);
+
+      if (response && response.items && response.items.length > 0) {
+        const discountItem = response.items[0];
+        console.log('Discount item found:', discountItem);
+        console.log('Full discount item object:', JSON.stringify(discountItem, null, 2));
+
+        // Check if this discount code is already applied
+        const isAlreadyApplied = appliedCodes.some(c => c.code === discountCode);
+        if (isAlreadyApplied) {
+          setError('This discount code is already applied');
+          setLoading(false);
+          return;
+        }
+
+        const newDiscountItem = {
+          code: discountItem.code || discountCode,
+          description: discountItem.description || '',
+          cost: Number(discountItem.cost ?? 0)
+        };
+
+        // Update localStorage cart with discount items
+        try {
+          const merchiCart = localStorage.getItem('MerchiCart');
+          if (merchiCart) {
+            const cartData = JSON.parse(merchiCart);
+            const updatedDiscountItems = [...(cartData.discountItems || []), newDiscountItem];
+            cartData.discountItems = updatedDiscountItems;
+            localStorage.setItem('MerchiCart', JSON.stringify(cartData));
+            console.log('Updated cart with discount items');
+
+            // Sync discount items to server
+            try {
+              const updated = await patchCart(cartData);
+
+              // Only update all states after server sync is complete
+              setAppliedCodes(updatedDiscountItems);
+              syncTotalsFromCart(updated || cartData);
+              setCode('');
+              setOpen(false);
+
+              console.log('Successfully synced discount items to server');
+            } catch (patchError) {
+              console.error('Failed to sync discount items to server:', patchError);
+              // Revert localStorage changes if server sync fails
+              cartData.discountItems = cartData.discountItems.filter(item => item.code !== newDiscountItem.code);
+              localStorage.setItem('MerchiCart', JSON.stringify(cartData));
+              setError('Failed to apply discount code. Please try again.');
+            }
+          }
+        } catch (error) {
+          console.error('Error updating localStorage cart with discount:', error);
+          setError('Failed to apply discount code. Please try again.');
+        }
+
+      } else {
+        console.log('No discount items found in response');
+        console.log('Full response structure:', JSON.stringify(response, null, 2));
+
+        // Check if response has error message
+        if (response && response.error) {
+          setError(`Error: ${response.error}`);
+        } else if (response && response.message) {
+          setError(`Error: ${response.message}`);
+        } else {
+          setError('Invalid discount code or discount code not found');
+        }
+      }
+
+    } catch (err) {
+      console.error('Discount validation error:', err);
+
+      if (err.message.includes('404')) {
+        setError('Discount code not found');
+      } else if (err.message.includes('400')) {
+        setError('Invalid request. Please check the discount code.');
+      } else if (err.message.includes('401') || err.message.includes('403')) {
+        setError('Authentication error. Please refresh the page.');
+      } else {
+        setError('Failed to validate discount code');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeDiscountCode = async (index) => {
+    const codeToRemove = appliedCodes[index];
+    if (!codeToRemove) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      // read cart then remove the local one
+      const raw = localStorage.getItem('MerchiCart');
+      if (!raw) throw new Error('cart missing');
+      const cartData = JSON.parse(raw);
+      const remain = cartData.discountItems.filter((_, i) => i !== index);
+      cartData.discountItems = remain;
+      localStorage.setItem('MerchiCart', JSON.stringify(cartData));
+
+      // refresh the UI
+      cartData.discountedAmount = 0;
+      cartData.totalCost =
+        (cartData.subtotalCost ?? 0) + (cartData.taxAmount ?? 0);
+
+      setAppliedCodes(remain);
+      syncTotalsFromCart(cartData);
+
+      // sync to the server
+      const cartId = cartData.id;
+      const cartToken = cartData.token;
+      const apiUrl = window.scriptData?.merchi_url || 'https://api.staging.merchi.co/';
+      const codesStr = remain.map(i => i.code).join(',');
+
+      const url = `${apiUrl}v6/carts/${cartId}/check_discount_code/` +
+        `?cart_token=${cartToken}&codes=${encodeURIComponent(codesStr)}`;
+
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      // write the new totals back
+      const server = await res.json();
+      cartData.discountItems = server.items || remain;
+      cartData.discountedAmount = server.discountedAmount ?? 0;
+      cartData.totalCost = server.totalCost ??
+        ((cartData.subtotalCost ?? 0) + (cartData.taxAmount ?? 0));
+
+      localStorage.setItem('MerchiCart', JSON.stringify(cartData));
+      syncTotalsFromCart(cartData);
+      console.log('Discount removed & server synced');
+
+    } catch (e) {
+      console.error(e);
+      setError('Failed to remove discount code, please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await validateDiscountCode(code);
+  };
+
+  useEffect(() => {
+    const merchiCart = localStorage.getItem('MerchiCart');
+    if (merchiCart) {
+      const cartData = JSON.parse(merchiCart);
+      syncTotalsFromCart(cartData);
+
+      if (cartData.discountItems && cartData.discountItems.length > 0) {
+        setAppliedCodes(cartData.discountItems);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (open && wrapperRef.current && code.trim()) {
       wrapperRef.current.classList.add('is-active');
     }
   }, [open, code]);
+
+  useEffect(() => {
+    if (onTotalsChange) {
+      onTotalsChange({ totals, appliedCodes });
+    }
+  }, [totals, appliedCodes, onTotalsChange]);
 
   return (
     <div className="wp-block-woocommerce-checkout-order-summary-coupon-form-block wc-block-components-totals-wrapper">
@@ -69,9 +333,7 @@ export default function CouponPanel() {
                   <form
                     id="wc-block-components-totals-coupon__form"
                     className="wc-block-components-totals-coupon__form"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                    }}
+                    onSubmit={handleSubmit}
                   >
                     <div
                       ref={wrapperRef}
@@ -86,6 +348,7 @@ export default function CouponPanel() {
                         onFocus={handleFocus}
                         onBlur={handleBlur}
                         onChange={handleChange}
+                        disabled={loading}
                       />
                       <label
                         htmlFor="wc-block-components-totals-coupon__input-coupon"
@@ -97,15 +360,72 @@ export default function CouponPanel() {
                     <button
                       type="submit"
                       className="wc-block-components-button wp-element-button wc-block-components-totals-coupon__button contained"
-                      disabled={!code.trim()}
-                      aria-disabled={!code.trim()}
-                      style={{ pointerEvents: !code.trim() ? 'none' : 'auto' }}
+                      disabled={!code.trim() || loading}
+                      aria-disabled={!code.trim() || loading}
                     >
                       <span className="wc-block-components-button__text">
-                        Apply
+                        {loading ? 'Applying...' : 'Apply'}
                       </span>
                     </button>
                   </form>
+
+                  {error && (
+                    <div style={{
+                      color: '#d63638',
+                      fontSize: '14px',
+                      marginTop: '8px'
+                    }}>
+                      {error}
+                    </div>
+                  )}
+
+                  {/* appliedCodes
+                  {appliedCodes.length > 0 && (
+                    <div style={{ marginTop: '16px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>
+                        Applied Coupons:
+                      </div>
+                      {appliedCodes.map((item, index) => (
+                        <div
+                          key={index}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '8px 12px',
+                            backgroundColor: '#f0f0f0',
+                            borderRadius: '4px',
+                            marginBottom: '4px',
+                            fontSize: '14px'
+                          }}
+                        >
+                          <span>
+                            <strong>{item.code}</strong>
+                            {item.description &&  - ${item.description}}
+                            {item.cost !== undefined && (
+                              item.cost === 0
+                                ? ' (Applied)'
+                                :  (-$${item.cost.toFixed(2)})
+                            )}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeDiscountCode(index)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#d63638',
+                              cursor: 'pointer',
+                              fontSize: '18px',
+                              padding: '4px'
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )} */}
                 </div>
               </div>
             </div>
@@ -114,4 +434,6 @@ export default function CouponPanel() {
       </div>
     </div>
   );
-}
+});
+
+export default CouponPanel;

@@ -1,4 +1,5 @@
 import React from 'react';
+import VariationGroupsDisplay from './VariationGroupsDisplay'
 
 export default function CartItems({ cartItems, onRemove }) {
   if (!cartItems?.length) return null;
@@ -17,33 +18,41 @@ export default function CartItems({ cartItems, onRemove }) {
           </tr>
         </thead>
         <tbody>
-          {cartItems.map(item => {
-            const { product = {}, quantity = 1 } = item;
+          {cartItems.map((item) => {
+            const { product = {} } = item;
             const thumb =
               product.featureImage?.viewUrl ||
-              product.previewImageUrl ||
-              product.image ||
+              product.images?.[0]?.viewUrl ||
               'https://woocommerce.com/wp-content/plugins/woocommerce/assets/images/placeholder.png';
             const name = product.name || 'Product';
-            const total = item.totalCost ?? item.cost ?? 0;
+
+            // get total from variationsGroups
+            // const groupTotal = Array.isArray(item.variationsGroups)
+            //   ? item.variationsGroups.reduce((sum, g) => sum + (g.groupCost ?? 0), 0)
+            //   : 0;
+
+            // const total = groupTotal > 0
+            //   ? groupTotal
+            //   : (item.totalCost ?? item.subtotalCost ?? item.cost ?? 0);
+            const total = item.totalCost ?? 0;
 
             return (
-              <tr key={item.key ?? product.id} className="wc-block-cart-items__row" tabIndex={-1}>
+              <tr key={item.cartUid ?? item.key ?? product.id} className="wc-block-cart-items__row" tabIndex={-1}>
                 <td className="wc-block-cart-item__image" aria-hidden="true">
                   <a href={product.url || '#'} tabIndex={-1}><img src={thumb} alt="" /></a>
                 </td>
                 <td className="wc-block-cart-item__product">
                   <div className="wc-block-cart-item__wrap">
                     <span className="wc-block-components-product-name">{name}</span>
-                    {/* <div className="wc-block-cart-item__prices">
-                      <span className="wc-block-components-product-price merchi-unit-price">
-                        <span className="wc-block-formatted-money-amount wc-block-components-formatted-money-amount">{`$${unitPrice.toFixed(2)}`}</span>
-                      </span>
-                    </div> */}
+                    {/* {renderVariationsGroups(product, item.variationsGroups)} */}
+                    <VariationGroupsDisplay
+                      product={product}
+                      variationsGroups={item.variationsGroups}
+                    />
                     <div className="wc-block-cart-item__quantity">
-                      <div style={{ marginTop: 4 }}>
+                      {/* <div style={{ marginTop: 4 }}>
                         Quantity:&nbsp;{quantity}
-                      </div>
+                      </div> */}
                       <button
                         className="wc-block-cart-item__remove-link"
                         aria-label={`Remove ${name} from cart`}
