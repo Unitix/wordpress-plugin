@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import CouponPanel from './CouponPanel';
 import VariationGroupsDisplay from './VariationGroupsDisplay';
+import { patchCart } from '../merchi_public_custom';
 
 const readCart = () => {
   try {
@@ -13,17 +14,42 @@ const readCart = () => {
 
 export default function WoocommerceCheckoutFormSideCart() {
   const [cart, setCart] = useState(readCart());
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const onStorage = (e) =>
       e.key === 'MerchiCart' && setCart(readCart());
     window.addEventListener('storage', onStorage);
+
+    // sync with the backend - simple approach like cart page
+    (async () => {
+      try {
+        const patched = await patchCart(readCart(), readCart().cartEmbed, { includeShippingFields: true });
+        // update the cart in local storage
+        setCart(JSON.parse(localStorage.getItem('MerchiCart')) || patched);
+      } catch (e) {
+        console.warn('[CheckoutSideCart] patchCart error:', e.response?.status || e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   const subtotal = cart.cartItemsSubtotalCost ?? cart.subtotalCost ?? 0;
   const total = cart.cartItemsTotalCost ?? cart.totalCost ?? 0;
   const tax = cart.cartItemsTaxAmount ?? cart.taxAmount ?? 0;
+
+  if (loading) {
+    return (
+      <div className='wc-block-components-sidebar wc-block-checkout__sidebar wp-block-woocommerce-checkout-totals-block is-sticky is-large'>
+        <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+          <div className="wc-block-components-spinner is-active"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className='wc-block-components-sidebar wc-block-checkout__sidebar wp-block-woocommerce-checkout-totals-block is-sticky is-large'>
@@ -35,7 +61,7 @@ export default function WoocommerceCheckoutFormSideCart() {
           <div className="wp-block-woocommerce-checkout-order-summary-cart-items-block wc-block-components-totals-wrapper">
             <div className="wc-block-components-order-summary is-large">
               <div className="wc-block-components-order-summary__content">
-                {cart.cartItems.map((item, index) => {
+                {(cart.cartItems || []).map((item, index) => {
                   const { product = {}, quantity = 1, totalCost = 0 } = item;
                   const thumb =
                     product.featureImage?.viewUrl ||
@@ -69,9 +95,6 @@ export default function WoocommerceCheckoutFormSideCart() {
                       </div>
                       <div className="wc-block-components-order-summary-item__description">
                         <h3 className="wc-block-components-product-name"> {product.name || 'Product'}</h3>
-                        {/* <span className="wc-block-components-order-summary-item__individual-prices price wc-block-components-product-price">
-                          <span className="wc-block-formatted-money-amount wc-block-components-formatted-money-amount wc-block-components-product-price__value wc-block-components-order-summary-item__individual-price">${unitPrice}</span>
-                        </span> */}
                         <div className="wc-block-components-product-metadata">
                           <div className="wc-block-components-product-details">
                             <div className="wc-block-components-product-details__test-field">

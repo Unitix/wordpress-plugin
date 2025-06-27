@@ -224,6 +224,64 @@ export async function patchCart(cartJson, embed = cartEmbed, options = {}) {
     );
   });
 }
+
+// Function specifically for handling discount items (coupons) on cart page
+export async function patchCartDiscountItems(cartJson, discountItems = [], embed = cartEmbed) {
+  const cleanedCartJson = {
+    id: cartJson.id,
+  };
+
+  const discountItemEnts = discountItems.map(item => {
+    const discountItem = new MERCHI.Item();
+    if (item.id) discountItem.id(item.id);
+    if (item.code) discountItem.code(item.code);
+    discountItem.cost(item.cost || 0);
+    discountItem.description(item.description || '');
+    return discountItem;
+  });
+
+  const cartEnt = MERCHI.fromJson(new MERCHI.Cart(), cleanedCartJson);
+  cartEnt.token(cartJson.token);
+  cartEnt.discountItems(discountItemEnts);
+
+  const currentCartState = localStorage.getItem("MerchiCart");
+
+  return new Promise((resolve, reject) => {
+    cartEnt.patch(
+      (cartEnt) => {
+        try {
+          const _cartJson = MERCHI.toJson(cartEnt);
+          localStorage.setItem("MerchiCart", JSON.stringify(_cartJson));
+          COOKIE_MANAGER.syncWithLocalStorage();
+          resolve(cartEnt);
+        } catch (error) {
+          if (currentCartState) {
+            try {
+              localStorage.setItem("MerchiCart", currentCartState);
+              COOKIE_MANAGER.syncWithLocalStorage();
+            } catch (rollbackError) {
+              console.error("Failed to rollback cart state:", rollbackError);
+            }
+          }
+          reject(new Error("Failed to update cart state: " + error.message));
+        }
+      },
+      (status, data) => {
+        if (currentCartState) {
+          try {
+            localStorage.setItem("MerchiCart", currentCartState);
+            COOKIE_MANAGER.syncWithLocalStorage();
+          } catch (rollbackError) {
+            console.error("Failed to rollback cart state:", rollbackError);
+          }
+        }
+        reject(new Error(`Server update failed: ${status} - ${JSON.stringify(data)}`));
+      },
+      embed
+    );
+  });
+}
+
 // All PATCH requests should now be handled by the backend via send_id_for_add_cart.
 
 function setCookie(name, value, days) {

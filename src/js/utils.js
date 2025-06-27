@@ -62,6 +62,7 @@ export const cartEmbed = {
     quotes: cartShipmentQuote,
     selectedQuote: cartShipmentQuote,
   },
+  discountItems: {},
 };
 
 export function getCookieByName(name) {

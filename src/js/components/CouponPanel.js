@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { MERCHI_SDK } from '../merchi_sdk';
-import { patchCart } from '../merchi_public_custom';
+// import { patchCart } from '../merchi_public_custom';
+import { patchCartDiscountItems } from '../merchi_public_custom';
 
 const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
   const [open, setOpen] = useState(false);
@@ -130,6 +131,7 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
         }
 
         const newDiscountItem = {
+          id: discountItem.id,
           code: discountItem.code || discountCode,
           description: discountItem.description || '',
           cost: Number(discountItem.cost ?? 0)
@@ -147,11 +149,19 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
 
             // Sync discount items to server
             try {
-              const updated = await patchCart(cartData);
+              // const updated = await patchCart(cartData);
+              const slimAdd = updatedDiscountItems.map(
+                ({ code, id, description = '', cost }) => ({ code, id, cost, description })
+              );
+              const patched = await patchCartDiscountItems(cartData, slimAdd);
 
-              // Only update all states after server sync is complete
-              setAppliedCodes(updatedDiscountItems);
-              syncTotalsFromCart(updated || cartData);
+              // refresh the UI using the patched data
+              // convert entity to JSON
+              const patchedJson = merchi.toJson(patched);
+              localStorage.setItem('MerchiCart', JSON.stringify(patchedJson));
+              syncTotalsFromCart(patchedJson);
+              setAppliedCodes(patchedJson.discountItems || []);
+
               setCode('');
               setOpen(false);
 
@@ -208,23 +218,12 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
     setError('');
 
     try {
-      // read cart then remove the local one
       const raw = localStorage.getItem('MerchiCart');
       if (!raw) throw new Error('cart missing');
       const cartData = JSON.parse(raw);
+
       const remain = cartData.discountItems.filter((_, i) => i !== index);
-      cartData.discountItems = remain;
-      localStorage.setItem('MerchiCart', JSON.stringify(cartData));
 
-      // refresh the UI
-      cartData.discountedAmount = 0;
-      cartData.totalCost =
-        (cartData.subtotalCost ?? 0) + (cartData.taxAmount ?? 0);
-
-      setAppliedCodes(remain);
-      syncTotalsFromCart(cartData);
-
-      // sync to the server
       const cartId = cartData.id;
       const cartToken = cartData.token;
       const apiUrl = window.scriptData?.merchi_url || 'https://api.staging.merchi.co/';
@@ -242,18 +241,23 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const serverData = await res.json();
 
-      // write the new totals back
-      const server = await res.json();
-      cartData.discountItems = server.items || remain;
-      cartData.discountedAmount = server.discountedAmount ?? 0;
-      cartData.totalCost = server.totalCost ??
-        ((cartData.subtotalCost ?? 0) + (cartData.taxAmount ?? 0));
+      // patch to save the new discountItems
+      const slimRemain = (serverData.items || []).map(
+        ({ code, id, cost, description = '' }) => ({ code, id, cost, description })
+      );
+      console.log('slimRemain1: ', slimRemain);
+      const patched = await patchCartDiscountItems(cartData, slimRemain);
 
-      localStorage.setItem('MerchiCart', JSON.stringify(cartData));
-      syncTotalsFromCart(cartData);
-      console.log('Discount removed & server synced');
+      // Convert entity to JSON before storing in localStorage
+      // refresh the UI using the patched data
+      const patchedJson = merchi.toJson(patched);
+      localStorage.setItem('MerchiCart', JSON.stringify(patchedJson));
+      syncTotalsFromCart(patchedJson);
+      setAppliedCodes(patchedJson.discountItems || []);
 
+      console.log('Discount removed & synced via GET then PATCH');
     } catch (e) {
       console.error(e);
       setError('Failed to remove discount code, please try again.');
