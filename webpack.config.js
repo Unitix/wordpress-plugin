@@ -9,7 +9,8 @@ module.exports = {
     'merchi_checkout_init': './src/js/merchi_checkout_init.js',
     'merchi_public_custom': './src/js/merchi_public_custom.js',
     'woocommerce_cart_checkout': './src/js/woocommerce_cart_checkout.js',
-    'wordpress_merchi_dashboard': './src/js/wordpress_merchi_dashboard.js'
+    'wordpress_merchi_dashboard': './src/js/wordpress_merchi_dashboard.js',
+    'order_confirmation': './src/js/components/OrderConfirmation.js'
   },
   output: {
     filename: '[name].js',

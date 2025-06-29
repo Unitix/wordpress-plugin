@@ -82,7 +82,7 @@ const OrderConfirmation = () => {
             {cart.cartItems.map((item, index) => (
               <tr className="woocommerce-table__line-item order_item" key={index}>
                 <td className="woocommerce-table__product-image"  style={{width: '100px', height: '100px'}}> 
-                  <img src={item.product.images[0].viewUrl} alt={item.product.name} />
+                  <img src={item.product.featureImage.viewUrl} alt={item.product.name} />
                 </td>
                 <td className="woocommerce-table__product-name">
                   {item.product.name} × {item.quantity}
