@@ -141,7 +141,7 @@ const WoocommerceCheckoutForm = () => {
 
     // Get MerchiCart data from localStorage
     // const merchiCartData = JSON.parse(localStorage.getItem('MerchiCart') || '{}');
-    
+
     let cartEnt = MERCHI.fromJson(new MERCHI.Cart(), cart);
     try {
       // try update or create new client
@@ -157,19 +157,21 @@ const WoocommerceCheckoutForm = () => {
         );
 
         // create a new order object with the new client before reconstructing the cart object for patch
-        setOrderInfo({client: newCartClient.user, 
-          cart: cart, 
+        setOrderInfo({
+          client: newCartClient.user,
+          cart: cart,
           receiverAddress: {
-          lineOne: shipping_address_1,
-          lineTwo: shipping_address_2,
-          city: shipping_city,
-          postcode: shipping_postcode,
-          country: selectedShippingCountry,
-          state: selectedShippingState,
-        }});
+            lineOne: shipping_address_1,
+            lineTwo: shipping_address_2,
+            city: shipping_city,
+            postcode: shipping_postcode,
+            country: selectedShippingCountry,
+            state: selectedShippingState,
+          }
+        });
 
 
-        const newCartClientEnt = MERCHI.fromJson(new MERCHI.User(), {id: newCartClient.user.id});
+        const newCartClientEnt = MERCHI.fromJson(new MERCHI.User(), { id: newCartClient.user.id });
 
         cartEnt.client(newCartClientEnt);
       }
@@ -180,11 +182,11 @@ const WoocommerceCheckoutForm = () => {
         .city(shipping_city)
         .postcode(shipping_postcode)
         .country(selectedShippingCountry?.iso2);
-        // .state(selectedShippingState?.iso2);
+      // .state(selectedShippingState?.iso2);
 
       cartEnt.receiverAddress(addressEnt);
 
-      
+
       //convert cartEnt to json
       const cartJson = MERCHI.toJson(cartEnt);
 
@@ -195,15 +197,15 @@ const WoocommerceCheckoutForm = () => {
         delete item.id;
       });
 
-      
+
       console.log("cartJson", cartJson);
       // Patch the cart data to Merchi server
       await patchCart(cartJson)
-      .then(response => {
-        console.log('[MerchiSync] Patch cart data:', response);
-      })
-      .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
-      
+        .then(response => {
+          console.log('[MerchiSync] Patch cart data:', response);
+        })
+        .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
+
       // Update localStorage with the patched cart data
       localStorage.setItem('MerchiCart', JSON.stringify(MERCHI.toJson(cartEnt)));
 
@@ -237,8 +239,8 @@ const WoocommerceCheckoutForm = () => {
       //refetch the cart from the server
       const cartEntrefetched = await getCart(cart.id, cart.token);
       const cartJsonrefetched = MERCHI.toJson(cartEntrefetched);
-      
-    
+
+
       // Handle successful payment
       window.location.href = window.location.origin + '/thankyou?merchi_value=' + cartJsonrefetched.totalCost + '&invoice_id=' + cartJsonrefetched.invoice.id + '&email=' + orderInfo.client.emailAddresses[0].emailAddress;
 
@@ -259,7 +261,7 @@ const WoocommerceCheckoutForm = () => {
       <div className='wc-block-components-sidebar-layout wc-block-checkout is-large'>
         <div className="wc-block-components-main wc-block-checkout__main wp-block-woocommerce-checkout-fields-block">
           {currentStep === 'details' ? (
-            
+
             <form onSubmit={handleSubmit(placeOrder)} className='wc-block-components-form wc-block-checkout__form' >
               <fieldset className="wc-block-checkout__contact-fields wp-block-woocommerce-checkout-contact-information-block wc-block-components-checkout-step" id="contact-fields">
                 <legend className="screen-reader-text">Contact information</legend>
