@@ -407,25 +407,25 @@ async function initOrSyncCart() {
       }
 
       // Server cart fetched successfully
-      const serverCartDataForCompare = MERCHI.toJson(serverCart);
+      // const serverCartDataForCompare = MERCHI.toJson(serverCart);
 
       // Compare stringified versions of the local data and server data
-      const localCartStringified = JSON.stringify(localCartData);
-      const serverCartStringified = JSON.stringify(serverCartDataForCompare);
+      // const localCartStringified = JSON.stringify(localCartData);
+      // const serverCartStringified = JSON.stringify(serverCartDataForCompare);
 
-      if (localCartStringified !== serverCartStringified) {
-        try {
-          // Use the server version as the source of truth
-          const patchedCart = await patchCart(serverCartDataForCompare, cartEmbed, { includeShippingFields: false });
-          return patchedCart;
-        } catch (error) {
-          console.error("MERCHI_LOG: Exception during the cart patch operation:", error);
-          // Fallback to the server version if the patch fails
-          return serverCart;
-        }
-      } else {
-        return serverCart;
-      }
+      // if (localCartStringified !== serverCartStringified) {
+      //   try {
+      //     // Use the server version as the source of truth
+      //     const patchedCart = await patchCart(serverCartDataForCompare, cartEmbed, { includeShippingFields: false });
+      //     return patchedCart;
+      //   } catch (error) {
+      //     console.error("MERCHI_LOG: Exception during the cart patch operation:", error);
+      //     // Fallback to the server version if the patch fails
+      //     return serverCart;
+      //   }
+      // } else {
+      //   return serverCart;
+      // }
     }
   } finally {
     // Always remove the lock when done
