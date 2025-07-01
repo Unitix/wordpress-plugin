@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function ShippingOptions({
   shipmentGroups = [],
@@ -6,8 +6,18 @@ export default function ShippingOptions({
   register,
   errors = {},
 }) {
-  const [selectedQuoteId, setSelectedQuoteId] = useState(null);
-  
+  const [selectedQuoteIds, setSelectedQuoteIds] = useState({});
+
+  useEffect(() => {
+    const initialQuoteIds = {};
+    shipmentGroups.forEach((group) => {
+      if (group.selectedQuote) {
+        initialQuoteIds[group.id] = group.selectedQuote.id;
+      }
+    });
+    setSelectedQuoteIds(initialQuoteIds);
+  }, [shipmentGroups]);
+
   return (
     <>
       {shipmentOptionsLoading && (
@@ -44,10 +54,14 @@ export default function ShippingOptions({
                   <div className="wc-block-components-shipping-rates-control css-0 e19lxcc00">
                     {shipmentGroups.map((shipmentGroup, groupIdx) => {
                       const selectedIdx = shipmentGroup.quotes.findIndex(
-                        (q) => q.id === selectedQuoteId
+                        (q) => q.id === selectedQuoteIds[shipmentGroup.id]
                       );
                       const posModifier =
                         selectedIdx === 0 ? 'first-selected' : 'last-selected';
+
+                      const registeredProps = register(`shipping_${shipmentGroup.id}`, {
+                        required: 'Please select a shipping method',
+                      });
 
                       return (
                         <div
@@ -89,7 +103,8 @@ export default function ShippingOptions({
                           >
                             {shipmentGroup.quotes.map((quote) => {
                               const isSelected =
-                                selectedQuoteId === quote.id;
+                                selectedQuoteIds[shipmentGroup.id] ===
+                                quote.id;
 
                               const labelClasses = [
                                 'wc-block-components-radio-control__option',
@@ -108,19 +123,20 @@ export default function ShippingOptions({
                                   key={quote.id}
                                 >
                                   <input
+                                    {...registeredProps}
                                     id={`radio-control-${groupIdx}-${quote.id}`}
                                     className="wc-block-components-radio-control__input"
                                     type="radio"
-                                    name={`radio-control-${groupIdx}`}
                                     aria-describedby={`radio-control-${groupIdx}-${quote.id}__secondary-label`}
                                     value={quote.id}
-                                    {...register(`shipping_${shipmentGroup.id}`, {
-                                      required: 'Please choose a shipping option',
-                                    })}
                                     checked={isSelected}
-                                    onChange={() =>
-                                      setSelectedQuoteId(quote.id)
-                                    }
+                                    onChange={(e) => {
+                                      registeredProps.onChange(e);
+                                      setSelectedQuoteIds((prev) => ({
+                                        ...prev,
+                                        [shipmentGroup.id]: quote.id,
+                                      }));
+                                    }}
                                   />
                                   <div className="wc-block-components-radio-control__option-layout">
                                     <div className="wc-block-components-radio-control__label-group">
