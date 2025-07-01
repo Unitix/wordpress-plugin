@@ -37,9 +37,11 @@ export default function WoocommerceCheckoutFormSideCart() {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  const subtotal = cart.cartItemsSubtotalCost ?? cart.subtotalCost ?? 0;
-  const total = cart.cartItemsTotalCost ?? cart.totalCost ?? 0;
-  const tax = cart.cartItemsTaxAmount ?? cart.taxAmount ?? 0;
+  const subtotal = cart.subtotalCost ?? 0;
+  const total = cart.totalCost ?? 0;
+  const tax = cart.taxAmount ?? 0;
+  const shipping = cart.shipmentTotalCost ?? 0;
+  const selectedQuote = cart.selectedQuote;
 
   if (loading) {
     return (
@@ -67,9 +69,7 @@ export default function WoocommerceCheckoutFormSideCart() {
                     product.featureImage?.viewUrl ||
                     product.images?.[0]?.viewUrl ||
                     'https://woocommerce.com/wp-content/plugins/woocommerce/assets/images/placeholder.png';
-                  const qty = item.quantity ?? 1;
-                  const unitPrice = totalCost;
-                  const lineTotal = item.totalCost ?? item.subtotalCost ?? item.cost ?? 0;
+                  const lineTotal = item.totalCost ?? 0;
 
                   return (
                     <div
@@ -124,7 +124,7 @@ export default function WoocommerceCheckoutFormSideCart() {
             <div className="wp-block-woocommerce-checkout-order-summary-subtotal-block wc-block-components-totals-wrapper">
               <div className="wc-block-components-totals-item">
                 <span className="wc-block-components-totals-item__label">Subtotal</span>
-                <span className="wc-block-formatted-money-amount wc-block-components-formatted-money-amount wc-block-components-totals-item__value">${subtotal}</span>
+                <span className="wc-block-formatted-money-amount wc-block-components-formatted-money-amount wc-block-components-totals-item__value">${subtotal.toFixed(2)}</span>
                 <div className="wc-block-components-totals-item__description"></div>
               </div>
             </div>
@@ -142,6 +142,26 @@ export default function WoocommerceCheckoutFormSideCart() {
 
             <div className="wp-block-woocommerce-checkout-order-summary-fee-block wc-block-components-totals-wrapper"></div>
             <div className="wp-block-woocommerce-checkout-order-summary-discount-block wc-block-components-totals-wrapper"></div>
+            {shipping > 0 && (
+              <div className="wp-block-woocommerce-checkout-order-summary-shipping-block wc-block-components-totals-wrapper">
+                <div className="wc-block-components-totals-shipping">
+                  <div className="wc-block-components-totals-item">
+                    <span className="wc-block-components-totals-item__label">Delivery</span>
+                    <span className="wc-block-formatted-money-amount wc-block-components-formatted-money-amount wc-block-components-totals-item__value">
+                      ${shipping.toFixed(2)}
+                    </span>
+                    <div className="wc-block-components-totals-item__description">
+                      {selectedQuote && (
+                        <div className="wc-block-components-totals-shipping__via">
+                          {selectedQuote.name}
+                        </div>
+                      )}
+                      <div className="wc-block-components-shipping-address"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="wc-block-components-totals-wrapper">

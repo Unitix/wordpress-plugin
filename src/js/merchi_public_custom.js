@@ -78,7 +78,7 @@ export function cleanVariationJson(v) {
 
   return {
     ...rest,
-    id: undefined,
+    // id: undefined,
     variationField: variationField?.id
       ? { id: variationField.id }
       : undefined,

@@ -36,7 +36,12 @@ export default function CartTotals({ cart }) {
 
   displayDiscount = Math.max(0, subtotal + +taxRaw - displayTotal);
 
-  const totalFmt = displayTotal.toFixed(2);
+  let finalTotal = displayTotal;
+  if (cart.shipmentTotalCost && cart.shipmentTotalCost > 0) {
+    finalTotal -= cart.shipmentTotalCost;
+  }
+
+  const totalFmt = finalTotal.toFixed(2);
   const discountFmt = displayDiscount.toFixed(2);
 
   const handleTotalsChange = (data) => {
