@@ -12,38 +12,52 @@ const readCart = () => {
   }
 };
 
-export default function WoocommerceCheckoutFormSideCart() {
-  const [cart, setCart] = useState(readCart());
-  const [loading, setLoading] = useState(true);
+export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdatingShipping }) {
+  // const [cart, setCart] = useState(readCart());
+  // const [loading, setLoading] = useState(true);
+  const [localCart, setLocalCart] = useState(readCart());
+
+  const cartReady =
+    (cart?.cartItems?.length && cart.cartItems[0].product?.name) ||
+    (localCart.cartItems?.length && localCart.cartItems[0].product?.name);
+
+  // useEffect(() => {
+  //   const onStorage = (e) =>
+  //     e.key === 'MerchiCart' && setCart(readCart());
+  //   window.addEventListener('storage', onStorage);
+
+  //   // sync with the backend - simple approach like cart page
+  //   (async () => {
+  //     try {
+  //       const patched = await patchCart(readCart(), readCart().cartEmbed, { includeShippingFields: true });
+  //       // update the cart in local storage
+  //       setCart(JSON.parse(localStorage.getItem('MerchiCart')) || patched);
+  //     } catch (e) {
+  //       console.warn('[CheckoutSideCart] patchCart error:', e.response?.status || e);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   })();
+
+  //   return () => window.removeEventListener('storage', onStorage);
+  // }, []);
 
   useEffect(() => {
     const onStorage = (e) =>
-      e.key === 'MerchiCart' && setCart(readCart());
+      e.key === 'MerchiCart' && setLocalCart(readCart());
     window.addEventListener('storage', onStorage);
-
-    // sync with the backend - simple approach like cart page
-    (async () => {
-      try {
-        const patched = await patchCart(readCart(), readCart().cartEmbed, { includeShippingFields: true });
-        // update the cart in local storage
-        setCart(JSON.parse(localStorage.getItem('MerchiCart')) || patched);
-      } catch (e) {
-        console.warn('[CheckoutSideCart] patchCart error:', e.response?.status || e);
-      } finally {
-        setLoading(false);
-      }
-    })();
-
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  const subtotal = cart.subtotalCost ?? 0;
-  const total = cart.totalCost ?? 0;
-  const tax = cart.taxAmount ?? 0;
-  const shipping = cart.shipmentTotalCost ?? 0;
-  const selectedQuote = cart.selectedQuote;
+  const showCart = cart?.cartItems?.length && cart.cartItems[0].product?.name ? cart : localCart;
 
-  if (loading) {
+  const subtotal = showCart.cartItemsSubtotalCost ?? 0;
+  const total = showCart.totalCost ?? 0;
+  const tax = showCart.taxAmount ?? 0;
+  const shipping = showCart.shipmentTotalCost ?? 0;
+  const selectedQuote = showCart.selectedQuote;
+
+  if (!cartReady) {
     return (
       <div className='wc-block-components-sidebar wc-block-checkout__sidebar wp-block-woocommerce-checkout-totals-block is-sticky is-large'>
         <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
@@ -63,7 +77,7 @@ export default function WoocommerceCheckoutFormSideCart() {
           <div className="wp-block-woocommerce-checkout-order-summary-cart-items-block wc-block-components-totals-wrapper">
             <div className="wc-block-components-order-summary is-large">
               <div className="wc-block-components-order-summary__content">
-                {(cart.cartItems || []).map((item, index) => {
+                {(showCart.cartItems || []).map((item, index) => {
                   const { product = {}, quantity = 1, totalCost = 0 } = item;
                   const thumb =
                     product.featureImage?.viewUrl ||
@@ -148,7 +162,10 @@ export default function WoocommerceCheckoutFormSideCart() {
                   <div className="wc-block-components-totals-item">
                     <span className="wc-block-components-totals-item__label">Delivery</span>
                     <span className="wc-block-formatted-money-amount wc-block-components-formatted-money-amount wc-block-components-totals-item__value">
-                      ${shipping.toFixed(2)}
+                      {isUpdatingShipping
+                        ? <span className="wc-block-components-spinner is-active" />
+                        : `$${shipping.toFixed(2)}`
+                      }
                     </span>
                     <div className="wc-block-components-totals-item__description">
                       {selectedQuote && (
@@ -168,7 +185,12 @@ export default function WoocommerceCheckoutFormSideCart() {
             <div className="wc-block-components-totals-item wc-block-components-totals-footer-item">
               <span className="wc-block-components-totals-item__label">Total</span>
               <div className="wc-block-components-totals-item__value">
-                <span className="wc-block-formatted-money-amount wc-block-components-formatted-money-amount wc-block-components-totals-footer-item-tax-value">${total}</span>
+                <span className="wc-block-formatted-money-amount wc-block-components-formatted-money-amount wc-block-components-totals-footer-item-tax-value">
+                  {isUpdatingShipping
+                    ? <span className="wc-block-components-spinner is-active" />
+                    : `$${total}`
+                  }
+                </span>
               </div>
               <div className="wc-block-components-totals-item__description"></div>
             </div>

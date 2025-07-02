@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { cartEmbed } from '../utils';
 
 export default function ShippingOptions({
   shipmentGroups = [],
@@ -9,17 +10,41 @@ export default function ShippingOptions({
   cart,
   setCart,
   MERCHI,
+  setIsUpdatingShipping,
 }) {
 
   const [selectedQuoteIds, setSelectedQuoteIds] = useState({});
 
-  useEffect(() => {
-    const init = {};
-    shipmentGroups.forEach((g) => {
-      if (g.selectedQuote) init[g.id] = g.selectedQuote.id;
-    });
-    setSelectedQuoteIds(init);
-  }, [shipmentGroups]);
+  // useEffect(() => {
+  //   const init = {};
+  //   shipmentGroups.forEach((g) => {
+  //     if (g.selectedQuote) init[g.id] = g.selectedQuote.id;
+  // if no selected quote, auto select the first quote then patch
+  // if (!g.selectedQuote && g.quotes.length) {
+  //   (async () => {
+  //     try {
+  //       const autoCart = {
+  //         ...cart,
+  //         shipmentGroups: cart.shipmentGroups.map((sg) =>
+  //           sg.id === g.id
+  //             ? { id: g.id, selectedQuote: { id: g.quotes[0].id } }
+  //             : sg
+  //         ),
+  //       };
+  //       const ent = await patchCart(autoCart, cartEmbed, {
+  //         includeShippingFields: true,
+  //       });
+  //       const full = MERCHI.toJson(ent);
+  //       setCart(full);
+  //       localStorage.setItem('MerchiCart', JSON.stringify(full));
+  //     } catch (err) {
+  //       console.warn('[Auto-select quote] error', err);
+  //     }
+  //   })();
+  // }
+  //   });
+  //   setSelectedQuoteIds(init);
+  // }, [shipmentGroups]);
 
   return (
     <>
@@ -121,6 +146,7 @@ export default function ShippingOptions({
                                     ...prev,
                                     [shipmentGroup.id]: quote.id,
                                   }));
+                                  setIsUpdatingShipping(true);
 
                                   const newCart = {
                                     ...cart,
@@ -132,7 +158,7 @@ export default function ShippingOptions({
                                   };
 
                                   try {
-                                    const cartEnt = await patchCart(newCart, null, { includeShippingFields: true });
+                                    const cartEnt = await patchCart(newCart, cartEmbed, { includeShippingFields: true });
                                     const cartJson = MERCHI.toJson(cartEnt);
 
                                     setCart(cartJson);
@@ -142,6 +168,8 @@ export default function ShippingOptions({
                                     );
                                   } catch (err) {
                                     console.error('[ShippingOptions] patchCart error:', err);
+                                  } finally {
+                                    setIsUpdatingShipping(false);
                                   }
                                 }}
                               />
