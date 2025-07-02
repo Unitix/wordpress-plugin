@@ -24,10 +24,11 @@ const AddressForm = ({
             <CountryDropdown
               id={`${prefix}_country`}
               className="wc-blocks-components-select__select"
-              value={selectedCountry ?? ''}
+              valueType = "short"
               onChange={(country) => {
                 setSelectedCountry(country);
               }}
+              value={selectedCountry}
             />
           </div>
         </div>
@@ -98,11 +99,13 @@ const AddressForm = ({
             <RegionDropdown
               id={`${prefix}_state`}
               country={selectedCountry}
+              valueType = "short"
               className="wc-blocks-components-select__select"
               onChange={(state) => {
                 setSelectedState(state);
               }}
-              defaultValue={selectedState}
+              value={selectedState}
+              countryValueType='short'
             />
           </div>
         </div>

@@ -54,6 +54,7 @@ async function createClient(MERCHI, clientJson, cartJson) {
 const WoocommerceCheckoutForm = () => {
   const localCartJSONString = localStorage.getItem("MerchiCart");
   const localCart = JSON.parse(localCartJSONString) || {};
+  // save localCart to orderInfo before doing patch cart
   const [cart, setCart] = useState(localCart);
 
   useEffect(() => {
@@ -77,11 +78,11 @@ const WoocommerceCheckoutForm = () => {
 
   const { domain = {} } = cart;
   const { country = 'AU' } = domain;
-
+  const [orderInfo, setOrderInfo] = useState({cart: localCart});
   // Shipping address state
   const [selectedShippingCountry, setSelectedShippingCountry] = useState(null);
   const [selectedShippingState, setSelectedShippingState] = useState(null);
-  const [orderInfo, setOrderInfo] = useState(null);
+
   const { register, handleSubmit, formState: { errors }, setValue, getValues } = useForm();
 
   const onSubmit = (data) => {
@@ -179,34 +180,40 @@ const WoocommerceCheckoutForm = () => {
 
         // create a new order object with the new client before reconstructing the cart object for patch
         setOrderInfo({
-          client: newCartClient.user,
-          cart: cart,
+          ...orderInfo,
+          client: newCartClient.user, 
           receiverAddress: {
-            lineOne: shipping_address_1,
-            lineTwo: shipping_address_2,
-            city: shipping_city,
-            postcode: shipping_postcode,
-            country: selectedShippingCountry,
-            state: selectedShippingState,
-          }
-        });
-
+          lineOne: shipping_address_1,
+          lineTwo: shipping_address_2,
+          city: shipping_city,
+          postcode: shipping_postcode,
+          country: selectedShippingCountry,
+          state: selectedShippingState,
+        }});
+        console.log('cart', cart);
+        console.log('newCartClient.user', newCartClient.user);
 
         const newCartClientEnt = MERCHI.fromJson(new MERCHI.User(), { id: newCartClient.user.id });
 
         cartEnt.client(newCartClientEnt);
       }
 
-      const addressEnt = new MERCHI.Address()
-        .lineOne(shipping_address_1)
-        .lineTwo(shipping_address_2)
-        .city(shipping_city)
-        .postcode(shipping_postcode)
-        .country(selectedShippingCountry?.iso2);
-      // .state(selectedShippingState?.iso2);
+      const addressEnt = new MERCHI.Address();
+
+      addressEnt.lineOne(shipping_address_1);
+      addressEnt.lineTwo(shipping_address_2);
+      addressEnt.city(shipping_city);
+      addressEnt.postcode(shipping_postcode);
+      addressEnt.country(selectedShippingCountry);
+      addressEnt.state(selectedShippingState);
+
+      console.log('selectedShippingCountry', selectedShippingCountry);
+      console.log('selectedShippingState', selectedShippingState);
+      console.log('addressEnt', addressEnt);
 
       cartEnt.receiverAddress(addressEnt);
 
+      console.log('cartEnt', cartEnt);
 
       //convert cartEnt to json
       const cartJson = MERCHI.toJson(cartEnt);
@@ -214,19 +221,20 @@ const WoocommerceCheckoutForm = () => {
       //reset the cart global state with the new cart json
       setCart(cartJson);
       //delete the id of cart item from cartItems
-      cartJson.cartItems.forEach(item => {
-        delete item.id;
-      });
 
 
       console.log("cartJson", cartJson);
+
+
       // Patch the cart data to Merchi server
       await patchCart(cartJson)
-        .then(response => {
-          console.log('[MerchiSync] Patch cart data:', response);
-        })
-        .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
-
+      .then(response => {
+        console.log('[MerchiSync] Patch cart data:', response);
+      //turn merchi entity response to json
+      const responseJson = MERCHI.toJson(response);
+      console.log('responseJson', responseJson);
+      })
+      .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
       // Update localStorage with the patched cart data
       localStorage.setItem('MerchiCart', JSON.stringify(MERCHI.toJson(cartEnt)));
 
@@ -251,7 +259,7 @@ const WoocommerceCheckoutForm = () => {
       setOrderLoading(false);
     }
   }
-
+  console.log('orderInfo', orderInfo);
   const handlePaymentSuccess = async (paymentIntent) => {
 
     localStorage.setItem('MerchiOrder', JSON.stringify(orderInfo));
