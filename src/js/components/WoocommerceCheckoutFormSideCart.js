@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import CouponPanel from './CouponPanel';
 import VariationGroupsDisplay from './VariationGroupsDisplay';
-import { patchCart } from '../merchi_public_custom';
 
 const readCart = () => {
   try {
@@ -13,34 +12,11 @@ const readCart = () => {
 };
 
 export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdatingShipping }) {
-  // const [cart, setCart] = useState(readCart());
-  // const [loading, setLoading] = useState(true);
   const [localCart, setLocalCart] = useState(readCart());
 
   const cartReady =
     (cart?.cartItems?.length && cart.cartItems[0].product?.name) ||
     (localCart.cartItems?.length && localCart.cartItems[0].product?.name);
-
-  // useEffect(() => {
-  //   const onStorage = (e) =>
-  //     e.key === 'MerchiCart' && setCart(readCart());
-  //   window.addEventListener('storage', onStorage);
-
-  //   // sync with the backend - simple approach like cart page
-  //   (async () => {
-  //     try {
-  //       const patched = await patchCart(readCart(), readCart().cartEmbed, { includeShippingFields: true });
-  //       // update the cart in local storage
-  //       setCart(JSON.parse(localStorage.getItem('MerchiCart')) || patched);
-  //     } catch (e) {
-  //       console.warn('[CheckoutSideCart] patchCart error:', e.response?.status || e);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   })();
-
-  //   return () => window.removeEventListener('storage', onStorage);
-  // }, []);
 
   useEffect(() => {
     const onStorage = (e) =>
@@ -55,7 +31,8 @@ export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdat
   const total = showCart.totalCost ?? 0;
   const tax = showCart.taxAmount ?? 0;
   const shipping = showCart.shipmentTotalCost ?? 0;
-  const selectedQuote = showCart.selectedQuote;
+  const selectedQuote =
+    showCart.shipmentGroups?.find(g => g.selectedQuote)?.selectedQuote ?? null;
 
   if (!cartReady) {
     return (
@@ -162,10 +139,28 @@ export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdat
                   <div className="wc-block-components-totals-item">
                     <span className="wc-block-components-totals-item__label">Delivery</span>
                     <span className="wc-block-formatted-money-amount wc-block-components-formatted-money-amount wc-block-components-totals-item__value">
-                      {isUpdatingShipping
-                        ? <span className="wc-block-components-spinner is-active" />
-                        : `$${shipping.toFixed(2)}`
-                      }
+                      {isUpdatingShipping ? (
+                        <span style={{
+                          display: 'inline-block',
+                          width: '1em',
+                          height: '1em',
+                          position: 'relative',
+                          verticalAlign: 'middle'
+                        }}>
+                          <span
+                            className="wc-block-components-spinner is-active"
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              transform: 'scale(0.6)',
+                              transformOrigin: 'top left'
+                            }}
+                          />
+                        </span>
+                      ) : (
+                        `$${shipping.toFixed(2)}`
+                      )}
                     </span>
                     <div className="wc-block-components-totals-item__description">
                       {selectedQuote && (
@@ -186,10 +181,28 @@ export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdat
               <span className="wc-block-components-totals-item__label">Total</span>
               <div className="wc-block-components-totals-item__value">
                 <span className="wc-block-formatted-money-amount wc-block-components-formatted-money-amount wc-block-components-totals-footer-item-tax-value">
-                  {isUpdatingShipping
-                    ? <span className="wc-block-components-spinner is-active" />
-                    : `$${total}`
-                  }
+                  {isUpdatingShipping ? (
+                    <span style={{
+                      display: 'inline-block',
+                      width: '1em',
+                      height: '1em',
+                      position: 'relative',
+                      verticalAlign: 'middle'
+                    }}>
+                      <span
+                        className="wc-block-components-spinner is-active"
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          transform: 'scale(0.6)',
+                          transformOrigin: 'top left'
+                        }}
+                      />
+                    </span>
+                  ) : (
+                    `$${total.toFixed(2)}`
+                  )}
                 </span>
               </div>
               <div className="wc-block-components-totals-item__description"></div>

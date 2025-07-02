@@ -100,8 +100,6 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
       const apiUrl = window.scriptData?.merchi_url || 'https://api.staging.merchi.co/';
       const url = `${apiUrl}v6/carts/${cartId}/check_discount_code/?cart_token=${cartToken}&codes=${encodeURIComponent(discountCode)}`;
 
-      console.log('API URL:', url);
-
       const fetchResponse = await fetch(url, {
         method: 'GET',
         headers: {

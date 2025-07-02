@@ -18,7 +18,7 @@ async function reconcileMerchiWithStore({ items }) {
     merchi.cartItemsTaxAmount = 0;
     merchi.cartItemsTotalCost = 0;
     localStorage.setItem('MerchiCart', JSON.stringify(merchi));
-    try { window.COOKIE_MANAGER?.syncWithLocalStorage?.(); } catch { 
+    try { window.COOKIE_MANAGER?.syncWithLocalStorage?.(); } catch {
       console.log('error', error);
     }
     return;
@@ -27,11 +27,8 @@ async function reconcileMerchiWithStore({ items }) {
   // woo cart has items: filter by sku
   const raw = localStorage.getItem('MerchiCart');
 
-  console.log('raw', raw);
   if (!raw) return;
   const merchi = JSON.parse(raw);
-
-  console.log('merchi', merchi);
 
   const wooSkus = new Set(items.map(i => String(i.sku)));
   const before = merchi.cartItems.length;
@@ -48,7 +45,7 @@ async function reconcileMerchiWithStore({ items }) {
     (s, i) => s + (i.taxAmount ?? 0), 0);
 
   localStorage.setItem('MerchiCart', JSON.stringify(merchi));
-  try { window.COOKIE_MANAGER?.syncWithLocalStorage?.(); } catch { 
+  try { window.COOKIE_MANAGER?.syncWithLocalStorage?.(); } catch {
     console.log('error', error);
   }
 }

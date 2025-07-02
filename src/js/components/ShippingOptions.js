@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { cartEmbed } from '../utils';
 
 export default function ShippingOptions({
@@ -14,37 +14,6 @@ export default function ShippingOptions({
 }) {
 
   const [selectedQuoteIds, setSelectedQuoteIds] = useState({});
-
-  // useEffect(() => {
-  //   const init = {};
-  //   shipmentGroups.forEach((g) => {
-  //     if (g.selectedQuote) init[g.id] = g.selectedQuote.id;
-  // if no selected quote, auto select the first quote then patch
-  // if (!g.selectedQuote && g.quotes.length) {
-  //   (async () => {
-  //     try {
-  //       const autoCart = {
-  //         ...cart,
-  //         shipmentGroups: cart.shipmentGroups.map((sg) =>
-  //           sg.id === g.id
-  //             ? { id: g.id, selectedQuote: { id: g.quotes[0].id } }
-  //             : sg
-  //         ),
-  //       };
-  //       const ent = await patchCart(autoCart, cartEmbed, {
-  //         includeShippingFields: true,
-  //       });
-  //       const full = MERCHI.toJson(ent);
-  //       setCart(full);
-  //       localStorage.setItem('MerchiCart', JSON.stringify(full));
-  //     } catch (err) {
-  //       console.warn('[Auto-select quote] error', err);
-  //     }
-  //   })();
-  // }
-  //   });
-  //   setSelectedQuoteIds(init);
-  // }, [shipmentGroups]);
 
   return (
     <>

@@ -129,17 +129,14 @@ export async function patchCart(cartJson, embed = cartEmbed, options = {}) {
     delete cleanedCartJson.shipmentGroups;
     delete cleanedCartJson.selectedQuote;
     delete cleanedCartJson.receiverAddress;
-    console.log('[patchCart] Excluding shipping fields from patch request');
   } else {
     // Include shipping fields (for checkout scenarios)
     cleanedCartJson.shipmentGroups = cartJson.shipmentGroups || [];
     cleanedCartJson.selectedQuote = cartJson.selectedQuote || null;
     cleanedCartJson.receiverAddress = cartJson.receiverAddress || null;
-    console.log('[patchCart] Including shipping fields in patch request');
   }
 
   const cartEnt = MERCHI.fromJson(new MERCHI.Cart(), cleanedCartJson);
-  console.log('[patchCart] cleanedCartJson', cleanedCartJson);
 
   cartEnt.token(cartJson.token);
 
@@ -366,7 +363,6 @@ async function initOrSyncCart() {
         localStorage.removeItem("MerchiCart");
         try {
           const newCart = await createCart();
-          console.log("MERCHI_LOG: New cart created after clearing invalid cart data from localStorage.");
           return newCart;
         } catch (error) {
           console.error("MERCHI_LOG: Error during createCart after clearing invalid cart data:", error);
