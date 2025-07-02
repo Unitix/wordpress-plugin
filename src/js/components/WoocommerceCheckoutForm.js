@@ -80,7 +80,6 @@ const WoocommerceCheckoutForm = () => {
   // Shipping address state
   const [selectedShippingCountry, setSelectedShippingCountry] = useState(null);
   const [selectedShippingState, setSelectedShippingState] = useState(null);
-
   const { register, handleSubmit, formState: { errors }, setValue, getValues } = useForm();
 
   const onSubmit = (data) => {
@@ -138,7 +137,9 @@ const WoocommerceCheckoutForm = () => {
   }
   useEffect(() => {
     changeShippingCountryOrState(selectedShippingCountry, selectedShippingState);
+
   }, [selectedShippingCountry, selectedShippingState]);
+
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phoneNumberCountry, setPhoneNumberCountry] = useState('');
@@ -176,7 +177,7 @@ const WoocommerceCheckoutForm = () => {
 
         // create a new order object with the new client before reconstructing the cart object for patch
         setOrderInfo({
-          ...orderInfo,
+          cart: orderInfo.cart,
           client: newCartClient.user,
           receiverAddress: {
             lineOne: shipping_address_1,
@@ -245,16 +246,24 @@ const WoocommerceCheckoutForm = () => {
   }
   const handlePaymentSuccess = async (paymentIntent) => {
 
-    localStorage.setItem('MerchiOrder', JSON.stringify(orderInfo));
-
     try {
       //refetch the cart from the server
-      const cartEntrefetched = await getCart(cart.id, cart.token);
-      const cartJsonrefetched = MERCHI.toJson(cartEntrefetched);
+      // const cartEntrefetched = await getCart(cart.id, cart.token);
+      // const cartJsonrefetched = MERCHI.toJson(cartEntrefetched);
+      localStorage.setItem('MerchiOrder', JSON.stringify(orderInfo));
 
+      const merchi_api_url = MERCHI_API_URL();
+
+      console.log('cart', cart);
+      const completeResponse = await fetch(`${merchi_api_url}v6/stripe/payment_intent/cart/complete/${cart.id}/?cart_token=${cart.token}`);
+      const cartJsonrefetched = await completeResponse.json();
+      console.log('paymentIntent', paymentIntent);
+      console.log('cartJsonrefetched', cartJsonrefetched);
+
+      // const cartJsonrefetched = MERCHI.toJson(data.cart);
 
       // Handle successful payment
-      window.location.href = window.location.origin + '/thankyou?merchi_value=' + cartJsonrefetched.totalCost + '&invoice_id=' + cartJsonrefetched.invoice.id + '&email=' + orderInfo.client.emailAddresses[0].emailAddress;
+      window.location.href = window.location.origin + '/thankyou?merchi_value=' + orderInfo.cart.totalCost + '&invoice_id=' + cartJsonrefetched.invoice.id + '&email=' + orderInfo.client.emailAddresses[0].emailAddress;
 
       //parameters merchi value, invoice id, email
     } catch (error) {
