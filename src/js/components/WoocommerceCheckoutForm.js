@@ -56,6 +56,26 @@ const WoocommerceCheckoutForm = () => {
   const localCart = JSON.parse(localCartJSONString) || {};
   // save localCart to orderInfo before doing patch cart
   const [cart, setCart] = useState(localCart);
+
+  useEffect(() => {
+    if (!localCart.id) return;
+    (async () => {
+      try {
+        const ent = await patchCart(
+          { id: localCart.id, token: localCart.token },
+          cartEmbed,
+          { includeShippingFields: true }
+        );
+        const full = MERCHI.toJson(ent);
+        setCart(full);
+        localStorage.setItem('MerchiCart', JSON.stringify(full));
+        setShipmentGroups(full.shipmentGroups || []);
+      } catch (err) {
+        console.warn('[Checkout] init patch error', err);
+      }
+    })();
+  }, []);
+
   const { domain = {} } = cart;
   const { country = 'AU' } = domain;
   const [orderInfo, setOrderInfo] = useState({cart: localCart});
@@ -72,6 +92,7 @@ const WoocommerceCheckoutForm = () => {
 
   const [shipmentGroups, setShipmentGroups] = useState([]);
   const [shipmentOptionsLoading, setShipmentOptionsLoading] = useState(false);
+  const [isUpdatingShipping, setIsUpdatingShipping] = useState(false);
 
   const MERCHI = MERCHI_SDK();
 
@@ -142,7 +163,7 @@ const WoocommerceCheckoutForm = () => {
 
     // Get MerchiCart data from localStorage
     // const merchiCartData = JSON.parse(localStorage.getItem('MerchiCart') || '{}');
-    
+
     let cartEnt = MERCHI.fromJson(new MERCHI.Cart(), cart);
     try {
       // try update or create new client
@@ -172,7 +193,7 @@ const WoocommerceCheckoutForm = () => {
         console.log('cart', cart);
         console.log('newCartClient.user', newCartClient.user);
 
-        const newCartClientEnt = MERCHI.fromJson(new MERCHI.User(), {id: newCartClient.user.id});
+        const newCartClientEnt = MERCHI.fromJson(new MERCHI.User(), { id: newCartClient.user.id });
 
         cartEnt.client(newCartClientEnt);
       }
@@ -193,7 +214,7 @@ const WoocommerceCheckoutForm = () => {
       cartEnt.receiverAddress(addressEnt);
 
       console.log('cartEnt', cartEnt);
-      
+
       //convert cartEnt to json
       const cartJson = MERCHI.toJson(cartEnt);
 
@@ -201,7 +222,7 @@ const WoocommerceCheckoutForm = () => {
       setCart(cartJson);
       //delete the id of cart item from cartItems
 
-      
+
       console.log("cartJson", cartJson);
 
 
@@ -214,7 +235,6 @@ const WoocommerceCheckoutForm = () => {
       console.log('responseJson', responseJson);
       })
       .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
-      
       // Update localStorage with the patched cart data
       localStorage.setItem('MerchiCart', JSON.stringify(MERCHI.toJson(cartEnt)));
 
@@ -248,8 +268,8 @@ const WoocommerceCheckoutForm = () => {
       //refetch the cart from the server
       const cartEntrefetched = await getCart(cart.id, cart.token);
       const cartJsonrefetched = MERCHI.toJson(cartEntrefetched);
-      
-    
+
+
       // Handle successful payment
       window.location.href = window.location.origin + '/thankyou?merchi_value=' + cartJsonrefetched.totalCost + '&invoice_id=' + cartJsonrefetched.invoice.id + '&email=' + orderInfo.client.emailAddresses[0].emailAddress;
 
@@ -270,7 +290,7 @@ const WoocommerceCheckoutForm = () => {
       <div className='wc-block-components-sidebar-layout wc-block-checkout is-large'>
         <div className="wc-block-components-main wc-block-checkout__main wp-block-woocommerce-checkout-fields-block">
           {currentStep === 'details' ? (
-            
+
             <form onSubmit={handleSubmit(placeOrder)} className='wc-block-components-form wc-block-checkout__form' >
               <fieldset className="wc-block-checkout__contact-fields wp-block-woocommerce-checkout-contact-information-block wc-block-components-checkout-step" id="contact-fields">
                 <legend className="screen-reader-text">Contact information</legend>
@@ -402,6 +422,11 @@ const WoocommerceCheckoutForm = () => {
                 shipmentOptionsLoading={shipmentOptionsLoading}
                 register={register}
                 errors={errors}
+                patchCart={patchCart}
+                cart={cart}
+                setCart={setCart}
+                MERCHI={MERCHI}
+                setIsUpdatingShipping={setIsUpdatingShipping}
               />
               <div className="wc-block-checkout__order-notes wp-block-woocommerce-checkout-order-note-block wc-block-components-checkout-step" id="order-notes">
                 <div className="wc-block-components-checkout-step__container">
@@ -468,7 +493,11 @@ const WoocommerceCheckoutForm = () => {
             </div>
           )}
         </div>
-        <WoocommerceCheckoutFormSideCart />
+        <WoocommerceCheckoutFormSideCart
+          cart={cart}
+          loading={shipmentOptionsLoading}
+          isUpdatingShipping={isUpdatingShipping}
+        />
       </div>
     </div>
   );

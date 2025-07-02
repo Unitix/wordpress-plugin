@@ -78,7 +78,7 @@ export function cleanVariationJson(v) {
 
   return {
     ...rest,
-    id: undefined,
+    // id: undefined,
     variationField: variationField?.id
       ? { id: variationField.id }
       : undefined,
@@ -105,13 +105,6 @@ export function cleanVariationGroupJson(g) {
 
 export async function patchCart(cartJson, embed = cartEmbed, options = {}) {
 
-  // const isCartPage = () => {
-  //   const currentPath = window.location.pathname.toLowerCase();
-  //   return currentPath.includes('/cart') ||
-  //     currentPath.includes('cart.php') ||
-  //     !currentPath.includes('/checkout');
-  // };
-
   // Default options
   const {
     includeShippingFields = false, // Explicit control over shipping fields
@@ -129,18 +122,6 @@ export async function patchCart(cartJson, embed = cartEmbed, options = {}) {
       variationsGroups: (item.variationsGroups || []).map(cleanVariationGroupJson),
     })),
   };
-
-  // if (isCartPage()) {
-  //   // Remove shipping-related fields that cause 403 on cart pages
-  //   delete cleanedCartJson.shipmentGroups;
-  //   delete cleanedCartJson.selectedQuote;
-  //   delete cleanedCartJson.receiverAddress;
-  // } else {
-  //   // On checkout pages, ensure these fields exist (even if empty) for proper quoting
-  //   cleanedCartJson.shipmentGroups = cartJson.shipmentGroups || [];
-  //   cleanedCartJson.selectedQuote = cartJson.selectedQuote || null;
-  //   cleanedCartJson.receiverAddress = cartJson.receiverAddress || null;
-  // }
 
   // keep or remove shipping fields based on options parameter 
   if (!includeShippingFields) {
