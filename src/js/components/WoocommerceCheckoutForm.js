@@ -76,7 +76,13 @@ const WoocommerceCheckoutForm = () => {
 
   const { domain = {} } = cart;
   const { country = 'AU' } = domain;
-  const [orderInfo, setOrderInfo] = useState({ cart: localCart });
+  // const [orderInfo, setOrderInfo] = useState({ cart: localCart });
+  const [orderInfo, setOrderInfo] = useState({ cart, client: null, receiverAddress: null });
+
+  useEffect(() => {
+    setOrderInfo(prev => ({ ...prev, cart }));
+  }, [cart]);
+
   // Shipping address state
   const [selectedShippingCountry, setSelectedShippingCountry] = useState(null);
   const [selectedShippingState, setSelectedShippingState] = useState(null);
@@ -218,6 +224,8 @@ const WoocommerceCheckoutForm = () => {
           //turn merchi entity response to json
           const responseJson = MERCHI.toJson(response);
           console.log('responseJson', responseJson);
+          setCart(responseJson);
+          setOrderInfo(prev => ({ ...prev, cart: responseJson }));
         })
         .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
       // Update localStorage with the patched cart data
@@ -250,7 +258,11 @@ const WoocommerceCheckoutForm = () => {
       //refetch the cart from the server
       // const cartEntrefetched = await getCart(cart.id, cart.token);
       // const cartJsonrefetched = MERCHI.toJson(cartEntrefetched);
-      localStorage.setItem('MerchiOrder', JSON.stringify(orderInfo));
+      // localStorage.setItem('MerchiOrder', JSON.stringify(orderInfo));
+      localStorage.setItem(
+        'MerchiOrder',
+        JSON.stringify({ ...orderInfo, cart })
+      );
 
       const merchi_api_url = MERCHI_API_URL();
 
