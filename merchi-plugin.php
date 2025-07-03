@@ -2877,3 +2877,21 @@ function ajax_update_shipment_method() {
     }
     wp_die();
 }
+
+add_action('wp_footer', function() {
+    ?>
+    <script>
+    jQuery(document).ready(function($) {
+        var currentUrl = window.location.href.toLowerCase();
+        
+        if (currentUrl.includes('thankyou') || currentUrl.includes('order-received')) {
+            $('.wc-block-mini-cart, .widget_shopping_cart, #mini-cart, .wp-block-woocommerce-mini-cart').hide();
+          
+            setTimeout(function() {
+                $('.wc-block-mini-cart, .widget_shopping_cart, #mini-cart, .wp-block-woocommerce-mini-cart').hide();
+            }, 500);
+        }
+    });
+    </script>
+    <?php
+}, 9999);

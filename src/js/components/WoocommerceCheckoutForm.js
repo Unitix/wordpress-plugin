@@ -225,7 +225,17 @@ const WoocommerceCheckoutForm = () => {
           const responseJson = MERCHI.toJson(response);
           console.log('responseJson', responseJson);
           setCart(responseJson);
-          setOrderInfo(prev => ({ ...prev, cart: responseJson }));
+          setOrderInfo(prev => ({
+            ...prev,
+            cart: responseJson,
+            client: {
+              ...prev.client,
+              name: getValues('client.name'),
+              emailAddresses: [
+                { emailAddress: getValues('client.emailAddresses[0].emailAddress') }
+              ]
+            }
+          }));
         })
         .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
       // Update localStorage with the patched cart data
@@ -263,6 +273,10 @@ const WoocommerceCheckoutForm = () => {
         'MerchiOrder',
         JSON.stringify({ ...orderInfo, cart })
       );
+
+      // clear the cart after successful order placement
+      localStorage.removeItem('MerchiCart');
+      setCart({});
 
       const merchi_api_url = MERCHI_API_URL();
 
