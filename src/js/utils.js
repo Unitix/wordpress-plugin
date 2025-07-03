@@ -148,7 +148,6 @@ export function updateWooNonce(res) {
 }
 
 export const shouldShow = (v) => {
-  if (v.variationField?.fieldType === 5) return false;           // Number Field
   if (Array.isArray(v.selectedOptions) && v.selectedOptions.length) return true;
   if (typeof v.value === 'string' && v.value.trim() !== '') return true;
   if (typeof v.value === 'number') return true;
