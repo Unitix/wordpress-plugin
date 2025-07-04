@@ -1191,29 +1191,28 @@ function send_id_for_add_cart(){
             $cart = $_POST['item'];
             error_log('Cart data: ' . print_r($cart, true));
             
-            // if (!isset($cart['cartId'])) {
-            //     error_log('Error: No cartId in cart data');
-            //     echo json_encode(array('success' => false, 'error' => 'No cartId provided'));
-            //     exit;
-            // }
-
-			      $merchi_cart_json = $cart['merchiCartJson'];
-			      $merchi_cart_token = $merchi_cart_json['token'];
-						$cart_id = $merchi_cart_json['id'];
-
-            if ($merchi_cart_token) {
+            // Check if we have valid merchi cart data
+            $merchi_cart_json = isset($cart['merchiCartJson']) ? $cart['merchiCartJson'] : null;
+            
+            // Only attempt to patch Merchi cart if we have valid data
+            if ($merchi_cart_json && isset($merchi_cart_json['token']) && isset($merchi_cart_json['id'])) {
+                $merchi_cart_token = $merchi_cart_json['token'];
+                $cart_id = $merchi_cart_json['id'];
+                
                 $patch_response = patch_merchi_cart(
-									  $cart_id,
-										$merchi_cart_token,
-										$merchi_cart_json
-								);
+                    $cart_id,
+                    $merchi_cart_token,
+                    $merchi_cart_json
+                );
                 // Optionally, handle/log the response or errors
                 if (is_wp_error($patch_response)) {
                     error_log('Merchi PATCH error: ' . $patch_response->get_error_message());
+                } else {
+                    error_log('Merchi PATCH success');
                 }
-						} else {
-				      	error_log('Merchi PATCH success');
-				    }
+            } else {
+                error_log('Skipping Merchi PATCH - no valid cart data');
+            }
 
             $taxAmount = $cart['taxAmount'];
             if(!isset($cart['cartItems'])){

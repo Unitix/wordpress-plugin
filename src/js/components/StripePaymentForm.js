@@ -61,9 +61,13 @@ const PaymentForm = ({ onPaymentSuccess, onPaymentError }) => {
       <button
         type="submit"
         disabled={!stripe || isProcessing}
-        className="place-order-button"
+        className="button wp-element-button"
       >
-        {isProcessing ? 'Processing...' : 'Pay Now'}
+        <span className="wc-block-components-button__text">
+          <div className="wc-block-components-checkout-place-order-button__text">
+            {isProcessing ? 'Processing...' : 'Pay Now'}
+          </div>
+        </span>
       </button>
     </form>
   );

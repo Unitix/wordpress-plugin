@@ -9,6 +9,7 @@ import { patchCart } from '../merchi_public_custom';
 import { MERCHI_API_URL, MERCHI_SDK } from '../merchi_sdk';
 import 'react-phone-input-2/lib/style.css';
 import { getCart } from '../merchi_public_custom';
+import { ensureWooNonce, fetchWooNonce, updateWooNonce } from '../utils';
 
 async function createClient(MERCHI, clientJson, cartJson) {
   return new Promise((resolve, reject) => {
@@ -277,6 +278,40 @@ const WoocommerceCheckoutForm = () => {
       // clear the cart after successful order placement
       localStorage.removeItem('MerchiCart');
       setCart({});
+
+      // clear the minicart
+      async function clearWooCart() {
+        const nonce = await ensureWooNonce();
+
+        const doClear = (n) =>
+          fetch('/wp-json/wc/store/v1/cart/items', {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', Nonce: n },
+          });
+
+        let res = await doClear(nonce);
+        if (res.status === 403) res = await doClear(await fetchWooNonce());
+        if (!res.ok) {
+          console.warn('[Woo] empty-cart error:', res.status);
+          return;
+        }
+
+        updateWooNonce(res);
+
+        const emptyWooCart = await res.json();
+
+        localStorage.storeApiCartData = JSON.stringify(emptyWooCart);
+        sessionStorage.removeItem('wc/cart');
+
+        const wpData = window.wp?.data;
+        if (wpData) {
+          wpData.dispatch('wc/store/cart')?.clearItems?.();
+          wpData.dispatch('wc/store')?.clearCart?.();
+        }
+      }
+
+      await clearWooCart();
 
       const merchi_api_url = MERCHI_API_URL();
 
