@@ -1146,7 +1146,7 @@ function send_id_for_add_cart(){
         try {
             $item_count = count( WC()->cart->get_cart() ) ;
             $cart = $_POST['item'];
-            error_log('Cart data: ' . print_r($cart, true));
+            // error_log('Cart data: ' . print_r($cart, true));
             
             if (!isset($cart['cartId'])) {
                 error_log('Error: No cartId in cart data');
@@ -1158,19 +1158,17 @@ function send_id_for_add_cart(){
 			      $merchi_cart_token = $merchi_cart_json['token'];
 						$cart_id = $merchi_cart_json['id'];
 
-            if ($merchi_cart_token) {
-                $patch_response = patch_merchi_cart(
-									  $cart_id,
-										$merchi_cart_token,
-										$merchi_cart_json
-								);
-                // Optionally, handle/log the response or errors
-                if (is_wp_error($patch_response)) {
-                    error_log('Merchi PATCH error: ' . $patch_response->get_error_message());
-                }
-						} else {
-				      	error_log('Merchi PATCH success');
-				    }
+            // if ($merchi_cart_token) {
+            //     $patch_response = patch_merchi_cart(
+						// 			  $cart_id,
+						// 				$merchi_cart_token,
+						// 				$merchi_cart_json
+						// 		);
+            //     // Optionally, handle/log the response or errors
+            //     if (is_wp_error($patch_response)) {
+            //         error_log('Merchi PATCH error: ' . $patch_response->get_error_message());
+            //     }
+						// }
 
             $taxAmount = $cart['taxAmount'];
             if(!isset($cart['cartItems'])){
@@ -1395,6 +1393,7 @@ function cst_cart_item_after_remove() {
 
 function my_custom_remove_cart_item_action( $removed_cart_item_key, $cart_item ) {
     // Prevent recursive calls
+		error_log('=== Remove Cart Item Action Started ===');
     static $is_processing = false;
     if ($is_processing) {
         return;
@@ -1416,15 +1415,18 @@ function my_custom_remove_cart_item_action( $removed_cart_item_key, $cart_item )
         // Get the cart ID from cookie
         if (isset($_COOKIE['cstCartId'])) {
             $cart_id = $_COOKIE['cstCartId'];
+
+            // Get item data before removing
+            $option_key = 'get_cart_myItems_'.$cart_id.'_'.$removed_cart_item_key;
+            $item_data = get_option($option_key, array());
             
             // Remove the item data from WordPress options
-            $option_key = 'get_cart_myItems_'.$cart_id.'_'.$removed_cart_item_key;
             delete_option($option_key);
-            
+
             // Refresh cart session and totals
             $cart->set_session();
             $cart->calculate_totals();
-            
+
             // Get remaining cart items count
             $remaining_items = $cart->get_cart_contents_count();
             
@@ -1434,6 +1436,7 @@ function my_custom_remove_cart_item_action( $removed_cart_item_key, $cart_item )
                 setcookie("cstCartId", "", time() - 3600, "/");
             }
         }
+				error_log('=== Remove Cart Item Action Ended ===');
     } catch (Exception $e) {
         error_log('Error in cart item removal: ' . $e->getMessage());
     } finally {

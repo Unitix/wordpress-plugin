@@ -1132,7 +1132,7 @@ function initializeWhenReady() {
             sessionStorage.setItem('merchiCartSuccess', '1');
             // Reload the page and scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });
-            // window.location.reload();
+            window.location.reload();
             // Do NOT show the success message here
             // Do NOT submit the form here
             // Cart fragment refresh will happen on reload
