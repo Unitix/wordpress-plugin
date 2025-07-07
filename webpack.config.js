@@ -16,7 +16,7 @@ module.exports = {
     'order_confirmation': './src/js/components/OrderConfirmation.js'
   },
   output: {
-    filename: '[name].[contenthash].js',
+    filename: '[name].js',
     path: path.resolve(__dirname, 'dist/js'),
     clean: true,
   },
@@ -123,7 +123,7 @@ module.exports = {
   },
   plugins: [
     new MiniCssExtractPlugin({
-      filename: '[name].[contenthash].css',
+      filename: '[name].css',
     }),
   ],
 };
