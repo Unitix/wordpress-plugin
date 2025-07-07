@@ -8,10 +8,10 @@ if (!class_exists('WP_List_Table')) {
 
 class MerchiProductImportListtable extends \WP_List_Table
 {
-    public $apiKey;  //'UA5_mG2q-XILdYPU1nbOZSZtjDHUnZ0IweQVdTq3Cs2wwwfV2WYXmgwxbdAKEl4bgDo9BGXO1Wi3Wwg4DZOszQ';
-    public $domain_id;
-    public $session_token;
-    public $api_url;
+    private $apiKey;
+    private $domain_id;
+    private $session_token;
+    private $api_url;
     
     public function __construct()
     {
@@ -22,42 +22,68 @@ class MerchiProductImportListtable extends \WP_List_Table
                 'ajax' => false,
             )
         );
+        
+        $this->initialize_api_config();
         $this->prepare_items();
+    }
+
+    private function initialize_api_config() {
         $merchi_mode = get_option('merchi_staging_mode');
         $this->session_token = get_option('merchi_api_session_token');
-        $this->api_url = 'https://api.staging.merchi.co/v6/products/';
-        if($merchi_mode){
-            $this->domain_id = $merchi_mode == 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
-            $this->apiKey = $merchi_mode == 'yes' ? get_option('staging_merchi_api_secret') : get_option('merchi_api_secret');
+        
+        if (!$merchi_mode) {
+            throw new Exception('Merchi mode not configured');
+        }
+
+        $this->api_url = $merchi_mode == 'yes' ? 'https://api.staging.merchi.co/v6/products/' : 'https://api.merchi.co/v6/products/';
+        $this->domain_id = $merchi_mode == 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
+        $this->apiKey = $merchi_mode == 'yes' ? get_option('staging_merchi_api_secret') : get_option('merchi_api_secret');
+
+        if (!$this->apiKey || !$this->domain_id) {
+            throw new Exception('API key or domain ID not configured');
         }
     }
 
     private function fetch_api_data()
     {
- 
-        $curl = curl_init();
-        curl_setopt_array(
-            $curl,
-            array(
-                CURLOPT_URL => "$this->api_url?apiKey=$this->apiKey&limit=0&offset=0&inDomain=$this->domain_id&session_token=$this->session_token&embed={%22featureImage%22%3A{}%2C%22images%22%3A{}}&skip_rights=y",
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 0,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'GET',
-                CURLOPT_POSTFIELDS => '{}',
-                CURLOPT_HTTPHEADER => array(
-                    'Content-Type: application/json'
-                ),
-            )
-        );
-        $response = curl_exec($curl);
-        curl_close($curl);
-        $response_data = json_decode($response);
+        $url = add_query_arg([
+            'apiKey' => $this->apiKey,
+            'limit' => 0,
+            'offset' => 0,
+            'inDomain' => $this->domain_id,
+            'session_token' => $this->session_token,
+            'embed' => urlencode(json_encode([
+                'featureImage' => new stdClass(),
+                'images' => new stdClass()
+            ])),
+            'skip_rights' => 'y'
+        ], $this->api_url);
 
-        return $response_data;
+        $response = wp_remote_get($url, [
+            'timeout' => 30,
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json'
+            ]
+        ]);
+
+        if (is_wp_error($response)) {
+            throw new Exception('API request failed: ' . $response->get_error_message());
+        }
+
+        $response_code = wp_remote_retrieve_response_code($response);
+        if ($response_code !== 200) {
+            throw new Exception('API request failed with status code: ' . $response_code);
+        }
+
+        $body = wp_remote_retrieve_body($response);
+        $data = json_decode($body);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception('Failed to parse API response: ' . json_last_error_msg());
+        }
+
+        return $data;
     }
 
     public function prepare_items()

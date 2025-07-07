@@ -5,6 +5,28 @@
 
 namespace MerchiPlugin;
 
+// Base classes (load BaseController first!)
+require_once plugin_dir_path(__DIR__) . 'MerchiPlugin/Base/BaseController.php';
+require_once plugin_dir_path(__DIR__) . 'MerchiPlugin/Base/Enqueue.php';
+require_once plugin_dir_path(__DIR__) . 'MerchiPlugin/Base/SettingsLinks.php';
+
+// Callbacks (relies on BaseController)
+require_once plugin_dir_path(__DIR__) . 'MerchiPlugin/Api/Callbacks/AdminCallbacks.php';
+
+// API services
+require_once plugin_dir_path(__DIR__) . 'MerchiPlugin/Api/CreateMerchiProducts.php';
+require_once plugin_dir_path(__DIR__) . 'MerchiPlugin/Api/ExportProducts.php';
+require_once plugin_dir_path(__DIR__) . 'MerchiPlugin/Api/SettingsApi.php';
+
+// Pages
+require_once plugin_dir_path(__DIR__) . 'MerchiPlugin/Pages/Admin.php';
+require_once plugin_dir_path(__DIR__) . 'MerchiPlugin/PublicPages/ProductPage.php';
+
+// Cart injection
+//require_once plugin_dir_path(__DIR__) . 'MerchiPlugin/ShoppingCart/ShoppingCartInject.php';
+require_once plugin_dir_path(__DIR__) . 'MerchiPlugin/CartPages/CartCheckoutPage.php';
+
+
 final class Init {
 
 
@@ -17,7 +39,6 @@ final class Init {
 		return [
 			Pages\Admin::class,
 			PublicPages\ProductPage::class,
-			ShoppingCart\ShoppingCartInject::class,
 			Base\Enqueue::class,
 			Base\SettingsLinks::class,
 			Api\CreateMerchiProducts::class,
