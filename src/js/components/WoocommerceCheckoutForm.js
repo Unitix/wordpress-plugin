@@ -10,6 +10,7 @@ import { MERCHI_API_URL, MERCHI_SDK } from '../merchi_sdk';
 import 'react-phone-input-2/lib/style.css';
 import { getCart } from '../merchi_public_custom';
 import { ensureWooNonce, fetchWooNonce, updateWooNonce } from '../utils';
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
 async function createClient(MERCHI, clientJson, cartJson) {
   return new Promise((resolve, reject) => {
@@ -433,7 +434,10 @@ const WoocommerceCheckoutForm = () => {
                           name="client.phoneNumbers[0].phoneNumber"
                           rules={{
                             required: 'Phone number is required',
-                            validate: v => (v.length >= 5) || 'Please enter a valid phone number'
+                            validate: v => {
+                              const num = parsePhoneNumberFromString(v.replace(/\s+/g, ''), phoneNumberCountry);
+                              return (num && num.isValid()) || 'Please enter a valid phone number';
+                            }
                           }}
                           render={({ field }) => (
                             <PhoneInput
@@ -448,11 +452,6 @@ const WoocommerceCheckoutForm = () => {
                               className="wc-block-components-text-input__input"
                               inputStyle={{ height: '100%', paddingLeft: '40px', width: '100%' }}
                               preferredCountries={['au', 'nz', 'uk', 'us']}
-                              // inputProps={{
-                              //   name: "client.phoneNumbers[0].phoneNumber",
-                              //   required: true,
-                              //   autoFocus: true
-                              // }}
                               inputProps={{
                                 ref: field.ref,
                                 required: true,
@@ -462,8 +461,6 @@ const WoocommerceCheckoutForm = () => {
                                 field.onChange(value);
                                 setPhoneNumber(value);
                                 setPhoneNumberCountry(country.countryCode.toUpperCase());
-                                // setPhoneNumber(value);
-                                // setPhoneNumberCountry(country.countryCode.toUpperCase());
                               }}
                             />
                           )}
