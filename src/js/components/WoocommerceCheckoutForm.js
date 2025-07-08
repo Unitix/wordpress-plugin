@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PhoneInput from 'react-phone-input-2'
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import WoocommerceCheckoutFormSideCart from './WoocommerceCheckoutFormSideCart';
 import AddressForm from './AddressForm';
 import ShippingOptions from './ShippingOptions';
@@ -87,7 +87,7 @@ const WoocommerceCheckoutForm = () => {
   // Shipping address state
   const [selectedShippingCountry, setSelectedShippingCountry] = useState(null);
   const [selectedShippingState, setSelectedShippingState] = useState(null);
-  const { register, handleSubmit, formState: { errors }, setValue, getValues } = useForm();
+  const { control, register, handleSubmit, formState: { errors }, setValue, getValues } = useForm();
 
   const onSubmit = (data) => {
     console.log(data);
@@ -424,29 +424,60 @@ const WoocommerceCheckoutForm = () => {
                         }
                       </div>
 
-                      <div className="wc-block-components-text-input wc-block-components-address-form__phone">
+                      <div className={`wc-block-components-text-input
+                                      wc-block-components-address-form__phone
+                                      ${errors?.client?.phoneNumbers?.[0]?.phoneNumber ? 'has-error' : ''}`}>
                         <label htmlFor="client.phoneNumbers[0].phoneNumber" className="wc-block-components-text-input__label">Phone Number *</label>
-                        <PhoneInput
-                          country={country.toLowerCase()}
-                          containerStyle={{
-                            height: '3.125em'
+                        <Controller
+                          control={control}
+                          name="client.phoneNumbers[0].phoneNumber"
+                          rules={{
+                            required: 'Phone number is required',
+                            validate: v => (v.length >= 5) || 'Please enter a valid phone number'
                           }}
-                          buttonStyle={{
-                            height: '100%'
-                          }}
-                          className="wc-block-components-text-input__input"
-                          inputStyle={{ height: '100%', paddingLeft: '40px', width: '100%' }}
-                          preferredCountries={['au', 'nz', 'uk', 'us']}
-                          inputProps={{
-                            name: "client.phoneNumbers[0].phoneNumber",
-                            required: true,
-                            autoFocus: true
-                          }}
-                          onChange={(value, country) => {
-                            setPhoneNumber(value);
-                            setPhoneNumberCountry(country.countryCode.toUpperCase());
-                          }}
+                          render={({ field }) => (
+                            <PhoneInput
+                              {...field}
+                              country={country.toLowerCase()}
+                              containerStyle={{
+                                height: '3.125em'
+                              }}
+                              buttonStyle={{
+                                height: '100%'
+                              }}
+                              className="wc-block-components-text-input__input"
+                              inputStyle={{ height: '100%', paddingLeft: '40px', width: '100%' }}
+                              preferredCountries={['au', 'nz', 'uk', 'us']}
+                              // inputProps={{
+                              //   name: "client.phoneNumbers[0].phoneNumber",
+                              //   required: true,
+                              //   autoFocus: true
+                              // }}
+                              inputProps={{
+                                ref: field.ref,
+                                required: true,
+                                autoFocus: true
+                              }}
+                              onChange={(value, country) => {
+                                field.onChange(value);
+                                setPhoneNumber(value);
+                                setPhoneNumberCountry(country.countryCode.toUpperCase());
+                                // setPhoneNumber(value);
+                                // setPhoneNumberCountry(country.countryCode.toUpperCase());
+                              }}
+                            />
+                          )}
                         />
+                        {errors?.client?.phoneNumbers?.[0]?.phoneNumber && (
+                          <div className="wc-block-components-validation-error" role="alert">
+                            <p id="error-phone-number">
+                              <svg viewBox="-2 -2 24 24" width="24" height="24" aria-hidden="true">
+                                <path d="M10 2c4.42 0 8 3.58 8 8s-3.58 8-8 8-8-3.58-8-8 3.58-8 8-8zm1.13 9.38l.35-6.46H8.52l.35 6.46h2.26zm-.09 3.36c.24-.23.37-.55.37-.96 0-.42-.12-.74-.36-.97s-.59-.35-1.06-.35-.82.12-1.07.35-.37.55-.37.97c0 .41.13.73.38.96.26.23.61.34 1.06.34s.8-.11 1.05-.34z" />
+                              </svg>
+                              <span>{errors.client.phoneNumbers[0].phoneNumber.message}</span>
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
