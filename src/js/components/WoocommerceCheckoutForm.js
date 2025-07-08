@@ -155,6 +155,11 @@ const WoocommerceCheckoutForm = () => {
   const [stripeClientSecret, setStripeClientSecret] = useState(null);
   const [currentStep, setCurrentStep] = useState('details'); // 'details' or 'payment'
 
+  useEffect(() => {
+    console.log('[DEBUG] orderLoading =', orderLoading, '| currentStep =', currentStep);
+  }, [orderLoading, currentStep]);
+
+
   async function placeOrder() {
     setOrderLoading(true);
     const {
@@ -171,7 +176,13 @@ const WoocommerceCheckoutForm = () => {
     let cartEnt = MERCHI.fromJson(new MERCHI.Cart(), cart);
     try {
       // try update or create new client
-      if (!cart?.client?.id || cart?.emailAddresses[0]?.emaillAddress !== client?.emailAddesses[0]?.emailAddress) {
+      const cartClientEmail =
+        cart?.client?.emailAddresses?.[0]?.emailAddress ?? '';
+
+      const formClientEmail =
+        client?.emailAddresses?.[0]?.emailAddress ?? '';
+
+      if (!cart?.client?.id || cartClientEmail !== formClientEmail) {
         const newCartClient = await createClient(
           MERCHI,
           {
