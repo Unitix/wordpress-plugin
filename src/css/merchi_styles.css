@@ -1578,3 +1578,11 @@ body.single-product #cart-count {
 .wc-block-checkout__sidebar .merchi-variation-list .wc-block-components-product-details__name {
   flex-shrink: 0;
 }
+
+.payment-actions {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}

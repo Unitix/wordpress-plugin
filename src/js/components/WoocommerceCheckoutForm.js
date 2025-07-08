@@ -570,19 +570,12 @@ const WoocommerceCheckoutForm = () => {
               </div>
             </form>
           ) : (
-            <div className="payment-step">
-              <button
-                className='button wp-element-button'
-                onClick={() => setCurrentStep('details')}
-              >
-                ← Back to Details
-              </button>
-              <StripePaymentForm
-                clientSecret={stripeClientSecret}
-                onPaymentSuccess={handlePaymentSuccess}
-                onPaymentError={handlePaymentError}
-              />
-            </div>
+            <StripePaymentForm
+              clientSecret={stripeClientSecret}
+              onPaymentSuccess={handlePaymentSuccess}
+              onPaymentError={handlePaymentError}
+              onBack={() => setCurrentStep('details')}
+            />
           )}
         </div>
         <WoocommerceCheckoutFormSideCart

@@ -8,7 +8,7 @@ import {
 } from '@stripe/react-stripe-js';
 
 // The actual form component that contains the Stripe elements
-const PaymentForm = ({ onPaymentSuccess, onPaymentError }) => {
+const PaymentForm = ({ onPaymentSuccess, onPaymentError, onBack }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -58,23 +58,29 @@ const PaymentForm = ({ onPaymentSuccess, onPaymentError }) => {
           {errorMessage}
         </div>
       )}
-      <button
-        type="submit"
-        disabled={!stripe || isProcessing}
-        className="button wp-element-button"
-      >
-        <span className="wc-block-components-button__text">
-          <div className="wc-block-components-checkout-place-order-button__text">
-            {isProcessing ? 'Processing...' : 'Pay Now'}
-          </div>
-        </span>
-      </button>
+      <div className="payment-actions">
+        <button
+          type="button"
+          className="button wp-element-button is-secondary back-btn"
+          onClick={onBack}
+        >
+          ← Back to Details
+        </button>
+
+        <button
+          type="submit"
+          disabled={!stripe || isProcessing}
+          className="button wp-element-button pay-btn"
+        >
+          {isProcessing ? 'Processing…' : 'Pay Now'}
+        </button>
+      </div>
     </form>
   );
 };
 
 // The wrapper component that initializes Stripe
-const StripePaymentForm = ({ clientSecret, onPaymentSuccess, onPaymentError }) => {
+const StripePaymentForm = ({ clientSecret, onPaymentSuccess, onPaymentError, onBack }) => {
   const [stripePromise, setStripePromise] = useState(null);
 
   useEffect(() => {
@@ -113,6 +119,7 @@ const StripePaymentForm = ({ clientSecret, onPaymentSuccess, onPaymentError }) =
         <PaymentForm
           onPaymentSuccess={onPaymentSuccess}
           onPaymentError={onPaymentError}
+          onBack={onBack}
         />
       </Elements>
     </div>
