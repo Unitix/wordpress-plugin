@@ -58,7 +58,15 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
 
   const syncTotalsFromCart = (cart) => {
     const subtotal = Number(cart.subtotalCost ?? 0);
-    const discount = Math.abs(Number(cart.discountedAmount ?? 0));
+    // const discount = Math.abs(Number(cart.discountedAmount ?? 0));
+    const discount = Math.abs(
+      Number(
+        cart.discountedAmount ??
+        (Array.isArray(cart.discountItems)
+          ? cart.discountItems.reduce((s, i) => s + (Number(i.cost) || 0), 0)
+          : 0)
+      )
+    );
     const tax = Number(cart.taxAmount ?? 0);
     setTotals({
       subtotal,

@@ -177,24 +177,6 @@ export function getCountryFromBrowser() {
   if (typeof window === 'undefined') return null;
 
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-  // const tzMap = {
-  //   'Australia/Sydney': 'AU',
-  //   'Australia/Melbourne': 'AU',
-  //   'Australia/Brisbane': 'AU',
-  //   'Australia/Perth': 'AU',
-  //   'Australia/Adelaide': 'AU',
-  //   'Australia/Hobart': 'AU',
-  //   'Australia/Darwin': 'AU',
-  //   'Australia/Canberra': 'AU',
-  //   'Australia/Broken_Hill': 'AU',
-  //   'Pacific/Auckland': 'NZ',
-  //   'Asia/Shanghai': 'CN',
-  // };
-
-  // const result = tzMap[tz] || (m ? m[1].toUpperCase() : 'AU');
-  // console.log('[DBG] getCountryFromBrowser ⇒', { locale, tz, result });
-
-  // if (tzMap[tz]) return tzMap[tz];
 
   if (tz) {
     const tzInfo = ct.getTimezone(tz);

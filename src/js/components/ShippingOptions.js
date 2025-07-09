@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { cartEmbed } from '../utils';
+import { patchCartDiscountItems } from '../merchi_public_custom';
 
 export default function ShippingOptions({
   shipmentGroups = [],
@@ -129,6 +130,17 @@ export default function ShippingOptions({
                                   try {
                                     const cartEnt = await patchCart(newCart, cartEmbed, { includeShippingFields: true });
                                     const cartJson = MERCHI.toJson(cartEnt);
+
+                                    if (Array.isArray(cart.discountItems) && cart.discountItems.length) {
+                                      const slim = cart.discountItems.map(({ code, id, description = '', cost }) => ({
+                                        code,
+                                        id,
+                                        description,
+                                        cost,
+                                      }));
+                                      const patched2 = await patchCartDiscountItems(cartJson, slim);
+                                      Object.assign(cartJson, MERCHI.toJson(patched2));
+                                    }
 
                                     setCart(cartJson);
                                     localStorage.setItem(

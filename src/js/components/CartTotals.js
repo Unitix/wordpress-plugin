@@ -16,25 +16,34 @@ export default function CartTotals({ cart }) {
   const tax = (+taxRaw).toFixed(2);
   const subtotalFmt = subtotal.toFixed(2);
 
+  // let displayTotal = originalTotal;
+  // let displayDiscount = 0;
+
   let displayTotal = originalTotal;
-  let displayDiscount = 0;
+  const calcDisc = (c) =>
+    Math.abs(
+      Array.isArray(c.discountItems)
+        ? c.discountItems.reduce((s, i) => s + (Number(i.cost) || 0), 0)
+        : 0
+    );
+
+  let displayDiscount = calcDisc(cart);
 
   if (couponData.totals && !isNaN(couponData.totals.total)) {
     displayTotal = couponData.totals.total;
     displayDiscount = Math.abs(couponData.totals.discount || 0);
   } else {
     try {
-      const merchiCart = localStorage.getItem('MerchiCart');
-      if (merchiCart) {
-        const cartData = JSON.parse(merchiCart);
-        displayTotal = +(cartData.totalCost ?? originalTotal);
+      const raw = localStorage.getItem('MerchiCart');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        displayTotal = +(parsed.totalCost ?? originalTotal);
+        displayDiscount = calcDisc(parsed);
       }
     } catch (error) {
       console.error('Error reading cart from localStorage:', error);
     }
   }
-
-  displayDiscount = Math.max(0, subtotal + +taxRaw - displayTotal);
 
   let finalTotal = displayTotal;
   if (cart.shipmentTotalCost && cart.shipmentTotalCost > 0) {
