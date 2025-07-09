@@ -11,6 +11,10 @@ import 'react-phone-input-2/lib/style.css';
 import { getCart } from '../merchi_public_custom';
 import { ensureWooNonce, fetchWooNonce, updateWooNonce } from '../utils';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
+import { getCountryFromBrowser, toIso } from '../utils';
+
+console.log('[DBG] navigator.language ⇒', navigator.language);
+console.log('[DBG] Intl.tz ⇒', Intl.DateTimeFormat().resolvedOptions().timeZone);
 
 async function createClient(MERCHI, clientJson, cartJson) {
   return new Promise((resolve, reject) => {
@@ -61,11 +65,13 @@ const WoocommerceCheckoutForm = () => {
     if (!localCart.id) return;
     (async () => {
       try {
-        const ent = await patchCart(
-          { id: localCart.id, token: localCart.token },
-          cartEmbed,
-          { includeShippingFields: true }
-        );
+        // const ent = await patchCart(
+        //   { id: localCart.id, token: localCart.token },
+        //   cartEmbed,
+        //   { includeShippingFields: true }
+        // );
+        const ent = await getCart(localCart.id, localCart.token);
+
         const full = MERCHI.toJson(ent);
         setCart(full);
         localStorage.setItem('MerchiCart', JSON.stringify(full));
@@ -86,9 +92,24 @@ const WoocommerceCheckoutForm = () => {
   }, [cart]);
 
   // Shipping address state
-  const [selectedShippingCountry, setSelectedShippingCountry] = useState(null);
+  // const [selectedShippingCountry, setSelectedShippingCountry] = useState(null);
+  const browserCountry =
+    getCountryFromBrowser() ||
+    localCart?.receiverAddress?.country ||
+    null;
+
+  console.log('[Init] browserCountry ⇒', browserCountry);
+
+  const [selectedShippingCountry, setSelectedShippingCountry] =
+    useState(browserCountry);
+
   const [selectedShippingState, setSelectedShippingState] = useState(null);
-  const { control, register, handleSubmit, formState: { errors }, setValue, getValues } = useForm();
+  const { control, register, handleSubmit, formState: { errors }, setValue, getValues } = useForm({
+    defaultValues: {
+      shipping_country: browserCountry || '',
+      billing_country: browserCountry || '',
+    }
+  });
 
   const onSubmit = (data) => {
     console.log(data);
@@ -125,8 +146,9 @@ const WoocommerceCheckoutForm = () => {
 
   async function changeShippingCountryOrState(country, state) {
     setShipmentOptionsLoading(true);
-    const c = country?.iso2 || '';
-    const s = state?.iso2 || '';
+    const c = toIso(country);
+    const s = toIso(state);
+    console.log('[changeShippingCountryOrState] country:', c, 'state:', s);
     const cartJson = {
       ...cart,
       receiverAddress: { ...cart.receiverAddress, country: c, state: s },
@@ -137,17 +159,31 @@ const WoocommerceCheckoutForm = () => {
       const _cartJson = MERCHI.toJson(cartEnt);
       setCart(_cartJson);
       await getShippingGroup();
+      console.log('[patchCart→receiverAddress.country] ⇒', _cartJson.receiverAddress?.country);
     } catch (error) {
       console.error('Error updating cart:', error);
     } finally {
       setShipmentOptionsLoading(false);
     }
   }
+  // useEffect(() => {
+  //   changeShippingCountryOrState(selectedShippingCountry, selectedShippingState);
+
+  // }, [selectedShippingCountry, selectedShippingState]);
+
   useEffect(() => {
-    changeShippingCountryOrState(selectedShippingCountry, selectedShippingState);
+    if (browserCountry) {
+      setValue('shipping_country', browserCountry);
+      changeShippingCountryOrState(browserCountry, null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  useEffect(() => {
+    if (selectedShippingCountry) {
+      changeShippingCountryOrState(selectedShippingCountry, selectedShippingState);
+    }
   }, [selectedShippingCountry, selectedShippingState]);
-
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phoneNumberCountry, setPhoneNumberCountry] = useState('');
@@ -442,7 +478,7 @@ const WoocommerceCheckoutForm = () => {
                           render={({ field }) => (
                             <PhoneInput
                               {...field}
-                              country={country.toLowerCase()}
+                              country={(selectedShippingCountry || 'AU').toLowerCase()}
                               containerStyle={{
                                 height: '3.125em'
                               }}
@@ -505,6 +541,7 @@ const WoocommerceCheckoutForm = () => {
                     setSelectedCountry={setSelectedShippingCountry}
                     selectedState={selectedShippingState}
                     setSelectedState={setSelectedShippingState}
+                    setValue={setValue}
                   />
                 </div>
               </fieldset>

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import ct from 'countries-and-timezones';
 
 export const backendUri = 'https://api.merchi.co/';
 export const websocketServer = 'https://websockets.merchi.co/';
@@ -165,3 +166,56 @@ export const buildOptionMap = (product = {}) => {
   );
   return map;
 };
+
+// Convert country name to ISO code
+export const toIso = (val = '') =>
+  typeof val === 'string'
+    ? val.toUpperCase()
+    : (val && val.iso2 ? val.iso2.toUpperCase() : '');
+
+export function getCountryFromBrowser() {
+  if (typeof window === 'undefined') return null;
+
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  // const tzMap = {
+  //   'Australia/Sydney': 'AU',
+  //   'Australia/Melbourne': 'AU',
+  //   'Australia/Brisbane': 'AU',
+  //   'Australia/Perth': 'AU',
+  //   'Australia/Adelaide': 'AU',
+  //   'Australia/Hobart': 'AU',
+  //   'Australia/Darwin': 'AU',
+  //   'Australia/Canberra': 'AU',
+  //   'Australia/Broken_Hill': 'AU',
+  //   'Pacific/Auckland': 'NZ',
+  //   'Asia/Shanghai': 'CN',
+  // };
+
+  // const result = tzMap[tz] || (m ? m[1].toUpperCase() : 'AU');
+  // console.log('[DBG] getCountryFromBrowser ⇒', { locale, tz, result });
+
+  // if (tzMap[tz]) return tzMap[tz];
+
+  if (tz) {
+    const tzInfo = ct.getTimezone(tz);
+    if (tzInfo?.countries?.length) {
+      const locale = navigator.language || '';
+      const locMatch = locale.match(/-([A-Z]{2})$/i)?.[1]?.toUpperCase();
+      const chosen =
+        tzInfo.countries.find(c => c === locMatch) ||
+        tzInfo.countries[0];
+      console.log('[DBG] getCountryFromBrowser ⇒ by TZ', { tz, countries: tzInfo.countries, chosen });
+      return chosen;
+    }
+  }
+
+  const locale =
+    Intl.DateTimeFormat().resolvedOptions().locale ||
+    navigator.language || '';
+  const m = locale.match(/-([A-Z]{2})$/i);
+  if (m) return m[1].toUpperCase();
+
+  return null;
+}
+
+

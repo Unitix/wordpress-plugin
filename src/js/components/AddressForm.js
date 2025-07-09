@@ -9,7 +9,8 @@ const AddressForm = ({
   selectedCountry,
   setSelectedCountry,
   selectedState,
-  setSelectedState
+  setSelectedState,
+  setValue
 }) => {
   useWooActive();
   const prefix = type === 'shipping' ? 'shipping' : 'billing';
@@ -24,11 +25,18 @@ const AddressForm = ({
             <CountryDropdown
               id={`${prefix}_country`}
               className="wc-blocks-components-select__select"
-              valueType = "short"
+              valueType="short"
               onChange={(country) => {
-                setSelectedCountry(country);
+                const iso = (country || '').toUpperCase();
+                console.log('[AddressForm] Country selected ⇒', iso);
+                setSelectedCountry(iso);
+                setValue && setValue(`${prefix}_country`, iso);
               }}
               value={selectedCountry}
+            />
+            <input
+              type="hidden"
+              {...register(`${prefix}_country`, { required: 'Country is required' })}
             />
           </div>
         </div>
@@ -99,7 +107,7 @@ const AddressForm = ({
             <RegionDropdown
               id={`${prefix}_state`}
               country={selectedCountry}
-              valueType = "short"
+              valueType="short"
               className="wc-blocks-components-select__select"
               onChange={(state) => {
                 setSelectedState(state);
