@@ -25,15 +25,6 @@ export default function CartItems({ cartItems, onRemove }) {
               product.images?.[0]?.viewUrl ||
               'https://woocommerce.com/wp-content/plugins/woocommerce/assets/images/placeholder.png';
             const name = product.name || 'Product';
-
-            // get total from variationsGroups
-            // const groupTotal = Array.isArray(item.variationsGroups)
-            //   ? item.variationsGroups.reduce((sum, g) => sum + (g.groupCost ?? 0), 0)
-            //   : 0;
-
-            // const total = groupTotal > 0
-            //   ? groupTotal
-            //   : (item.totalCost ?? item.subtotalCost ?? item.cost ?? 0);
             const total = item.totalCost ?? 0;
 
             return (
@@ -44,15 +35,11 @@ export default function CartItems({ cartItems, onRemove }) {
                 <td className="wc-block-cart-item__product">
                   <div className="wc-block-cart-item__wrap">
                     <span className="wc-block-components-product-name">{name}</span>
-                    {/* {renderVariationsGroups(product, item.variationsGroups)} */}
                     <VariationGroupsDisplay
                       product={product}
                       variationsGroups={item.variationsGroups}
                     />
                     <div className="wc-block-cart-item__quantity">
-                      {/* <div style={{ marginTop: 4 }}>
-                        Quantity:&nbsp;{quantity}
-                      </div> */}
                       <button
                         className="wc-block-cart-item__remove-link"
                         aria-label={`Remove ${name} from cart`}

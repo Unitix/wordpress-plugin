@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { MERCHI_SDK } from '../merchi_sdk';
-// import { patchCart } from '../merchi_public_custom';
 import { patchCartDiscountItems } from '../merchi_public_custom';
 
 const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
@@ -58,7 +57,6 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
 
   const syncTotalsFromCart = (cart) => {
     const subtotal = Number(cart.subtotalCost ?? 0);
-    // const discount = Math.abs(Number(cart.discountedAmount ?? 0));
     const discount = Math.abs(
       Number(
         cart.discountedAmount ??
@@ -87,10 +85,6 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
       setError('Cart not found. Please refresh the page.');
       return;
     }
-
-    console.log('Validating discount code:', discountCode);
-    console.log('Cart ID:', cartId);
-
     setLoading(true);
     setError('');
 
@@ -121,12 +115,9 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
       }
 
       const response = await fetchResponse.json();
-      console.log('API Response:', response);
 
       if (response && response.items && response.items.length > 0) {
         const discountItem = response.items[0];
-        console.log('Discount item found:', discountItem);
-        console.log('Full discount item object:', JSON.stringify(discountItem, null, 2));
 
         // Check if this discount code is already applied
         const isAlreadyApplied = appliedCodes.some(c => c.code === discountCode);
@@ -151,7 +142,6 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
             const updatedDiscountItems = [...(cartData.discountItems || []), newDiscountItem];
             cartData.discountItems = updatedDiscountItems;
             localStorage.setItem('MerchiCart', JSON.stringify(cartData));
-            console.log('Updated cart with discount items');
 
             // Sync discount items to server
             try {
@@ -171,7 +161,6 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
               setCode('');
               setOpen(false);
 
-              console.log('Successfully synced discount items to server');
             } catch (patchError) {
               console.error('Failed to sync discount items to server:', patchError);
               // Revert localStorage changes if server sync fails
@@ -186,9 +175,6 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
         }
 
       } else {
-        console.log('No discount items found in response');
-        console.log('Full response structure:', JSON.stringify(response, null, 2));
-
         // Check if response has error message
         if (response && response.error) {
           setError(`Error: ${response.error}`);
@@ -253,7 +239,6 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
       const slimRemain = (serverData.items || []).map(
         ({ code, id, cost, description = '' }) => ({ code, id, cost, description })
       );
-      console.log('slimRemain1: ', slimRemain);
       const patched = await patchCartDiscountItems(cartData, slimRemain);
 
       // Convert entity to JSON before storing in localStorage
@@ -262,8 +247,6 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
       localStorage.setItem('MerchiCart', JSON.stringify(patchedJson));
       syncTotalsFromCart(patchedJson);
       setAppliedCodes(patchedJson.discountItems || []);
-
-      console.log('Discount removed & synced via GET then PATCH');
     } catch (e) {
       console.error(e);
       setError('Failed to remove discount code, please try again.');
@@ -388,54 +371,6 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
                       {error}
                     </div>
                   )}
-
-                  {/* appliedCodes
-                  {appliedCodes.length > 0 && (
-                    <div style={{ marginTop: '16px' }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>
-                        Applied Coupons:
-                      </div>
-                      {appliedCodes.map((item, index) => (
-                        <div
-                          key={index}
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            padding: '8px 12px',
-                            backgroundColor: '#f0f0f0',
-                            borderRadius: '4px',
-                            marginBottom: '4px',
-                            fontSize: '14px'
-                          }}
-                        >
-                          <span>
-                            <strong>{item.code}</strong>
-                            {item.description &&  - ${item.description}}
-                            {item.cost !== undefined && (
-                              item.cost === 0
-                                ? ' (Applied)'
-                                :  (-$${item.cost.toFixed(2)})
-                            )}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => removeDiscountCode(index)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: '#d63638',
-                              cursor: 'pointer',
-                              fontSize: '18px',
-                              padding: '4px'
-                            }}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )} */}
                 </div>
               </div>
             </div>

@@ -11,7 +11,7 @@ const readCart = () => {
   }
 };
 
-export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdatingShipping }) {
+export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdatingShipping, allowRemoveCoupon = true }) {
   const [localCart, setLocalCart] = useState(readCart());
 
   const [couponData, setCouponData] = useState({
@@ -45,7 +45,6 @@ export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdat
   const showCart = cart?.cartItems?.length && cart.cartItems[0].product?.name ? cart : localCart;
 
   const subtotal = showCart.cartItemsSubtotalCost ?? 0;
-  // const total = showCart.totalCost ?? 0;
   const tax = showCart.taxAmount ?? 0;
   const shipping = showCart.shipmentTotalCost ?? 0;
   const selectedQuote =
@@ -170,7 +169,7 @@ export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdat
                   </span>
 
                   {/* applied coupon list */}
-                  {couponData.appliedCodes.length > 0 && (
+                  {allowRemoveCoupon && couponData.appliedCodes.length > 0 && (
                     <div className="wc-block-components-totals-item__description">
                       <ul className="wc-block-components-totals-discount__coupon-list">
                         {couponData.appliedCodes.map((c, idx) => (

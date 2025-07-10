@@ -19,8 +19,6 @@ const OrderConfirmation = () => {
   let orderInfo;
   try {
     orderInfo = JSON.parse(rawOrderData);
-
-    console.log('orderInfo', orderInfo);
   } catch (err) {
     console.error("Failed to parse order data from localStorage:", err);
     return (
@@ -42,16 +40,7 @@ const OrderConfirmation = () => {
 
   return (
     <div className="woocommerce">
-      {/* <p className="woocommerce-thankyou-order-received">
-        {status === "failed"
-          ? "Unfortunately your order cannot be processed..."
-          : "Thank you. Your order has been received."}
-      </p> */}
-
       <ul className="woocommerce-order-overview woocommerce-thankyou-order-details order_details">
-        {/* <li className="woocommerce-order-overview__order order">
-          Order number: <strong>{orderNumber}</strong>
-        </li> */}
         <li className="woocommerce-order-overview__date date">
           Date: <strong>{new Date().toLocaleString(undefined, {
             hour: '2-digit',

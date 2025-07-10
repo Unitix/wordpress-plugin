@@ -28,7 +28,6 @@ const AddressForm = ({
               valueType="short"
               onChange={(country) => {
                 const iso = (country || '').toUpperCase();
-                console.log('[AddressForm] Country selected ⇒', iso);
                 setSelectedCountry(iso);
                 setValue && setValue(`${prefix}_country`, iso);
               }}

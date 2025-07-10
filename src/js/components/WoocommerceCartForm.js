@@ -85,12 +85,7 @@ export default function WoocommerceCartForm() {
     const updatedItems = cart.cartItems.filter(
       ci => String(ci.product?.id) !== String(item.product?.id)
     );
-
-    // const subtotalCost = updatedItems.reduce((sum, i) =>
-    //   sum + ((i.subtotalCost ?? i.cost ?? i.totalCost ?? 0) * i.quantity), 0);
-    // const totalCost = updatedItems.reduce((sum, i) =>
-    //   sum + ((i.totalCost ?? i.subtotalCost ?? i.cost ?? 0) * i.quantity), 0);
-
+    
     const subtotalCost = updatedItems.reduce(
       (sum, i) =>
         sum +

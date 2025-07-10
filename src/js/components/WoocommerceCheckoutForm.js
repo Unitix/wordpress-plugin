@@ -13,9 +13,6 @@ import { ensureWooNonce, fetchWooNonce, updateWooNonce } from '../utils';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { getCountryFromBrowser, toIso } from '../utils';
 
-console.log('[DBG] navigator.language ⇒', navigator.language);
-console.log('[DBG] Intl.tz ⇒', Intl.DateTimeFormat().resolvedOptions().timeZone);
-
 async function createClient(MERCHI, clientJson, cartJson) {
   return new Promise((resolve, reject) => {
     const { domain = {} } = cartJson;
@@ -65,11 +62,6 @@ const WoocommerceCheckoutForm = () => {
     if (!localCart.id) return;
     (async () => {
       try {
-        // const ent = await patchCart(
-        //   { id: localCart.id, token: localCart.token },
-        //   cartEmbed,
-        //   { includeShippingFields: true }
-        // );
         const ent = await getCart(localCart.id, localCart.token);
 
         const full = MERCHI.toJson(ent);
@@ -84,7 +76,6 @@ const WoocommerceCheckoutForm = () => {
 
   const { domain = {} } = cart;
   const { country = 'AU' } = domain;
-  // const [orderInfo, setOrderInfo] = useState({ cart: localCart });
   const [orderInfo, setOrderInfo] = useState({ cart, client: null, receiverAddress: null });
 
   useEffect(() => {
@@ -92,13 +83,10 @@ const WoocommerceCheckoutForm = () => {
   }, [cart]);
 
   // Shipping address state
-  // const [selectedShippingCountry, setSelectedShippingCountry] = useState(null);
   const browserCountry =
     getCountryFromBrowser() ||
     localCart?.receiverAddress?.country ||
     null;
-
-  console.log('[Init] browserCountry ⇒', browserCountry);
 
   const [selectedShippingCountry, setSelectedShippingCountry] =
     useState(browserCountry);
@@ -137,7 +125,6 @@ const WoocommerceCheckoutForm = () => {
         setShipmentGroups(shipmentGroups);
         return;
       } catch (error) {
-        console.log('Error fetching shipping data:', error);
         setShipmentGroups([]);
         throw error;
       }
@@ -148,28 +135,23 @@ const WoocommerceCheckoutForm = () => {
     setShipmentOptionsLoading(true);
     const c = toIso(country);
     const s = toIso(state);
-    console.log('[changeShippingCountryOrState] country:', c, 'state:', s);
     const cartJson = {
       ...cart,
       receiverAddress: { ...cart.receiverAddress, country: c, state: s },
       shipmentGroups: [],
     };
     try {
-      const cartEnt = await patchCart(cartJson, null, { includeShippingFields: true });
+      // the patch with selectedQuote is sent only after the user picks one
+      const cartEnt = await patchCart(cartJson, null, { includeShippingFields: false });
       const _cartJson = MERCHI.toJson(cartEnt);
       setCart(_cartJson);
       await getShippingGroup();
-      console.log('[patchCart→receiverAddress.country] ⇒', _cartJson.receiverAddress?.country);
     } catch (error) {
       console.error('Error updating cart:', error);
     } finally {
       setShipmentOptionsLoading(false);
     }
   }
-  // useEffect(() => {
-  //   changeShippingCountryOrState(selectedShippingCountry, selectedShippingState);
-
-  // }, [selectedShippingCountry, selectedShippingState]);
 
   useEffect(() => {
     if (browserCountry) {
@@ -193,7 +175,6 @@ const WoocommerceCheckoutForm = () => {
   const [currentStep, setCurrentStep] = useState('details'); // 'details' or 'payment'
 
   useEffect(() => {
-    console.log('[DEBUG] orderLoading =', orderLoading, '| currentStep =', currentStep);
   }, [orderLoading, currentStep]);
 
 
@@ -206,9 +187,6 @@ const WoocommerceCheckoutForm = () => {
       shipping_city,
       shipping_postcode
     } = getValues();
-
-    // Get MerchiCart data from localStorage
-    // const merchiCartData = JSON.parse(localStorage.getItem('MerchiCart') || '{}');
 
     let cartEnt = MERCHI.fromJson(new MERCHI.Cart(), cart);
     try {
@@ -272,7 +250,6 @@ const WoocommerceCheckoutForm = () => {
         .then(response => {
           //turn merchi entity response to json
           const responseJson = MERCHI.toJson(response);
-          console.log('responseJson', responseJson);
           setCart(responseJson);
           setOrderInfo(prev => ({
             ...prev,
@@ -290,13 +267,6 @@ const WoocommerceCheckoutForm = () => {
       // Update localStorage with the patched cart data
       localStorage.setItem('MerchiCart', JSON.stringify(MERCHI.toJson(cartEnt)));
 
-      // Comment out payment step for testing
-      // const merchi_api_url = MERCHI_API_URL();
-      // const response = await fetch(`${merchi_api_url}v6/stripe/payment_intent/cart/${cartEnt.id()}/?cart_token=${cartEnt.token()}`);
-      // const data = await response.json();
-      // setStripeClientSecret(data.stripeClientSecret);
-      // setCurrentStep('payment');
-
       const merchi_api_url = MERCHI_API_URL();
       const response = await fetch(`${merchi_api_url}v6/stripe/payment_intent/cart/${cartEnt.id()}/?cart_token=${cartEnt.token()}`);
       const data = await response.json();
@@ -304,7 +274,6 @@ const WoocommerceCheckoutForm = () => {
       setCurrentStep('payment');
 
       // Directly proceed to order confirmation
-      // window.location.href = '/checkout/order-confirmation';
     } catch (error) {
       console.error('Error updating cart:', error);
     } finally {
@@ -315,9 +284,6 @@ const WoocommerceCheckoutForm = () => {
 
     try {
       //refetch the cart from the server
-      // const cartEntrefetched = await getCart(cart.id, cart.token);
-      // const cartJsonrefetched = MERCHI.toJson(cartEntrefetched);
-      // localStorage.setItem('MerchiOrder', JSON.stringify(orderInfo));
       localStorage.setItem(
         'MerchiOrder',
         JSON.stringify({ ...orderInfo, cart })
@@ -363,13 +329,8 @@ const WoocommerceCheckoutForm = () => {
 
       const merchi_api_url = MERCHI_API_URL();
 
-      console.log('cart', cart);
       const completeResponse = await fetch(`${merchi_api_url}v6/stripe/payment_intent/cart/complete/${cart.id}/?cart_token=${cart.token}`);
       const cartJsonrefetched = await completeResponse.json();
-      console.log('paymentIntent', paymentIntent);
-      console.log('cartJsonrefetched', cartJsonrefetched);
-
-      // const cartJsonrefetched = MERCHI.toJson(data.cart);
 
       // Handle successful payment
       window.location.href = window.location.origin + '/thankyou?merchi_value=' + orderInfo.cart.totalCost + '&invoice_id=' + cartJsonrefetched.invoice.id + '&email=' + orderInfo.client.emailAddresses[0].emailAddress;
@@ -445,9 +406,6 @@ const WoocommerceCheckoutForm = () => {
                               message: "Please enter a valid email address"
                             }
                           })}
-                          onChange={(e) => {
-                            console.log('e', e);
-                          }}
                         />
                         {errors.client?.emailAddresses?.[0]?.emailAddress &&
                           <div className="wc-block-components-validation-error" role="alert">
@@ -523,7 +481,6 @@ const WoocommerceCheckoutForm = () => {
              wp-block-woocommerce-checkout-billing-address-block
              wc-block-components-checkout-step"
               >
-                {/* <legend>Shipping Address</legend> */}
                 <div className="wc-block-components-checkout-step__heading">
                   <h2 className="wc-block-components-title wc-block-components-checkout-step__title">
                     Shipping address
@@ -619,6 +576,7 @@ const WoocommerceCheckoutForm = () => {
           cart={cart}
           loading={shipmentOptionsLoading}
           isUpdatingShipping={isUpdatingShipping}
+          allowRemoveCoupon={currentStep === 'details'}
         />
       </div>
     </div>

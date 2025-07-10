@@ -186,7 +186,6 @@ export function getCountryFromBrowser() {
       const chosen =
         tzInfo.countries.find(c => c === locMatch) ||
         tzInfo.countries[0];
-      console.log('[DBG] getCountryFromBrowser ⇒ by TZ', { tz, countries: tzInfo.countries, chosen });
       return chosen;
     }
   }

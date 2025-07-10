@@ -16,9 +16,6 @@ export default function CartTotals({ cart }) {
   const tax = (+taxRaw).toFixed(2);
   const subtotalFmt = subtotal.toFixed(2);
 
-  // let displayTotal = originalTotal;
-  // let displayDiscount = 0;
-
   let displayTotal = originalTotal;
   const calcDisc = (c) =>
     Math.abs(
