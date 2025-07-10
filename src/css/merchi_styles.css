@@ -955,6 +955,21 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   border-color: #888;
 }
 
+.custom-upload-wrapper.drag-over {
+  border-color: #007cba;
+  background: #f0f8ff;
+  border-style: solid;
+}
+
+.custom-upload-wrapper.drag-over .upload-icon {
+  color: #007cba;
+}
+
+.custom-upload-wrapper.drag-over .upload-instruction {
+  color: #007cba;
+  font-weight: bold;
+}
+
 .custom-upload-wrapper .upload-icon {
   font-size: 24px;
   margin-bottom: 8px;

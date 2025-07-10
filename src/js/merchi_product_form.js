@@ -213,6 +213,37 @@ function initializeWhenReady() {
           $wrapper.after($previewArea);
         }
 
+        // drag and drop
+        $wrapper.off('dragover.file-drop dragenter.file-drop dragleave.file-drop drop.file-drop')
+          .on('dragover.file-drop dragenter.file-drop', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $wrapper.addClass('drag-over');
+          })
+          .on('dragleave.file-drop', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!$wrapper[0].contains(e.relatedTarget)) {
+              $wrapper.removeClass('drag-over');
+            }
+          })
+          .on('drop.file-drop', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $wrapper.removeClass('drag-over');
+
+            const files = e.originalEvent.dataTransfer.files;
+            if (files.length > 0) {
+              // Create a new FileList and assign it to the input, then trigger change
+              const dt = new DataTransfer();
+              for (let i = 0; i < files.length; i++) {
+                dt.items.add(files[i]);
+              }
+              $input[0].files = dt.files;
+              $input.trigger('change');
+            }
+          });
+
         $input.off('change.file-input').on('change.file-input', async function (e) {
           var files = Array.from(this.files);
 
