@@ -45,37 +45,47 @@ const PaymentForm = ({ onPaymentSuccess, onPaymentError, onBack }) => {
     } catch (err) {
       setErrorMessage('An unexpected error occurred.');
       onPaymentError(err);
-    } finally {
-      setIsProcessing(false);
+      // } finally {
+      //   setIsProcessing(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="stripe-payment-form">
-      <PaymentElement />
-      {errorMessage && (
-        <div className="stripe-error-message">
-          {errorMessage}
+    <>
+      {isProcessing && (
+        <div className="payment-overlay" role="alert" aria-live="assertive">
+          <span
+            className="wc-block-components-spinner is-active payment-spinner"
+            aria-hidden="true"
+          />
         </div>
       )}
-      <div className="payment-actions">
-        <button
-          type="button"
-          className="button wp-element-button is-secondary back-btn"
-          onClick={onBack}
-        >
-          ← Back to Details
-        </button>
+      <form onSubmit={handleSubmit} className="stripe-payment-form">
+        <PaymentElement />
+        {errorMessage && (
+          <div className="stripe-error-message">
+            {errorMessage}
+          </div>
+        )}
+        <div className="payment-actions">
+          <button
+            type="button"
+            className="button wp-element-button is-secondary back-btn"
+            onClick={onBack}
+          >
+            ← Back to Details
+          </button>
 
-        <button
-          type="submit"
-          disabled={!stripe || isProcessing}
-          className="button wp-element-button pay-btn"
-        >
-          {isProcessing ? 'Processing…' : 'Pay Now'}
-        </button>
-      </div>
-    </form>
+          <button
+            type="submit"
+            disabled={!stripe || isProcessing}
+            className="button wp-element-button pay-btn"
+          >
+            {isProcessing ? 'Processing…' : 'Pay Now'}
+          </button>
+        </div>
+      </form>
+    </>
   );
 };
 

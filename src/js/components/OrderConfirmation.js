@@ -97,6 +97,14 @@ const OrderConfirmation = () => {
           {receiverAddress.country} <br />
         </address>
       </section>
+
+      {orderInfo.orderNote && (
+        <section className="woocommerce-order-note">
+          <h2 className="woocommerce-column__title">Note</h2>
+          <p>{orderInfo.orderNote}</p>
+        </section>
+      )}
+
     </div>
   );
 };
