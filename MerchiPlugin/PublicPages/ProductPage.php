@@ -23,6 +23,44 @@ class ProductPage extends BaseController {
 	}
 
 	public function enqueue_merchi_scripts() {
+		
+		$staging_mode = get_option('merchi_staging_mode');
+		if ($staging_mode === 'yes') {
+			// $merchi_backend_uri = 'https://staging.merchi.co/static/js/dist/merchi-init.js';
+			wp_enqueue_script(
+				'merchi-sdk-cdn',
+				'https://staging.merchi.co/static/js/dist/merchi-init.js',
+				array(),
+				null,
+				true
+			);
+
+		} else {
+			wp_enqueue_script(
+				'merchi-sdk-cdn',
+				'https://merchi.co/static/js/dist/merchi-init.js',
+				array(),
+				null,
+				true
+			);
+		}
+
+
+		// wp_enqueue_script(
+		// 	'stripe-js-cdn',
+		// 	'https://js.stripe.com/v3/',
+		// 	array(),
+		// 	null,
+		// 	true
+		// );
+		// wp_enqueue_script(
+		// 	'react-stripe-js-cdn',
+		// 	'https://unpkg.com/@stripe/react-stripe-js@3.7.0/dist/react-stripe.umd.min.js',
+		// 	array(),
+		// 	null,
+		// 	true
+		// );
+		// load Merchi SDK
 		wp_enqueue_script(
 			'merchi_sdk',
 			plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_sdk.js',

@@ -17,9 +17,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const root = createRoot(cartFormContainer);
     root.render(<WoocommerceCartForm />);
   }
-});
-
-document.addEventListener('DOMContentLoaded', function () {
   const orderConfirmationContainer = document.getElementById('order-confirmation-root');
   if (orderConfirmationContainer) {
     const root = createRoot(orderConfirmationContainer);
