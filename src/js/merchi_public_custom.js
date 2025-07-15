@@ -311,7 +311,7 @@ export async function getCart(id, token, embed = cartEmbed) {
  *    d. If fetched cart is same as localStorage, uses the fetched/server cart.
  * @returns {Promise<object|null>} A promise that resolves with the Merchi cart entity or null on failure/critical error.
  */
-async function initOrSyncCart() {
+export async function initOrSyncCart() {
   // MERCHI, createCart, getCart, scriptData are assumed to be in scope
   if (!MERCHI || !createCart || !getCart || !scriptData) {
     console.error("MERCHI_LOG: Critical dependencies (MERCHI, createCart, getCart, scriptData) not found in scope. Cart initialization failed.");

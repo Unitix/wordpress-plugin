@@ -1116,7 +1116,25 @@ function initializeWhenReady() {
           }
         }
 
-        // Only process existing cart if we have valid cart data
+        // If no cart exists, create a new one
+        if (!merchiCartJson || !merchiCartJson.id) {
+          try {
+            const newCart = await initOrSyncCart();
+            if (newCart) {
+              merchiCartJson = JSON.parse(localStorage.getItem('MerchiCart'));
+              cartId = merchiCartJson.id;
+            } else {
+              throw new Error('Failed to create new cart');
+            }
+          } catch (error) {
+            console.error('Error creating new cart:', error);
+            alert("Failed to initialize cart. Please try again.");
+            setLoadingState(false);
+            return;
+          }
+        }
+
+        // Process cart (either existing or newly created)
         if (merchiCartJson && merchiCartJson.id) {
           // Add the new item to the cart
 
