@@ -38,6 +38,8 @@ const OrderConfirmation = () => {
     client,
   } = orderInfo;
 
+  const shippingCost = cart.shipmentTotalCost;
+
   return (
     <div className="woocommerce">
       <ul className="woocommerce-order-overview woocommerce-thankyou-order-details order_details">
@@ -65,7 +67,13 @@ const OrderConfirmation = () => {
           <thead>
             <tr>
               <th className="woocommerce-table__product-name">Product</th>
-              <th className="woocommerce-table__product-total">Total</th>
+              <th
+                className="woocommerce-table__product-thumbnail"
+                style={{ width: '100%' }}
+              ></th>
+              <th className="woocommerce-table__product-total">
+                Total
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -78,11 +86,42 @@ const OrderConfirmation = () => {
                   {item.product.name} × {item.quantity}
                 </td>
                 <td className="woocommerce-table__product-total">
-                  <span className="woocommerce-Price-amount amount">{item.totalCost}</span>
+                  <span className="woocommerce-Price-amount amount">${item.totalCost}</span>
                 </td>
               </tr>
             ))}
           </tbody>
+
+          <tfoot>
+            <tr>
+              <th
+                className="woocommerce-table__product-name"
+                colSpan={2}
+                style={{ textAlign: 'left' }}
+              >
+                Shipping
+              </th>
+              <td className="woocommerce-table__product-total">
+                <span className="woocommerce-Price-amount amount">
+                  ${shippingCost}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th
+                className="woocommerce-table__product-name"
+                colSpan={2}
+                style={{ textAlign: 'left' }}
+              >
+                Total
+              </th>
+              <td className="woocommerce-table__product-total">
+                <span className="woocommerce-Price-amount amount">
+                  ${cart.totalCost}
+                </span>
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </section>
 

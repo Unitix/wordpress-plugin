@@ -18,8 +18,9 @@ async function reconcileMerchiWithStore({ items }) {
     merchi.cartItemsTaxAmount = 0;
     merchi.cartItemsTotalCost = 0;
     localStorage.setItem('MerchiCart', JSON.stringify(merchi));
-    try { window.COOKIE_MANAGER?.syncWithLocalStorage?.(); } catch {
-      console.log('error', error);
+    try {
+      window.COOKIE_MANAGER?.syncWithLocalStorage?.();
+    } catch (error) {
     }
     return;
   }
@@ -45,8 +46,9 @@ async function reconcileMerchiWithStore({ items }) {
     (s, i) => s + (i.taxAmount ?? 0), 0);
 
   localStorage.setItem('MerchiCart', JSON.stringify(merchi));
-  try { window.COOKIE_MANAGER?.syncWithLocalStorage?.(); } catch {
-    console.log('error', error);
+  try {
+    window.COOKIE_MANAGER?.syncWithLocalStorage?.();
+  } catch (error) {
   }
 }
 

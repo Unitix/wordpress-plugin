@@ -135,9 +135,12 @@ export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdat
               </div>
             </div>
           </div>
-          <CouponPanel
-            ref={couponPanelRef}
-            onTotalsChange={handleTotalsChange} />
+          {allowRemoveCoupon && (
+            <CouponPanel
+              ref={couponPanelRef}
+              onTotalsChange={handleTotalsChange}
+            />
+          )}
           <div data-block-name="woocommerce/checkout-order-summary-totals-block" className="wp-block-woocommerce-checkout-order-summary-totals-block">
             <div className="wp-block-woocommerce-checkout-order-summary-subtotal-block wc-block-components-totals-wrapper">
               <div className="wc-block-components-totals-item">

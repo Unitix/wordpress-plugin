@@ -422,6 +422,7 @@ export async function initOrSyncCart() {
       // } else {
       //   return serverCart;
       // }
+      return serverCart;
     }
   } finally {
     // Always remove the lock when done
