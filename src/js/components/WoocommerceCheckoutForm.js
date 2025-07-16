@@ -348,6 +348,7 @@ const WoocommerceCheckoutForm = () => {
     // Handle payment error (show message, etc.)
   };
 
+  const { cartUrl = '/cart/' } = window.scriptData || {};
 
   return (
     <>
@@ -551,7 +552,7 @@ const WoocommerceCheckoutForm = () => {
                 <div className="wc-block-checkout__actions wp-block-woocommerce-checkout-actions-block">
                   <div className="wc-block-checkout__actions_row">
                     <a
-                      href="/cart/"
+                      href={cartUrl}
                       className="wc-block-components-checkout-return-to-cart-button"
                     >
                       <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">
@@ -581,7 +582,7 @@ const WoocommerceCheckoutForm = () => {
                 clientSecret={stripeClientSecret}
                 onPaymentSuccess={handlePaymentSuccess}
                 onPaymentError={handlePaymentError}
-                onBack={() => setCurrentStep('details')}
+                onBack={() => { window.location.href = cartUrl; }}
               />
             )}
           </div>

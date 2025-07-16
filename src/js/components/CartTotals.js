@@ -61,6 +61,9 @@ export default function CartTotals({ cart }) {
     }
   };
 
+  // const { checkoutUrl = '/checkout/' } = window.scriptData || {};
+  const { checkoutUrl = '/checkout', cartUrl = '/cart' } = window.scriptData || {};
+
   return (
     <div className="wc-block-components-sidebar wc-block-cart__sidebar wp-block-woocommerce-cart-totals-block">
       <div className="wp-block-woocommerce-cart-order-summary-block">
@@ -131,7 +134,7 @@ export default function CartTotals({ cart }) {
         <div className="wc-block-cart__submit wp-block-woocommerce-proceed-to-checkout-block">
           <div className="wc-block-cart__submit-container">
             <a
-              href="/checkout"
+              href={checkoutUrl}
               className="wc-block-components-button wp-element-button wc-block-cart__submit-button contained"
             >
               <span className="wc-block-components-button__text">Proceed to Checkout</span>

@@ -1408,13 +1408,15 @@ function showSuccessMessage() {
     existingMessage.remove();
   }
 
+  const cartUrl = (window.scriptData && window.scriptData.cartUrl) || '/cart/';
+
   // Create and show new message
   const message = document.createElement('div');
   message.className = 'merchi-success-message';
   message.innerHTML = `
     <span class="merchi-success-close" tabindex="0" aria-label="Close">&times;</span>
     <span>✓ Product added to cart successfully!</span>
-    <a href="/cart/">Go to cart</a>
+    <a href="${cartUrl}">Go to cart</a>
   `;
 
   // Find the product heading and insert the message before it

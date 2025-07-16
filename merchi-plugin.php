@@ -737,11 +737,14 @@ function enqueue_my_public_script()
 	// 	$resp = json_decode(wp_remote_retrieve_body($response));
 	// 	$stripeSecret = $resp->stripeClientSecret;
 	// }
+
 	wp_localize_script('custom-public-script', 'scriptData', array(
 		'merchi_mode' => MERCHI_MODE,
 		'merchi_url' => MERCHI_URL,
 		'merchi_domain' => MERCHI_DOMAIN,
 		'merchi_stripe_api_key' => MERCHI_STRIPE_API_KEY,
+		'cartUrl' => wc_get_cart_url(),
+		'checkoutUrl' => wc_get_checkout_url(),
 	));
 	// wp_localize_script('custom-checkout-scrip', 'scriptData', array(
 	// 	'merchi_domain' => MERCHI_DOMAIN,
