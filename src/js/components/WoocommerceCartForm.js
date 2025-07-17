@@ -3,7 +3,7 @@ import { patchCart } from '../merchi_public_custom';
 import CartItems from './CartItems';
 import CartTotals from './CartTotals';
 
-import { ensureWooNonce, fetchWooNonce, updateWooNonce } from '../utils';
+import { ensureWooNonce, fetchWooNonce, updateWooNonce, getWpApiRoot } from '../utils';
 
 // read cart from local storage
 const readCart = () => {
@@ -42,6 +42,8 @@ export default function WoocommerceCartForm() {
     };
   }, []);
 
+  const apiRoot = getWpApiRoot();
+
   const findWooKeyBySku = (sku) => {
     const store = JSON.parse(localStorage.storeApiCartData || '{}');
     return (store.items || []).find((i) => String(i.sku) === String(sku))?.key;
@@ -59,10 +61,14 @@ export default function WoocommerceCartForm() {
 
     // send request to WooCommerce
     async function postRemove(n) {
-      return fetch('/wp-json/wc/store/v1/cart/remove-item', {
+      return fetch(`${apiRoot}wc/store/v1/cart/remove-item`, {
         method: 'POST',
         credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', 'Nonce': n },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-WC-Store-API-Nonce': n,
+          'Nonce': n,
+        },
         body: JSON.stringify({ key: wooKey }),
       });
     }

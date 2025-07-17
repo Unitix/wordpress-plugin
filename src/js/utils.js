@@ -129,22 +129,45 @@ export default function useWooActive() {
   }, []);
 }
 
+export function getWpApiRoot() {
+  if (window.wpApiSettings?.root) return wpApiSettings.root;
+  const link = document.querySelector('link[rel="https://api.w.org/"]')?.href;
+  if (link) return link.endsWith('/') ? link : link + '/';
+  return '/wp-json/';
+}
+
 // Woo Store Nonce helper
 let wooNonceCache = '';
 
 export async function fetchWooNonce() {
-  const r = await fetch('/wp-json/wc/store/v1/cart', { credentials: 'same-origin' });
-  wooNonceCache = r.headers.get('Nonce') || '';
+  const r = await fetch(
+    `${getWpApiRoot()}wc/store/v1/cart`,
+    { credentials: 'same-origin' }
+  );
+  wooNonceCache =
+    r.headers.get('x-wc-store-api-nonce') ||
+    r.headers.get('nonce') || '';
   return wooNonceCache;
 }
 
 export async function ensureWooNonce() {
   if (wooNonceCache) return wooNonceCache;
+
+  const metaNonce = document
+    .querySelector('meta[name="woocommerce-store-api-nonce"]')
+    ?.content;
+  if (metaNonce) {
+    wooNonceCache = metaNonce;
+    return wooNonceCache;
+  }
+
   return fetchWooNonce();
 }
 
 export function updateWooNonce(res) {
-  const n = res.headers?.get?.('Nonce');
+  const n =
+    res.headers?.get?.('x-wc-store-api-nonce') ||
+    res.headers?.get?.('nonce');
   if (n) wooNonceCache = n;
 }
 
