@@ -1,5 +1,5 @@
 import { MERCHI_SDK } from './merchi_sdk';
-import { cartEmbed, getCookieByName } from './utils';
+import { cartEmbed } from './utils';
 import('./merchi_cart_sync.js');
 
 const MERCHI = MERCHI_SDK();

@@ -711,13 +711,6 @@ function enqueue_admin_customfiles($hook)
 				if ('edit-tags.php' == $hook || 'term.php' == $hook) {
 						wp_enqueue_media();
 				}
-				wp_localize_script(
-						'custom-admin-script', 'frontendajax',
-						array(
-								'ajaxurl' => admin_url('admin-ajax.php'),
-								'nonce' => wp_create_nonce('merchi_ajax_nonce')
-						)
-				);
 				wp_enqueue_script(
 						'custom-merchi-script',
 						MERCHI_BASE_URL.'/static/js/dist/merchi-init.js',
@@ -732,6 +725,14 @@ function enqueue_admin_customfiles($hook)
 						null,
 						true
 			  );
+				wp_localize_script(
+						'custom-admin-script',
+						'frontendajax',
+						array(
+								'ajaxurl' => admin_url('admin-ajax.php'),
+								'nonce' => wp_create_nonce('merchi_ajax_nonce')
+						)
+				);
 				wp_localize_script(
 						'custom-admin-script',
 						'scriptData',
@@ -750,9 +751,40 @@ add_action('admin_enqueue_scripts', 'enqueue_admin_customfiles');
 function enqueue_my_public_script()
 {
 	wp_enqueue_style('custom-admin-style', plugin_dir_url(__FILE__) . 'custom.css');
-	wp_enqueue_script('custom-public-script', plugins_url('/dist/js/merchi_public_custom.js', __FILE__), array('jquery'), rand(0,1000), true);
-	wp_enqueue_script('custom-checkout-script', plugins_url('/dist/js/woocommerce_cart_checkout.js', __FILE__), array(), '1.0', true);
-	wp_enqueue_script('custom-order-confirmation-script', plugins_url('/dist/js/order_confirmation.js', __FILE__), array(), '1.0', true);
+	
+	// First enqueue the Merchi initialization script
+	$staging_mode = get_option('merchi_staging_mode');
+	if ($staging_mode === 'yes') {
+		wp_enqueue_script(
+			'merchi-init-frontend',
+			'https://staging.merchi.co/static/js/dist/merchi-init.js',
+			array(),
+			null,
+			true
+		);
+	} else {
+		wp_enqueue_script(
+			'merchi-init-frontend',
+			'https://merchi.co/static/js/dist/merchi-init.js',
+			array(),
+			null,
+			true
+		);
+	}
+	
+	// Load public script on all pages
+	wp_enqueue_script('custom-public-script', plugins_url('/dist/js/merchi_public_custom.js', __FILE__), array('jquery', 'merchi-init-frontend'), rand(0,1000), true);
+	
+	// Only load cart/checkout script on relevant pages
+	if (is_cart() || is_checkout() || is_wc_endpoint_url('order-received')) {
+		wp_enqueue_script('custom-checkout-script', plugins_url('/dist/js/woocommerce_cart_checkout.js', __FILE__), array('merchi-init-frontend'), '1.0', true);
+	}
+	
+	// Only load order confirmation script on order confirmation pages  
+	if (is_wc_endpoint_url('order-received') || is_page('thankyou')) {
+		wp_enqueue_script('custom-order-confirmation-script', plugins_url('/dist/js/order_confirmation.js', __FILE__), array('merchi-init-frontend'), '1.0', true);
+	}
+	
 	// wp_enqueue_script('custom-stripe-script', 'https://js.stripe.com/v3/', array(), '1.0', true);
 	// $stripeSecret = false;
 	// $telephoneInput = false;
@@ -768,14 +800,27 @@ function enqueue_my_public_script()
 	// 	$stripeSecret = $resp->stripeClientSecret;
 	// }
 
-	wp_localize_script('custom-public-script', 'scriptData', array(
+	// Localize scriptData for all scripts that need it
+	$script_data = array(
 		'merchi_mode' => MERCHI_MODE,
 		'merchi_url' => MERCHI_URL,
 		'merchi_domain' => MERCHI_DOMAIN,
 		'merchi_stripe_api_key' => MERCHI_STRIPE_API_KEY,
 		'cartUrl' => wc_get_cart_url(),
 		'checkoutUrl' => wc_get_checkout_url(),
-	));
+	);
+	
+	wp_localize_script('custom-public-script', 'scriptData', $script_data);
+	
+	// Only localize for scripts that are actually enqueued
+	if (is_cart() || is_checkout() || is_wc_endpoint_url('order-received')) {
+		wp_localize_script('custom-checkout-script', 'scriptData', $script_data);
+	}
+	
+	if (is_wc_endpoint_url('order-received') || is_page('thankyou')) {
+		wp_localize_script('custom-order-confirmation-script', 'scriptData', $script_data);
+	}
+	
 	// wp_localize_script('custom-checkout-scrip', 'scriptData', array(
 	// 	'merchi_domain' => MERCHI_DOMAIN,
 	// 	'merchi_mode' => MERCHI_MODE,

@@ -38,7 +38,7 @@ class ProductPage extends BaseController {
 		if ($staging_mode === 'yes') {
 			// $merchi_backend_uri = 'https://staging.merchi.co/static/js/dist/merchi-init.js';
 			wp_enqueue_script(
-				'merchi-sdk-cdn',
+				'merchi-init-frontend',
 				'https://staging.merchi.co/static/js/dist/merchi-init.js',
 				array(),
 				null,
@@ -47,7 +47,7 @@ class ProductPage extends BaseController {
 
 		} else {
 			wp_enqueue_script(
-				'merchi-sdk-cdn',
+				'merchi-init-frontend',
 				'https://merchi.co/static/js/dist/merchi-init.js',
 				array(),
 				null,
@@ -74,7 +74,7 @@ class ProductPage extends BaseController {
 		wp_enqueue_script(
 			'merchi_sdk',
 			plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_sdk.js',
-			array(),
+			array('merchi-init-frontend'),
 			'1.0.0',
 			true
 		);

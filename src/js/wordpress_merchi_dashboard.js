@@ -15,10 +15,6 @@ let mediaImageDone = false;
 let readyToRedirect = false;
 let redirectUrl = null;
 
-// WHAT IS GOING ON HERE?
-
-console.log('did this file run');
-
 function maybeRedirect() {
   if (readyToRedirect && mediaFeatureImageDone && mediaImageDone && redirectUrl) {
     window.location = redirectUrl;
