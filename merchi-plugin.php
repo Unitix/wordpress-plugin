@@ -708,36 +708,98 @@ add_action( 'wp_enqueue_scripts', 'merchi_enqueue_wc_block_styles' );
 
 function enqueue_admin_customfiles($hook)
 {
-	if ($hook == 'post-new.php' || $hook == 'post.php') {
-		wp_enqueue_style('custom-admin-style', plugin_dir_url(__FILE__) . 'custom.css');
-		wp_enqueue_style('cst-jquery-ui-style', 'https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css');
-		wp_enqueue_script('cst-jquery-ui', 'https://code.jquery.com/ui/1.12.1/jquery-ui.js', array('jquery'), null, true);
-		if ('edit-tags.php' == $hook || 'term.php' == $hook) {
-			wp_enqueue_media();
+		if ($hook == 'post-new.php' || $hook == 'post.php') {
+				wp_enqueue_style(
+						'custom-admin-style',
+						plugin_dir_url(__FILE__) . 'custom.css'
+				);
+				wp_enqueue_style(
+						'cst-jquery-ui-style', 'https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css'
+				);
+				wp_enqueue_script(
+						'cst-jquery-ui',
+						'https://code.jquery.com/ui/1.12.1/jquery-ui.js',
+						array('jquery'),
+						null,
+						true
+				);
+				if ('edit-tags.php' == $hook || 'term.php' == $hook) {
+						wp_enqueue_media();
+				}
+				wp_enqueue_script(
+						'custom-merchi-script',
+						MERCHI_BASE_URL.'/static/js/dist/merchi-init.js',
+						array(),
+						null,
+						true
+				);
+				wp_enqueue_script(
+						'custom-admin-script',
+						plugin_dir_url(__FILE__) . 'dist/js/wordpress_merchi_dashboard.js',
+						array('cst-jquery-ui'),
+						null,
+						true
+			  );
+				wp_localize_script(
+						'custom-admin-script',
+						'frontendajax',
+						array(
+								'ajaxurl' => admin_url('admin-ajax.php'),
+								'nonce' => wp_create_nonce('merchi_ajax_nonce')
+						)
+				);
+				wp_localize_script(
+						'custom-admin-script',
+						'scriptData',
+						array(
+								'merchi_mode' => MERCHI_MODE,
+								'merchi_domain' => MERCHI_DOMAIN,
+								'merchi_url' => MERCHI_URL,
+								'merchi_secret' => MERCHI_API_SECRET,
+								'woo_product_id' => get_the_ID()
+						)
+				);
 		}
-		wp_enqueue_script('custom-admin-script', plugin_dir_url(__FILE__) . 'dist/js/wordpress_merchi_dashboard.js', array('cst-jquery-ui'), null, true);
-		wp_localize_script('custom-admin-script', 'frontendajax', array(
-			'ajaxurl' => admin_url('admin-ajax.php'),
-			'nonce' => wp_create_nonce('merchi_ajax_nonce')
-		));
-		wp_enqueue_script('custom-merchi-script', MERCHI_BASE_URL.'/static/js/dist/merchi-init.js', array(), null, true);
-		wp_localize_script('custom-admin-script', 'scriptData', array(
-			'merchi_mode' => MERCHI_MODE,
-			'merchi_domain' => MERCHI_DOMAIN,
-			'merchi_url' => MERCHI_URL,
-			'merchi_secret' => MERCHI_API_SECRET,
-			'woo_product_id' => get_the_ID()
-		));
-	}
 }
 add_action('admin_enqueue_scripts', 'enqueue_admin_customfiles');
 
 function enqueue_my_public_script()
 {
 	wp_enqueue_style('custom-admin-style', plugin_dir_url(__FILE__) . 'custom.css');
-	wp_enqueue_script('custom-public-script', plugins_url('/dist/js/merchi_public_custom.js', __FILE__), array('jquery'), rand(0,1000), true);
-	wp_enqueue_script('custom-checkout-script', plugins_url('/dist/js/woocommerce_cart_checkout.js', __FILE__), array(), '1.0', true);
-	wp_enqueue_script('custom-order-confirmation-script', plugins_url('/dist/js/order_confirmation.js', __FILE__), array(), '1.0', true);
+	
+	// First enqueue the Merchi initialization script
+	$staging_mode = get_option('merchi_staging_mode');
+	if ($staging_mode === 'yes') {
+		wp_enqueue_script(
+			'merchi-init-frontend',
+			'https://staging.merchi.co/static/js/dist/merchi-init.js',
+			array(),
+			null,
+			true
+		);
+	} else {
+		wp_enqueue_script(
+			'merchi-init-frontend',
+			'https://merchi.co/static/js/dist/merchi-init.js',
+			array(),
+			null,
+			true
+		);
+	}
+	
+	// Load public script on all pages
+	wp_enqueue_script('custom-public-script', plugins_url('/dist/js/merchi_public_custom.js', __FILE__), array('jquery', 'merchi-init-frontend'), rand(0,1000), true);
+	
+	// Only load cart/checkout script on relevant pages
+	if (is_cart() || is_checkout() || is_wc_endpoint_url('order-received')) {
+		wp_enqueue_script('custom-checkout-script', plugins_url('/dist/js/woocommerce_cart_checkout.js', __FILE__), array('merchi-init-frontend'), '1.0', true);
+	}
+	
+	// Only load order confirmation script on order confirmation pages  
+	if (is_wc_endpoint_url('order-received') || is_page('thankyou')) {
+		wp_enqueue_script('custom-order-confirmation-script', plugins_url('/dist/js/order_confirmation.js', __FILE__), array('merchi-init-frontend'), '1.0', true);
+	}
+	
 	// wp_enqueue_script('custom-stripe-script', 'https://js.stripe.com/v3/', array(), '1.0', true);
 	// $stripeSecret = false;
 	// $telephoneInput = false;
@@ -753,14 +815,27 @@ function enqueue_my_public_script()
 	// 	$stripeSecret = $resp->stripeClientSecret;
 	// }
 
-	wp_localize_script('custom-public-script', 'scriptData', array(
+	// Localize scriptData for all scripts that need it
+	$script_data = array(
 		'merchi_mode' => MERCHI_MODE,
 		'merchi_url' => MERCHI_URL,
 		'merchi_domain' => MERCHI_DOMAIN,
 		'merchi_stripe_api_key' => MERCHI_STRIPE_API_KEY,
 		'cartUrl' => wc_get_cart_url(),
 		'checkoutUrl' => wc_get_checkout_url(),
-	));
+	);
+	
+	wp_localize_script('custom-public-script', 'scriptData', $script_data);
+	
+	// Only localize for scripts that are actually enqueued
+	if (is_cart() || is_checkout() || is_wc_endpoint_url('order-received')) {
+		wp_localize_script('custom-checkout-script', 'scriptData', $script_data);
+	}
+	
+	if (is_wc_endpoint_url('order-received') || is_page('thankyou')) {
+		wp_localize_script('custom-order-confirmation-script', 'scriptData', $script_data);
+	}
+	
 	// wp_localize_script('custom-checkout-scrip', 'scriptData', array(
 	// 	'merchi_domain' => MERCHI_DOMAIN,
 	// 	'merchi_mode' => MERCHI_MODE,
@@ -794,24 +869,6 @@ function render_custom_product_meta_box()
 	$product_id = get_post_meta($post->ID, 'product_id', true);
 	$product_name = get_post_meta($post->ID, 'product_name', true);
 	$product_regular_price = get_post_meta($post->ID, '_regular_price', true);
-	$redirectAfterSuccessUrl = get_post_meta(get_the_ID(), 'redirectAfterSuccessUrl', true);
-	$redirectAfterQuoteSuccessUrl = get_post_meta(get_the_ID(), 'redirectAfterQuoteSuccessUrl', true);
-	$redirectWithValue = get_post_meta(get_the_ID(), 'redirectWithValue', true);
-	$hideInfo = get_post_meta(get_the_ID(), 'hideInfo', true);
-	$hidePreview = get_post_meta(get_the_ID(), 'hidePreview', true);
-	$hidePrice = get_post_meta(get_the_ID(), 'hidePrice', true);
-	$hideTitle = get_post_meta(get_the_ID(), 'hideTitle', true);
-	$hideCalculatedPrice = get_post_meta(get_the_ID(), 'hideCalculatedPrice', true);
-	$includeBootstrap = get_post_meta(get_the_ID(), 'includeBootstrap', true);
-	$notIncludeDefaultCss = get_post_meta(get_the_ID(), 'notIncludeDefaultCss', true);
-	$invoiceRedirect = get_post_meta(get_the_ID(), 'invoiceRedirect', true);
-	$loadTheme = get_post_meta(get_the_ID(), 'loadTheme', true);
-	$mountPointId = get_post_meta(get_the_ID(), 'mountPointId', true);
-	$singleColumn = get_post_meta(get_the_ID(), 'singleColumn', true);
-	$quoteRequestedRedirect = get_post_meta(get_the_ID(), 'quoteRequestedRedirect', true);
-	$googleApiPublicKey = get_post_meta(get_the_ID(), 'googleApiPublicKey', true);
-	$allowAddToCart = get_post_meta(get_the_ID(), 'allowAddToCart', true);
-	$hideDrafting = get_post_meta(get_the_ID(), 'hideDrafting', true);
 ?>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
     <input type="hidden" id="hidden_product_id" name="hidden_product_id" value="<?php echo esc_attr(
@@ -837,10 +894,12 @@ function render_custom_product_meta_box()
             </h3>
         </div>
     </div>
-    <?php if (!empty($post->ID) && $post->post_status !== 'auto-draft') : ?>
+    <?php if (!empty($post->ID) && $post->post_status !== 'auto-draft' && !empty($product_id)) : ?>
     <!-- New Sync with Merchi Button -->
     <div style="margin-top: 10px; text-align: left;">
-        <button type="button" id="sync_with_merchi_btn" class="button button-primary">Sync with Merchi</button>
+        <button type="button" id="sync_with_merchi_btn" class="button button-primary">
+					  Sync with Merchi
+				</button>
         <span id="sync_merchi_status" style="margin-left: 10px;"></span>
     </div>
     <script type="text/javascript">
@@ -904,135 +963,6 @@ function render_custom_product_meta_box()
         });
     });
     </script>
-    <?php /*
-    <div class="card-header">Redirect After Success URL</div>
-    <div class="card-body text-dark">
-        <input type="text" id="redirectAfterSuccessUrl" name="redirectAfterSuccessUrl" placeholder="Redirect URL"
-            value="<?php echo $redirectAfterSuccessUrl; ?>">
-    </div>
-    <div class="card-header">Redirect After Quote URL</div>
-    <div class="card-body text-dark">
-        <input type="text" id="redirectAfterQuoteSuccessUrl" name="redirectAfterQuoteSuccessUrl"
-            placeholder="Redirect Quote URL" value="<?php echo $redirectAfterQuoteSuccessUrl; ?>">
-    </div>
-    <div class="card-header">Redirect With Value </div>
-    <div class="card-body text-dark">
-        <div class="checkbox-container">
-            <label class="checkbox-label">Yes:</label>
-            <input type="checkbox" id="redirectWithValue" name="redirectWithValue"
-                <?php checked($redirectWithValue, 1, true); ?> value="1">
-        </div>
-    </div>
-    <div class="card-header">Hide Info</div>
-    <div class="card-body text-dark">
-        <div class="checkbox-container">
-            <label class="checkbox-label">Yes:</label>
-            <input type="checkbox" id="hideInfo" name="hideInfo" <?php checked($hideInfo, 1, true); ?> value="1">
-        </div>
-    </div>
-    <div class="card-header">Hide Preview</div>
-    <div class="card-body text-dark">
-        <div class="checkbox-container">
-            <label class="checkbox-label">Yes:</label>
-            <input type="checkbox" id="hidePreview" name="hidePreview" <?php checked($hidePreview, 1, true); ?> value="1">
-        </div>
-    </div>
-    <div class="card-header">Hide Price</div>
-    <div class="card-body text-dark">
-        <div class="checkbox-container">
-            <label class="checkbox-label">Yes:</label>
-            <input type="checkbox" id="hidePrice" name="hidePrice" <?php checked($hidePrice, 1, true); ?> value="1">
-        </div>
-    </div>
-    <div class="card-header">Hide Title</div>
-    <div class="card-body text-dark">
-        <div class="checkbox-container">
-            <label class="checkbox-label">Yes:</label>
-            <input type="checkbox" id="hideTitle" name="hideTitle" <?php checked($hideTitle, 1, true); ?> value="1">
-        </div>
-    </div>
-    <div class="card-header">Hide Calculated Price</div>
-    <div class="card-body text-dark">
-        <div class="checkbox-container">
-            <label class="checkbox-label">Yes:</label>
-            <input type="checkbox" id="hideCalculatedPrice" name="hideCalculatedPrice"
-            <?php checked($hideCalculatedPrice, 1, true); ?> value="1">
-        </div>
-    </div>
-    <div class="card-header">Include Bootstrap</div>
-    <div class="card-body text-dark">
-        <div class="checkbox-container">
-            <label class="checkbox-label">Yes:</label>
-            <input type="checkbox" id="includeBootstrap" name="includeBootstrap"
-            <?php checked($includeBootstrap, 1, true); ?> value="1">
-        </div>
-    </div>
-    <div class="card-header">Not Include Default CSS</div>
-    <div class="card-body text-dark">
-        <div class="checkbox-container">
-            <label class="checkbox-label">Yes:</label>
-            <input type="checkbox" id="notIncludeDefaultCss" name="notIncludeDefaultCss"
-            <?php checked($notIncludeDefaultCss, 1, true); ?> value="1">
-        </div>
-    </div>
-    <div class="card-header">Invoice Redirect</div>
-    <div class="card-body text-dark">
-        <div class="checkbox-container">
-            <label class="checkbox-label">Yes:</label>
-            <input type="checkbox" id="invoiceRedirect" name="invoiceRedirect" <?php checked($invoiceRedirect, 1, true); ?>
-            value="1">
-        </div>
-    </div>
-    <div class="card-header">Load Theme</div>
-    <div class="card-body text-dark">
-        <div class="checkbox-container">
-            <label class="checkbox-label">Yes:</label>
-            <input type="checkbox" id="loadTheme" name="loadTheme" <?php checked($loadTheme, 1, true); ?> value="1">
-        </div>
-    </div>
-    <div class="card-header">Mount Point Id</div>
-    <div class="card-body text-dark">
-        <input type="text" id="mountPointId" name="mountPointId" placeholder="Mount Point Id"
-            value="<?php echo $mountPointId; ?>">
-    </div>
-    <div class="card-header">Single Column</div>
-    <div class="card-body text-dark">
-        <div class="checkbox-container">
-            <label class="checkbox-label">Yes:</label>
-            <input type="checkbox" id="singleColumn" name="singleColumn" <?php checked($singleColumn, 1, true); ?>
-            value="1">
-        </div>
-    </div>
-    <div class="card-header">Quote Requested Redirect</div>
-    <div class="card-body text-dark">
-        <div class="checkbox-container">
-            <label class="checkbox-label">Yes:</label>
-            <input type="checkbox" id="quoteRequestedRedirect" name="quoteRequestedRedirect"
-            <?php checked($quoteRequestedRedirect, 1, true); ?> value="1">
-        </div>
-    </div>
-    <div class="card-header">Google API Public Key</div>
-    <div class="card-body text-dark">
-        <input type="text" id="googleApiPublicKey" name="googleApiPublicKey" placeholder="Google API Public Key"
-            value="<?php echo $googleApiPublicKey; ?>">
-    </div>
-    <div class="card-header">Allow Add To Cart</div>
-    <div class="card-body text-dark">
-        <div class="checkbox-container">
-            <label class="checkbox-label">Yes:</label>
-            <input type="checkbox" id="allowAddToCart" name="allowAddToCart" <?php checked($allowAddToCart, 1, true); ?>
-            value="1">
-        </div>
-    </div>
-    <div class="card-header">Hide Drafting</div>
-    <div class="card-body text-dark">
-        <div class="checkbox-container">
-            <label class="checkbox-label">Yes:</label>
-            <input type="checkbox" id="hideDrafting" name="hideDrafting" <?php checked($hideDrafting, 1, true); ?> value="1">
-        </div>
-    </div>
-    */ ?>
-
 <?php
 }
 /**
@@ -1124,24 +1054,6 @@ function save_meta_box_value($post_id, $post)
 			update_post_meta($post_id, 'product_id', $product_id);
 			update_post_meta($post_id, 'product_name', $product_name);
 			update_post_meta($post_id, '_regular_price',  $product_regulr_price);
-			update_post_meta($post_id, 'redirectAfterSuccessUrl', sanitize_text_field($_POST['redirectAfterSuccessUrl']));
-			update_post_meta($post_id, 'redirectAfterQuoteSuccessUrl', sanitize_text_field($_POST['redirectAfterQuoteSuccessUrl']));
-			update_post_meta($post_id, 'redirectWithValue', isset($_POST['redirectWithValue']) ? 1 : 0);
-			update_post_meta($post_id, 'hideInfo', isset($_POST['hideInfo']) ? 1 : 0);
-			update_post_meta($post_id, 'hidePreview', isset($_POST['hidePreview']) ? 1 : 0);
-			update_post_meta($post_id, 'hidePrice', isset($_POST['hidePrice']) ? 1 : 0);
-			update_post_meta($post_id, 'hideTitle', isset($_POST['hideTitle']) ? 1 : 0);
-			update_post_meta($post_id, 'hideCalculatedPrice', isset($_POST['hideCalculatedPrice']) ? 1 : 0);
-			update_post_meta($post_id, 'includeBootstrap', isset($_POST['includeBootstrap']) ? 1 : 0);
-			update_post_meta($post_id, 'notIncludeDefaultCss', isset($_POST['notIncludeDefaultCss']) ? 1 : 0);
-			update_post_meta($post_id, 'invoiceRedirect', isset($_POST['invoiceRedirect']) ? 1 : 0);
-			update_post_meta($post_id, 'loadTheme', isset($_POST['loadTheme']) ? 1 : 0);
-			update_post_meta($post_id, 'mountPointId', sanitize_text_field($_POST['mountPointId']));
-			update_post_meta($post_id, 'singleColumn', isset($_POST['singleColumn']) ? 1 : 0);
-			update_post_meta($post_id, 'quoteRequestedRedirect', isset($_POST['quoteRequestedRedirect']) ? 1 : 0);
-			update_post_meta($post_id, 'googleApiPublicKey', sanitize_text_field($_POST['googleApiPublicKey']));
-			update_post_meta($post_id, 'allowAddToCart', isset($_POST['allowAddToCart']) ? 1 : 0);
-			update_post_meta($post_id, 'hideDrafting', isset($_POST['hideDrafting']) ? 1 : 0);
 			update_post_meta($post_id, '_sku',  $product_id);
 		}
 	}

@@ -11,7 +11,7 @@ function enqueue_merchi_checkout_script() {
 	$staging_mode = get_option('merchi_staging_mode');
 	if ($staging_mode === 'yes') {
 		wp_enqueue_script(
-			'merchi-sdk-cdn',
+			'merchi-init-frontend',
 			'https://staging.merchi.co/static/js/dist/merchi-init.js',
 			array(),
 			null,
@@ -19,7 +19,7 @@ function enqueue_merchi_checkout_script() {
 		);
 	} else {
 		wp_enqueue_script(
-			'merchi-sdk-cdn',
+			'merchi-init-frontend',
 			'https://merchi.co/static/js/dist/merchi-init.js',
 			array(),
 			null,
@@ -27,17 +27,8 @@ function enqueue_merchi_checkout_script() {
 		);
 	}
 
-	// Register the script with proper dependencies
-	wp_register_script(
-        'merchi-checkout-init',
-        plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_checkout_init.js',
-        array('react', 'react-dom', 'merchi-sdk-cdn'), // Dependencies including merchi-sdk-cdn
-        null, // Version
-        true // Load in footer
-	);
-
-	// Enqueue the script
-	wp_enqueue_script('merchi-checkout-init');
+	// Note: merchi_checkout_init.js is now only loaded on product pages
+	// It's no longer needed on the checkout page
 }
 
 add_action('wp_enqueue_scripts', 'enqueue_merchi_checkout_script');
@@ -53,3 +44,4 @@ if ( ! $checkout->enable_signup && ! $checkout->enable_guest_checkout && ! is_us
 
 <?php
 do_action( 'woocommerce_after_checkout_form', $checkout );
+?>
