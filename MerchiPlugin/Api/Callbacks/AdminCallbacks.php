@@ -129,5 +129,10 @@ class AdminCallbacks extends BaseController {
 
         echo '</select>';
 	}
+
+	public function merchiSetSessionToken() {
+		$value = esc_attr( get_option( 'merchi_api_session_token' ) );
+		echo '<input type="text" class="regular-text" name="merchi_api_session_token" value="' . $value . '" placeholder="">';
+	}
 	// phpcs:enable
 }

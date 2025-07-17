@@ -65,10 +65,10 @@ const COOKIE_MANAGER = {
   }
 };
 
-async function localStorageUpdateCartEnt(cartEnd) {
-  const MERCHI = MERCHI_INIT.MERCHI_SDK;
-  localStorage.setItem("MerchiCart", JSON.stringify(MERCHI.toJson(cartEnd)));
-}
+// async function localStorageUpdateCartEnt(cartEnd) {
+//   const MERCHI = MERCHI_INIT.MERCHI_SDK;
+//   localStorage.setItem("MerchiCart", JSON.stringify(MERCHI.toJson(cartEnd)));
+// }
 
 export function cleanVariationJson(v) {
   const {
