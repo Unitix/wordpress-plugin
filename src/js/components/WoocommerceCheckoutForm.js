@@ -12,6 +12,7 @@ import { getCart } from '../merchi_public_custom';
 import { ensureWooNonce, fetchWooNonce, updateWooNonce } from '../utils';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { getCountryFromBrowser, toIso } from '../utils';
+import { cleanShipmentGroups } from '../utils';
 
 async function createClient(MERCHI, clientJson, cartJson) {
   return new Promise((resolve, reject) => {
@@ -64,7 +65,9 @@ const WoocommerceCheckoutForm = () => {
       try {
         const ent = await getCart(localCart.id, localCart.token);
 
-        const full = MERCHI.toJson(ent);
+        const full = cleanShipmentGroups(MERCHI.toJson(ent));
+
+        // const full = MERCHI.toJson(ent);
         setCart(full);
         localStorage.setItem('MerchiCart', JSON.stringify(full));
         setShipmentGroups(full.shipmentGroups || []);
@@ -122,7 +125,9 @@ const WoocommerceCheckoutForm = () => {
           requestOptions
         );
         const { shipmentGroups } = await response.json();
-        setShipmentGroups(shipmentGroups);
+        // setShipmentGroups(shipmentGroups);
+        setShipmentGroups(shipmentGroups.filter((g) => g.cartItems?.length));
+
         return;
       } catch (error) {
         setShipmentGroups([]);
@@ -144,7 +149,8 @@ const WoocommerceCheckoutForm = () => {
       // the patch with selectedQuote is sent only after the user picks one
       const cartEnt = await patchCart(cartJson, null, { includeShippingFields: false });
       const _cartJson = MERCHI.toJson(cartEnt);
-      setCart(_cartJson);
+      setCart(cleanShipmentGroups(_cartJson));
+      // setCart(_cartJson);
       await getShippingGroup();
     } catch (error) {
       console.error('Error updating cart:', error);

@@ -199,4 +199,15 @@ export function getCountryFromBrowser() {
   return null;
 }
 
+export function cleanShipmentGroups(cartJson = {}) {
+  if (!Array.isArray(cartJson.shipmentGroups)) return cartJson;
+
+  return {
+    ...cartJson,
+    shipmentGroups: cartJson.shipmentGroups.filter(
+      (g) => Array.isArray(g.cartItems) && g.cartItems.length > 0
+    ),
+  };
+}
+
 

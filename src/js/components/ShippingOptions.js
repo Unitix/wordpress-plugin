@@ -16,6 +16,10 @@ export default function ShippingOptions({
 
   const [selectedQuoteIds, setSelectedQuoteIds] = useState({});
 
+  const validShipmentGroups = shipmentGroups.filter(
+    (g) => g.cartItems?.length
+  );
+
   return (
     <>
       {shipmentOptionsLoading && (
@@ -24,7 +28,7 @@ export default function ShippingOptions({
         </div>
       )}
 
-      {shipmentGroups.length > 0 && (
+      {validShipmentGroups.length > 0 && (
         <fieldset
           className="wc-block-checkout__shipping-option wp-block-woocommerce-checkout-shipping-methods-block wc-block-components-checkout-step"
           id="shipping-option"
@@ -40,7 +44,7 @@ export default function ShippingOptions({
           <div className="wc-block-components-checkout-step__container">
             <div className="wc-block-components-checkout-step__content">
               <div className="wc-block-components-shipping-rates-control css-0 e19lxcc00">
-                {shipmentGroups.map((shipmentGroup, groupIdx) => {
+                {validShipmentGroups.map((shipmentGroup, groupIdx) => {
                   const fieldName = `shipping_${shipmentGroup.id}`;
                   const isFirstSel =
                     shipmentGroup.quotes.findIndex(
