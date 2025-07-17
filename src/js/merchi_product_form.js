@@ -886,6 +886,10 @@ function initializeWhenReady() {
 
     // Function to process variations from a container
     function processVariations($container, variationsArray) {
+      if (!Array.isArray(variationsArray)) {
+        return;
+      }
+
       $container.find('.custom-field').each(function () {
         const $fieldContainer = jQuery(this);
         const $input = $fieldContainer.find('input, select, textarea').first();
@@ -893,8 +897,9 @@ function initializeWhenReady() {
         const variationFieldId = variationFieldData?.id;
 
         if (!variationFieldId) return;
+
         // Find the index of the variation by matching the variationFieldId
-        const variationIndex = variationsArray.findIndex(v => v.variationField.id === variationFieldId);
+        const variationIndex = variationsArray.findIndex(v => v?.variationField?.id === variationFieldId);
 
         if (variationIndex === -1) return;
 
@@ -946,6 +951,10 @@ function initializeWhenReady() {
 
         // Update the value of the variation
         variationsArray[variationIndex].value = value;
+
+        if (!Array.isArray(variationsArray[variationIndex].variationFiles)) {
+          variationsArray[variationIndex].variationFiles = [];
+        }
       });
     }
 
@@ -966,7 +975,7 @@ function initializeWhenReady() {
       const formData = {
         ...defaultJobJson,
         variationsGroups: [],
-        variations: []
+        variations: Array.isArray(defaultJobJson.variations) ? [...defaultJobJson.variations] : []
       };
 
       // Process group variations
@@ -1030,7 +1039,8 @@ function initializeWhenReady() {
                 name: variationFieldData.name
               },
               value: value,
-              ...(variationFilesForGroup ? { variationFiles: variationFilesForGroup } : {})
+              // ...(variationFilesForGroup ? { variationFiles: variationFilesForGroup } : {})
+              variationFiles: variationFilesForGroup ?? [],
             });
           });
 
