@@ -13,6 +13,8 @@
     "libphonenumber-js": "^1.12.9",
     "merchi_checkout": "1.0.19",
     "merchi_sdk_js": "latest",
+    "mini-css-extract-plugin": "^2.9.2",
+    "postcss-loader": "^8.1.1",
     "react": "^18.3.1",
     "react-country-region-selector": "^4.0.2",
     "react-country-state-city": "^1.1.12",
