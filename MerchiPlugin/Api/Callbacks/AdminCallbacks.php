@@ -94,11 +94,6 @@ class AdminCallbacks extends BaseController {
 		echo '<input type="password" class="regular-text" name="staging_merchi_api_secret" value="' . $value . '" placeholder="xxxxx">';
 	}
 
-	public function merchiMountPointId() {
-		$value = esc_attr( get_option( 'merchi_mount_point_id' ) );
-		echo '<input type="text" class="regular-text" name="merchi_mount_point_id" value="' . $value . '" placeholder="example_class">';
-	}
-
 	public function merchiRedirectURL() {
 		$value = esc_attr( get_option( 'merchi_redirect_url' ) );
 		echo '<input type="text" class="regular-text" name="merchi_redirect_url" value="' . $value . '" placeholder="https://example.com/success">';

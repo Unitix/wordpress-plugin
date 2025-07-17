@@ -23,6 +23,16 @@ class ProductPage extends BaseController {
 	}
 
 	public function enqueue_merchi_scripts() {
+		// Only load on single product pages
+		if (!is_product()) {
+			return;
+		}
+
+		// Check if this is a Merchi product (has product_id meta)
+		$merchi_product_id = get_post_meta(get_the_ID(), 'product_id', true);
+		if (empty($merchi_product_id)) {
+			return;
+		}
 		
 		$staging_mode = get_option('merchi_staging_mode');
 		if ($staging_mode === 'yes') {
@@ -70,22 +80,21 @@ class ProductPage extends BaseController {
 		);
 
 		// Get the correct configuration based on staging mode
-		$staging_mode = get_option('merchi_staging_mode');
 		$merchi_domain = $staging_mode === 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
 		$merchi_url = $staging_mode === 'yes' ? 'https://api.staging.merchi.co/' : 'https://api.merchi.co/';
 
-		// Debug logging
+		// Debug logging (only log when actually loading scripts)
 		error_log('Merchi Configuration:');
 		error_log('Environment: ' . ($staging_mode === 'yes' ? 'Staging' : 'Production'));
 		error_log('API URL: ' . $merchi_url);
 		error_log('Domain ID: ' . $merchi_domain);
-		error_log('Product ID: ' . get_post_meta(get_the_ID(), 'product_id', true));
+		error_log('Product ID: ' . $merchi_product_id);
 
 		// Add Merchi configuration data
 		wp_localize_script('merchi_product_form', 'merchiConfig', array(
 			'domainId' => $merchi_domain,
 			'apiUrl' => $merchi_url,
-			'productId' => get_post_meta(get_the_ID(), 'product_id', true),
+			'productId' => $merchi_product_id,
 			'stagingMode' => $staging_mode === 'yes',
 			'backendUri' => $merchi_url
 		));
@@ -93,9 +102,6 @@ class ProductPage extends BaseController {
 		// Verify configuration
 		if (empty($merchi_domain)) {
 			error_log('Warning: Merchi Domain ID is empty');
-		}
-		if (empty(get_post_meta(get_the_ID(), 'product_id', true))) {
-			error_log('Warning: Merchi Product ID is empty');
 		}
 	}
 

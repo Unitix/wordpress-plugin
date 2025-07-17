@@ -3,7 +3,6 @@ let loadingData = false;
 let hasMoreProducts = true;
 let currentRequest = null;
 var domainId = scriptData.merchi_domain;
-// console.log(domainId);
 const selectedValueDisplay = document.getElementById("selected_value_display");
 const customValueField = document.getElementById("custom_value_field");
 const hiddenProductIdField = document.getElementById("hidden_product_id");
@@ -15,6 +14,10 @@ let mediaFeatureImageDone = false;
 let mediaImageDone = false;
 let readyToRedirect = false;
 let redirectUrl = null;
+
+// WHAT IS GOING ON HERE?
+
+console.log('did this file run');
 
 function maybeRedirect() {
   if (readyToRedirect && mediaFeatureImageDone && mediaImageDone && redirectUrl) {
@@ -33,25 +36,6 @@ function handleInput() {
     fetchProducts(); // Call the function to fetch products
   }, 500);
   jQuery(this).data("timer", timeout);
-}
-
-function searchProductsByTerm(products, searchTerm) {
-  searchTerm = searchTerm.toLowerCase();
-  let foundProducts = [];
-
-  for (let i = 0; i < products.length; i++) {
-    const productName = products[i].product.name.toLowerCase();
-    if (productName.includes(searchTerm)) {
-      const { id, name, bestPrice } = products[i].product;
-      const prod = {
-        id: id,
-        name: name,
-        bestPrice: bestPrice,
-      };
-      foundProducts.push(prod);
-    }
-  }
-  return foundProducts;
 }
 
 function fetchProducts() {
@@ -256,7 +240,7 @@ function fetchProducts() {
   });
 }
 
-function attachprodcuttitle(product_title, product_id) {
+function attachProdcutTitle(product_title, product_id) {
   var postId = jQuery("#post_ID").val();
   jQuery.ajax({
     method: "POST",
@@ -293,6 +277,7 @@ function showImagesUploadingBanner() {
     document.body.appendChild(banner);
   }
 }
+
 function hideImagesUploadingBanner() {
   const banner = document.getElementById('images-uploading-banner');
   if (banner) banner.remove();
@@ -304,6 +289,7 @@ function startImageUpload() {
   outstandingImageUploads++;
   showImagesUploadingBanner();
 }
+
 function finishImageUpload() {
   outstandingImageUploads = Math.max(0, outstandingImageUploads - 1);
   if (outstandingImageUploads === 0) {
@@ -311,8 +297,8 @@ function finishImageUpload() {
   }
 }
 
-// Patch attachfeatureMedia and attachMedia to use the new logic
-function attachfeatureMedia(imageUrl, inputString, msg) {
+// Patch attachFeatureMedia and attachMedia to use the new logic
+function attachFeatureMedia(imageUrl, inputString, msg) {
   var postId = jQuery("#post_ID").val();
   startImageUpload();
   jQuery.ajax({
@@ -395,6 +381,7 @@ function showCentralLoader() {
     loader.style.display = 'flex';
   }
 }
+
 function hideCentralLoader() {
   let loader = document.getElementById('central-loader');
   if (loader) loader.style.display = 'none';
@@ -404,6 +391,7 @@ function hideCentralLoader() {
     wrapElements[0].style.filter = 'none';
   }
 }
+
 // Add spinner keyframes if not present
 (function addSpinnerKeyframes() {
   if (!document.getElementById('central-loader-spinner-style')) {
@@ -456,7 +444,6 @@ function yourMethod() {
 
 //gc code start here
 jQuery(document).ready(function ($) {
-
 
   function setImageUpload(inputField, preview, removeBtn) {
     var fileFrame;
@@ -573,13 +560,6 @@ jQuery(document).ready(function ($) {
     }
   });
 
-  /*
-  if (jQuery(".post-new-php.post-type-product").length > 0) {
-    jQuery("#publish").trigger("click");
-    document.getElementsByClassName("wrap")[0].style.filter = "blur(2.5px)";
-    yourMethod();
-  }
-  */
   jQuery("#wp-admin-bar-new-content").on("click", function () {
     setTimeout(function () {
       if (jQuery(".post-new-php.post-type-product").length > 0) {
@@ -645,12 +625,12 @@ jQuery(document).ready(function ($) {
             const product_title = data.product.name;
             const product_id = data.product.id;
             if (product_title) {
-              attachprodcuttitle(product_title, product_id);
+              attachProdcutTitle(product_title, product_id);
             } else {
               const msg = "Images not available";
               jQuery(".loader").eq(0).hide();
               jQuery(".wrap").eq(0).css("filter", "none");
-              attachfeatureMedia(msg);
+              attachFeatureMedia(msg);
             }
 
             const featureImage = data.product.featureImage;
@@ -663,12 +643,12 @@ jQuery(document).ready(function ($) {
               const parts = inputString.split("/");
               const fileType = parts[1];
               const url = `${scriptData.merchi_url}v6/product-public-file/download/${featureImage.id}.${fileType}`;
-              attachfeatureMedia(url, inputString);
+              attachFeatureMedia(url, inputString);
             } else {
               const msg = "Images not available";
               jQuery(".loader").eq(0).hide();
               jQuery(".wrap").eq(0).css("filter", "none");
-              attachfeatureMedia(msg);
+              attachFeatureMedia(msg);
             }
 
             const imagesArray = data.product.images;
