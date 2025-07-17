@@ -7,11 +7,31 @@ wc_print_notices();
 
 
 function enqueue_merchi_checkout_script() {
-	// Register the script
+	// Load Merchi SDK initialization script first
+	$staging_mode = get_option('merchi_staging_mode');
+	if ($staging_mode === 'yes') {
+		wp_enqueue_script(
+			'merchi-sdk-cdn',
+			'https://staging.merchi.co/static/js/dist/merchi-init.js',
+			array(),
+			null,
+			true
+		);
+	} else {
+		wp_enqueue_script(
+			'merchi-sdk-cdn',
+			'https://merchi.co/static/js/dist/merchi-init.js',
+			array(),
+			null,
+			true
+		);
+	}
+
+	// Register the script with proper dependencies
 	wp_register_script(
         'merchi-checkout-init',
         plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_checkout_init.js',
-        array('react', 'react-dom'), // Dependencies
+        array('react', 'react-dom', 'merchi-sdk-cdn'), // Dependencies including merchi-sdk-cdn
         null, // Version
         true // Load in footer
 	);
