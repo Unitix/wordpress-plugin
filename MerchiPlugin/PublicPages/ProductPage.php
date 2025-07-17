@@ -26,6 +26,7 @@ class ProductPage extends BaseController {
 		
 		$staging_mode = get_option('merchi_staging_mode');
 		if ($staging_mode === 'yes') {
+			// $merchi_backend_uri = 'https://staging.merchi.co/static/js/dist/merchi-init.js';
 			wp_enqueue_script(
 				'merchi-sdk-cdn',
 				'https://staging.merchi.co/static/js/dist/merchi-init.js',
@@ -33,6 +34,7 @@ class ProductPage extends BaseController {
 				null,
 				true
 			);
+
 		} else {
 			wp_enqueue_script(
 				'merchi-sdk-cdn',
@@ -43,6 +45,21 @@ class ProductPage extends BaseController {
 			);
 		}
 
+
+		// wp_enqueue_script(
+		// 	'stripe-js-cdn',
+		// 	'https://js.stripe.com/v3/',
+		// 	array(),
+		// 	null,
+		// 	true
+		// );
+		// wp_enqueue_script(
+		// 	'react-stripe-js-cdn',
+		// 	'https://unpkg.com/@stripe/react-stripe-js@3.7.0/dist/react-stripe.umd.min.js',
+		// 	array(),
+		// 	null,
+		// 	true
+		// );
 		// load Merchi SDK
 		wp_enqueue_script(
 			'merchi_sdk',
@@ -53,9 +70,17 @@ class ProductPage extends BaseController {
 		);
 
 		wp_enqueue_script(
+			'merchi_checkout_init',
+			plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_checkout_init.js',
+			['merchi_sdk'],
+			null,
+			true
+		);
+
+		wp_enqueue_script(
 			'merchi_product_form',
 			plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_product_form.js',
-			['jquery', 'merchi_sdk'],
+			['jquery', 'merchi_sdk', 'merchi_checkout_init'],
 			null,
 			true
 		);

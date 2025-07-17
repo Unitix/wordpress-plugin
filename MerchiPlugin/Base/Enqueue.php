@@ -19,6 +19,38 @@ class Enqueue extends BaseController {
 		$mount_point = get_option( 'merchi_mount_point_id' );
 		$css         = ".$mount_point {visibility: hidden;}";
 		wp_add_inline_style( 'styles', $css );
+		// if( get_option( 'merchi_staging_mode' ) == 'yes' ) {
+		// 	$merchi_init = 'https://staging.merchi.co/static/js/dist/merchi-init.js';
+		// }
+		// else {
+		// 	$merchi_init = 'https://merchi.co/static/js/dist/merchi-init.js';
+		// }
+		// Enqueue Merchi initialization script
+		// wp_enqueue_script(
+		// 	'merchi_init',
+		// 	$merchi_init,
+		// 	['jquery'],
+		// 	null,
+		// 	true
+		// );
+		
+		// Enqueue our SDK wrapper
+		// wp_enqueue_script(
+		// 	'merchi_sdk',
+		// 	$this->plugin_url . 'dist/js/merchi_sdk.js',
+		// 	['merchi_init'],
+		// 	null,
+		// 	true
+		// );
+		
+		// Enqueue our product form script
+		// wp_enqueue_script(
+		// 	'merchi_product_form',
+		// 	$this->plugin_url . 'dist/js/merchi_product_form.js',
+		// 	['jquery', 'merchi_sdk'],
+		// 	null,
+		// 	true
+		// );
 	}
 
 
