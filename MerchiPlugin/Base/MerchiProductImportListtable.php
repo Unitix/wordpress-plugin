@@ -51,7 +51,6 @@ class MerchiProductImportListtable extends \WP_List_Table
             'limit' => 0,
             'offset' => 0,
             'inDomain' => $this->domain_id,
-            'session_token' => $this->session_token,
             'embed' => urlencode(json_encode([
                 'featureImage' => new stdClass(),
                 'images' => new stdClass()
@@ -223,7 +222,7 @@ class MerchiProductImportListtable extends \WP_List_Table
             curl_setopt_array(
                 $curl,
                 array(
-                    CURLOPT_URL => "$this->api_url/$sku/?apiKey=$this->apiKey&limit=1&offset=0&inDomain=$this->domain_id&session_token=$this->session_token&embed={%22featureImage%22%3A{}%2C%22images%22%3A{}}&skip_rights=y",
+                    CURLOPT_URL => "$this->api_url/$sku/?apiKey=$this->apiKey&limit=1&offset=0&inDomain=$this->domain_id&&embed={%22featureImage%22%3A{}%2C%22images%22%3A{}}&skip_rights=y",
                     CURLOPT_RETURNTRANSFER => true,
                     CURLOPT_ENCODING => '',
                     CURLOPT_MAXREDIRS => 10,

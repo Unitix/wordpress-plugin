@@ -180,14 +180,6 @@ class Admin extends BaseController {
 					 'merchiOptionsGroup',
 				 ],
 			],
-			[
-				'option_group' => 'merchi_options_group',
-				'option_name'  => 'merchi_api_session_token',
-				'callback'     => [
-					$this->callbacks,
-					'merchiOptionsGroup',
-				],
-		   ],
 		 ];
 
 		 $this->settings->setSettings( $args );
@@ -313,7 +305,7 @@ class Admin extends BaseController {
 			],
 			[
 				'id'       => 'merchi_stripe_api_key',
-				'title'    => 'Stripe API Key',
+				'title'    => 'Stripe API Public Key',
 				'callback' => [
 					$this->callbacks,
 					'merchiStripeKey'
@@ -350,20 +342,6 @@ class Admin extends BaseController {
 				'section'  => 'merchi_admin_index',
 				'args'     => [
 					'label_for' => 'merchi_curency',
-					'class'     => 'example-class',
-				],
-			],
-			[
-				'id'       => 'merchi_api_session_token',
-				'title'    => 'Session Token',
-				'callback' => [
-					$this->callbacks,
-					'merchiSetSessionToken'
-				],
-				'page'     => 'merchi_plugin',
-				'section'  => 'merchi_admin_index',
-				'args'     => [
-					'label_for' => 'merchi_api_session_token',
 					'class'     => 'example-class',
 				],
 			],
