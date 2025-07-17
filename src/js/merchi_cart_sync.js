@@ -1,4 +1,4 @@
-import { patchCart } from './merchi_public_custom.js';
+// import { patchCart } from './merchi_public_custom.js';
 
 const PATCH_DISABLED = false;
 
