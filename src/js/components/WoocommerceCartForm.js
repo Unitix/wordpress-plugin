@@ -132,6 +132,8 @@ export default function WoocommerceCartForm() {
     );
   }
 
+  const shopUrl = window.scriptData?.shopUrl || '/shop';
+
   if (!cart.cartItems?.length) {
     return (
       <main
@@ -145,7 +147,7 @@ export default function WoocommerceCartForm() {
                 Your cart is currently empty!
               </h2>
               <p style={{ textAlign: 'center', marginTop: '3rem' }}>
-                <a href="/shop" className="wp-element-button">
+                <a href={shopUrl} className="wp-element-button">
                   Return to shop
                 </a>
               </p>

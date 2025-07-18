@@ -823,6 +823,7 @@ function enqueue_my_public_script()
 		'merchi_stripe_api_key' => MERCHI_STRIPE_API_KEY,
 		'cartUrl' => wc_get_cart_url(),
 		'checkoutUrl' => wc_get_checkout_url(),
+		'shopUrl' => wc_get_page_permalink('shop'),
 	);
 	
 	wp_localize_script('custom-public-script', 'scriptData', $script_data);
