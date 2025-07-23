@@ -79,6 +79,9 @@ export function getCookieByName(name) {
   return null; // Cookie not found
 }
 
+// ============================================================================
+// WooCommerce Form Input Style Control - Handles input active states
+// ============================================================================
 export default function useWooActive() {
   useEffect(() => {
     const INPUT = '.wc-block-components-text-input__input';
@@ -129,6 +132,9 @@ export default function useWooActive() {
   }, []);
 }
 
+// ============================================================================
+// WordPress API Utilities - Handle WP REST API and WooCommerce Store API
+// ============================================================================
 export function getWpApiRoot() {
   if (window.wpApiSettings?.root) return wpApiSettings.root;
   const link = document.querySelector('link[rel="https://api.w.org/"]')?.href;
@@ -136,7 +142,7 @@ export function getWpApiRoot() {
   return '/wp-json/';
 }
 
-// Woo Store Nonce helper
+// WooCommerce Store API Nonce Management
 let wooNonceCache = '';
 
 export async function fetchWooNonce() {
@@ -171,6 +177,9 @@ export function updateWooNonce(res) {
   if (n) wooNonceCache = n;
 }
 
+// ============================================================================
+// Product Variations Utilities - Handle product options and variation groups
+// ============================================================================
 export const shouldShow = (v) => {
   if (Array.isArray(v.selectedOptions) && v.selectedOptions.length) return true;
   if (typeof v.value === 'string' && v.value.trim() !== '') return true;
@@ -190,6 +199,9 @@ export const buildOptionMap = (product = {}) => {
   return map;
 };
 
+// ============================================================================
+// Geographic and Country Utilities - Handle country codes and browser location
+// ============================================================================
 // Convert country name to ISO code
 export const toIso = (val = '') =>
   typeof val === 'string'
@@ -222,6 +234,9 @@ export function getCountryFromBrowser() {
   return null;
 }
 
+// ============================================================================
+// Cart Data Processing Utilities - Handle cart data cleaning and restoration
+// ============================================================================
 export function cleanShipmentGroups(cartJson = {}) {
   if (!Array.isArray(cartJson.shipmentGroups)) return cartJson;
 
@@ -231,6 +246,32 @@ export function cleanShipmentGroups(cartJson = {}) {
       (g) => Array.isArray(g.cartItems) && g.cartItems.length > 0
     ),
   };
+}
+
+// Restore complete cart item information - Solves display issues with simplified API responses
+export function hydrateCartItems(originalItems, patchedItems) {
+  const originalById = Object.fromEntries(
+    originalItems.map(i => [i.product?.id, i])
+  );
+
+  return patchedItems.map(item => {
+    const ori = originalById[item.product?.id];
+    if (!ori) return item;
+
+    return {
+      ...item,
+      product: { ...item.product, ...ori.product }, // Original data overrides server data
+      variationsGroups: item.variationsGroups?.map((g, gi) => ({
+        ...g,
+        variations: g.variations?.map((v, vi) => ({
+          ...v,
+          variationField:
+            ori.variationsGroups?.[gi]?.variations?.[vi]?.variationField ||
+            v.variationField,
+        })),
+      })) || ori.variationsGroups || [],
+    };
+  });
 }
 
 

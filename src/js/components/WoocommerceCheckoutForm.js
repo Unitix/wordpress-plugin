@@ -9,10 +9,8 @@ import { patchCart } from '../merchi_public_custom';
 import { MERCHI_API_URL, MERCHI_SDK } from '../merchi_sdk';
 import 'react-phone-input-2/lib/style.css';
 import { getCart } from '../merchi_public_custom';
-import { ensureWooNonce, fetchWooNonce, updateWooNonce } from '../utils';
+import { ensureWooNonce, fetchWooNonce, updateWooNonce, getCountryFromBrowser, toIso, cleanShipmentGroups, hydrateCartItems } from '../utils';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
-import { getCountryFromBrowser, toIso } from '../utils';
-import { cleanShipmentGroups } from '../utils';
 
 async function createClient(MERCHI, clientJson, cartJson) {
   return new Promise((resolve, reject) => {
@@ -153,36 +151,7 @@ const WoocommerceCheckoutForm = () => {
 
       // restore the original product info
       if (_cartJson.cartItems && originalCartItems.length) {
-        _cartJson.cartItems = _cartJson.cartItems.map((item, index) => {
-          const originalItem = originalCartItems[index];
-          if (originalItem && originalItem.product && item.product?.id === originalItem.product.id) {
-            return {
-              ...item,
-              product: originalItem.product,
-              // get the variationField from the originalItem
-              variationsGroups: item.variationsGroups?.map((group, groupIndex) => {
-                const originalGroup = originalItem.variationsGroups?.[groupIndex];
-                if (originalGroup) {
-                  return {
-                    ...group,
-                    variations: group.variations?.map((variation, variationIndex) => {
-                      const originalVariation = originalGroup.variations?.[variationIndex];
-                      if (originalVariation && originalVariation.variationField) {
-                        return {
-                          ...variation,
-                          variationField: originalVariation.variationField
-                        };
-                      }
-                      return variation;
-                    }) || []
-                  };
-                }
-                return group;
-              }) || []
-            };
-          }
-          return item;
-        });
+        _cartJson.cartItems = hydrateCartItems(originalCartItems, _cartJson.cartItems);
       }
 
       const cleanedCartJson = cleanShipmentGroups(_cartJson);
