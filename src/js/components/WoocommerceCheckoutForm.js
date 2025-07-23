@@ -64,9 +64,7 @@ const WoocommerceCheckoutForm = () => {
     (async () => {
       try {
         const ent = await getCart(localCart.id, localCart.token);
-
         const full = cleanShipmentGroups(MERCHI.toJson(ent));
-
         // const full = MERCHI.toJson(ent);
         setCart(full);
         localStorage.setItem('MerchiCart', JSON.stringify(full));
@@ -107,6 +105,7 @@ const WoocommerceCheckoutForm = () => {
     // Handle form submission here
   };
 
+
   const [shipmentGroups, setShipmentGroups] = useState([]);
   const [shipmentOptionsLoading, setShipmentOptionsLoading] = useState(false);
   const [isUpdatingShipping, setIsUpdatingShipping] = useState(false);
@@ -127,7 +126,6 @@ const WoocommerceCheckoutForm = () => {
         const { shipmentGroups } = await response.json();
         // setShipmentGroups(shipmentGroups);
         setShipmentGroups(shipmentGroups.filter((g) => g.cartItems?.length));
-
         return;
       } catch (error) {
         setShipmentGroups([]);
@@ -147,7 +145,7 @@ const WoocommerceCheckoutForm = () => {
     };
     try {
       // the patch with selectedQuote is sent only after the user picks one
-      const cartEnt = await patchCart(cartJson, null, { includeShippingFields: false });
+      const cartEnt = await patchCart(cartJson, null, { includeShippingFields: true });
       const _cartJson = MERCHI.toJson(cartEnt);
       setCart(cleanShipmentGroups(_cartJson));
       // setCart(_cartJson);

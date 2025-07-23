@@ -1354,8 +1354,27 @@ function send_id_for_add_cart(){
                 update_option("get_cart_myItems_".$cart_id."_".$cart_item_key, $currentCartItem);
                 $productsAdded[] = $cart_item_key;
             }
+            // echo json_encode(array('success' => true));
 
-            echo json_encode(array('success' => true));
+						// get the response from the patch_merchi_cart()
+						// $merchi_cart = null;       
+						// if ( is_array( $patch_response ) && $patch_response['success'] === true ) {
+    				// 	$merchi_cart = $patch_response['data']; 
+						// }
+						
+						$merchi_cart = null;
+
+						if ( is_array( $patch_response )
+     						&& ! empty( $patch_response['success'] )
+     						&& isset( $patch_response['data']['cart'] ) ) {
+
+    						$merchi_cart = $patch_response['data']['cart'];
+						}
+						echo json_encode([
+    						'success'    => true,
+    						'merchiCart' => $merchi_cart ?: $merchi_cart_json
+						]);
+						wp_die();
         } catch(Exception $e) {
             error_log('Error in send_id_for_add_cart: ' . $e->getMessage());
             echo json_encode(array('success' => false, 'error' => $e->getMessage()));

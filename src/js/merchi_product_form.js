@@ -1283,13 +1283,22 @@ function initializeWhenReady() {
             action: "send_id_for_add_cart",
             item: cartPayload,
           },
+          dataType: "json",
           success: function (response) {
             setLoadingState(false);
+            console.log('11[Merchi] Cart from server', response);
+
+            if (response.success && response.merchiCart) {
+              console.log('[Merchi] Cart from server', response.merchiCart);
+              localStorage.setItem('MerchiCart', JSON.stringify(response.merchiCart));
+            }
             // Set a flag in sessionStorage to show the success message after reload
             sessionStorage.setItem('merchiCartSuccess', '1');
             // Reload the page and scroll to top
+
             window.scrollTo({ top: 0, behavior: 'smooth' });
             window.location.reload();
+
             // Do NOT show the success message here
             // Do NOT submit the form here
             // Cart fragment refresh will happen on reload
