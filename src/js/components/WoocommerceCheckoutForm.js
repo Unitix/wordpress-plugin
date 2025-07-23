@@ -124,7 +124,6 @@ const WoocommerceCheckoutForm = () => {
           requestOptions
         );
         const { shipmentGroups } = await response.json();
-        // setShipmentGroups(shipmentGroups);
         setShipmentGroups(shipmentGroups.filter((g) => g.cartItems?.length));
         return;
       } catch (error) {
@@ -138,6 +137,10 @@ const WoocommerceCheckoutForm = () => {
     setShipmentOptionsLoading(true);
     const c = toIso(country);
     const s = toIso(state);
+
+    // keep the original cartItems
+    const originalCartItems = cart.cartItems || [];
+
     const cartJson = {
       ...cart,
       receiverAddress: { ...cart.receiverAddress, country: c, state: s },
@@ -147,8 +150,44 @@ const WoocommerceCheckoutForm = () => {
       // the patch with selectedQuote is sent only after the user picks one
       const cartEnt = await patchCart(cartJson, null, { includeShippingFields: true });
       const _cartJson = MERCHI.toJson(cartEnt);
-      setCart(cleanShipmentGroups(_cartJson));
-      // setCart(_cartJson);
+
+      // restore the original product info
+      if (_cartJson.cartItems && originalCartItems.length) {
+        _cartJson.cartItems = _cartJson.cartItems.map((item, index) => {
+          const originalItem = originalCartItems[index];
+          if (originalItem && originalItem.product && item.product?.id === originalItem.product.id) {
+            return {
+              ...item,
+              product: originalItem.product,
+              // get the variationField from the originalItem
+              variationsGroups: item.variationsGroups?.map((group, groupIndex) => {
+                const originalGroup = originalItem.variationsGroups?.[groupIndex];
+                if (originalGroup) {
+                  return {
+                    ...group,
+                    variations: group.variations?.map((variation, variationIndex) => {
+                      const originalVariation = originalGroup.variations?.[variationIndex];
+                      if (originalVariation && originalVariation.variationField) {
+                        return {
+                          ...variation,
+                          variationField: originalVariation.variationField
+                        };
+                      }
+                      return variation;
+                    }) || []
+                  };
+                }
+                return group;
+              }) || []
+            };
+          }
+          return item;
+        });
+      }
+
+      const cleanedCartJson = cleanShipmentGroups(_cartJson);
+      setCart(cleanedCartJson);
+      localStorage.setItem('MerchiCart', JSON.stringify(cleanedCartJson));
       await getShippingGroup();
     } catch (error) {
       console.error('Error updating cart:', error);
