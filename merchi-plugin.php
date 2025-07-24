@@ -1289,11 +1289,17 @@ function send_id_for_add_cart(){
             if ($merchi_cart_json && isset($merchi_cart_json['token']) && isset($merchi_cart_json['id'])) {
                 $merchi_cart_token = $merchi_cart_json['token'];
                 $cart_id = $merchi_cart_json['id'];
+
+								$payload = $merchi_cart_json;
+								unset(
+									$payload['shipmentGroups'],
+									$payload['receiverAddress'],
+								);
                 
                 $patch_response = patch_merchi_cart(
                     $cart_id,
                     $merchi_cart_token,
-                    $merchi_cart_json
+                    $payload
                 );
                 // Optionally, handle/log the response or errors
                 if (is_wp_error($patch_response)) {
@@ -1419,14 +1425,7 @@ function send_id_for_add_cart(){
                 $currentCartItem['taxAmount'] = $taxAmount;
                 update_option("get_cart_myItems_".$cart_id."_".$cart_item_key, $currentCartItem);
                 $productsAdded[] = $cart_item_key;
-            }
-            // echo json_encode(array('success' => true));
-
-						// get the response from the patch_merchi_cart()
-						// $merchi_cart = null;       
-						// if ( is_array( $patch_response ) && $patch_response['success'] === true ) {
-    				// 	$merchi_cart = $patch_response['data']; 
-						// }					
+            }				
 						$merchi_cart = null;
 						error_log('----patch_response: ' . print_r($patch_response, true));
 

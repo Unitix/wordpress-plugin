@@ -256,7 +256,8 @@ const WoocommerceCheckoutForm = () => {
         })
         .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
       // Update localStorage with the patched cart data
-      localStorage.setItem('MerchiCart', JSON.stringify(MERCHI.toJson(cartEnt)));
+      const fullCart = MERCHI.toJson(response)
+      localStorage.setItem('MerchiCart', JSON.stringify(fullCart));
 
       const merchi_api_url = MERCHI_API_URL();
       const response = await fetch(`${merchi_api_url}v6/stripe/payment_intent/cart/${cartEnt.id()}/?cart_token=${cartEnt.token()}`);
