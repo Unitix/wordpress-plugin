@@ -1165,8 +1165,74 @@ function patch_merchi_cart($cart_id, $cart_token, $payload) {
         );
     }
     
+     $cart_embed = [
+        'cartItems' => [
+            'product' => (object)[
+            'domain' => (object)[
+                'company' => (object)[
+                    'defaultTaxType' => (object)[],
+                    'taxTypes'       => (object)[]
+                ]
+            ],
+            'featureImage'              => (object)[],  
+            'groupVariationFields'      => (object)[   
+                'options' => (object)[ 'linkedFile' => (object)[] ]
+            ],
+            'images'                    => (object)[],  
+            'independentVariationFields'=> (object)[  
+                'options' => (object)[ 'linkedFile' => (object)[] ]
+            ],
+            'taxType'                   => (object)[]
+        ],
+            'taxType'          => (object)[],
+            'variations'       => (object)[     // variationsEmbed
+                'selectedOptions' => (object)[],
+                'variationField'  => (object)[  // optionsEmbed
+                    'options' => (object)[ 'linkedFile' => (object)[] ],
+                    'variationCostDiscountGroup'  => (object)[],
+                    'variationUnitCostDiscountGroup' => (object)[]
+                ],
+                'variationFiles' => (object)[]
+            ],
+            'variationsGroups' => (object)[     // variationsGroupsEmbed
+                'variations' => (object)[
+                    'selectedOptions' => (object)[],
+                    'variationField'  => (object)[
+                        'options' => (object)[ 'linkedFile' => (object)[] ],
+                        'variationCostDiscountGroup'  => (object)[],
+                        'variationUnitCostDiscountGroup' => (object)[]
+                    ],
+                    'variationFiles' => (object)[]
+                ]
+            ],
+        ],
+        'client'        => [ 'emailAddresses' => (object)[], 'profilePicture' => (object)[] ],
+        'clientCompany' => (object)[],
+        'domain'        => [
+            'company' => [
+                'defaultTaxType'         => (object)[],
+                'isStripeAccountEnabled' => (object)[],
+                'taxTypes'               => (object)[],
+            ],
+        ],
+        'invoice'         => (object)[],
+        'receiverAddress' => (object)[],
+        'shipmentGroups'  => [
+            'cartItems'    => [ 'product' => (object)[] ],
+            'quotes'       => [ 'shipmentMethod' => [ 'originAddress' => (object)[], 'taxType' => (object)[] ] ],
+            'selectedQuote'=> [ 'shipmentMethod' => [ 'originAddress' => (object)[], 'taxType' => (object)[] ] ],
+        ],
+        'discountItems'   => (object)[],
+    ];
+    // Convert embed to JSON and URL encode
+    $embed_json = json_encode($cart_embed);
+    $embed_encoded = urlencode($embed_json);
+    
+    // Build the URL with embed parameter
+    $api_url = MERCHI_URL . 'v6/carts/' . $cart_id . '/?cart_token=' . $cart_token . '&embed=' . $embed_encoded;
+    
     $response = wp_remote_request(
-        MERCHI_URL . 'v6/carts/' . $cart_id . '/?cart_token=' . $cart_token,
+        $api_url,
         array(
             'method' => 'PATCH',
             'headers' => array(
@@ -1360,9 +1426,9 @@ function send_id_for_add_cart(){
 						// $merchi_cart = null;       
 						// if ( is_array( $patch_response ) && $patch_response['success'] === true ) {
     				// 	$merchi_cart = $patch_response['data']; 
-						// }
-						
+						// }					
 						$merchi_cart = null;
+						error_log('----patch_response: ' . print_r($patch_response, true));
 
 						if ( is_array( $patch_response )
      						&& ! empty( $patch_response['success'] )
@@ -1372,7 +1438,7 @@ function send_id_for_add_cart(){
 						}
 						echo json_encode([
     						'success'    => true,
-    						'merchiCart' => $merchi_cart ?: $merchi_cart_json
+    						'merchiCart' => $merchi_cart
 						]);
 						wp_die();
         } catch(Exception $e) {

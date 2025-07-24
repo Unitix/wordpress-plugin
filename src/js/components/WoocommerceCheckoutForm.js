@@ -8,8 +8,7 @@ import StripePaymentForm from './StripePaymentForm';
 import { patchCart } from '../merchi_public_custom';
 import { MERCHI_API_URL, MERCHI_SDK } from '../merchi_sdk';
 import 'react-phone-input-2/lib/style.css';
-import { getCart } from '../merchi_public_custom';
-import { ensureWooNonce, fetchWooNonce, updateWooNonce, getCountryFromBrowser, toIso, cleanShipmentGroups, hydrateCartItems } from '../utils';
+import { ensureWooNonce, fetchWooNonce, updateWooNonce, getCountryFromBrowser, toIso, cleanShipmentGroups } from '../utils';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
 async function createClient(MERCHI, clientJson, cartJson) {
@@ -56,22 +55,6 @@ const WoocommerceCheckoutForm = () => {
   const localCart = JSON.parse(localCartJSONString) || {};
   // save localCart to orderInfo before doing patch cart
   const [cart, setCart] = useState(localCart);
-
-  useEffect(() => {
-    if (!localCart.id) return;
-    (async () => {
-      try {
-        const ent = await getCart(localCart.id, localCart.token);
-        const full = cleanShipmentGroups(MERCHI.toJson(ent));
-        // const full = MERCHI.toJson(ent);
-        setCart(full);
-        localStorage.setItem('MerchiCart', JSON.stringify(full));
-        setShipmentGroups(full.shipmentGroups || []);
-      } catch (err) {
-        console.warn('[Checkout] init patch error', err);
-      }
-    })();
-  }, []);
 
   const { domain = {} } = cart;
   const { country = 'AU' } = domain;
@@ -149,14 +132,8 @@ const WoocommerceCheckoutForm = () => {
       const cartEnt = await patchCart(cartJson, null, { includeShippingFields: true });
       const _cartJson = MERCHI.toJson(cartEnt);
 
-      // restore the original product info
-      if (_cartJson.cartItems && originalCartItems.length) {
-        _cartJson.cartItems = hydrateCartItems(originalCartItems, _cartJson.cartItems);
-      }
-
       const cleanedCartJson = cleanShipmentGroups(_cartJson);
       setCart(cleanedCartJson);
-      localStorage.setItem('MerchiCart', JSON.stringify(cleanedCartJson));
       await getShippingGroup();
     } catch (error) {
       console.error('Error updating cart:', error);

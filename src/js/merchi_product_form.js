@@ -1276,6 +1276,7 @@ function initializeWhenReady() {
           merchiCartJson: updatedCartJson,
         };
 
+        console.log('About to POST send_id_for_add_cart with payload:', cartPayload);
         jQuery.ajax({
           method: "POST",
           url: (typeof frontendajax !== 'undefined' ? frontendajax.ajaxurl : '/wp-admin/admin-ajax.php'),
@@ -1286,10 +1287,10 @@ function initializeWhenReady() {
           dataType: "json",
           success: function (response) {
             setLoadingState(false);
-            console.log('11[Merchi] Cart from server', response);
+            console.log('[Merchi] full AJAX response:', response);
 
             if (response.success && response.merchiCart) {
-              console.log('[Merchi] Cart from server', response.merchiCart);
+              console.log('[Merchi] merchicart', response.merchiCart);
               localStorage.setItem('MerchiCart', JSON.stringify(response.merchiCart));
             }
             // Set a flag in sessionStorage to show the success message after reload
@@ -1297,7 +1298,7 @@ function initializeWhenReady() {
             // Reload the page and scroll to top
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
-            window.location.reload();
+            // window.location.reload();
 
             // Do NOT show the success message here
             // Do NOT submit the form here

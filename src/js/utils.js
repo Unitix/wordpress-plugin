@@ -248,30 +248,17 @@ export function cleanShipmentGroups(cartJson = {}) {
   };
 }
 
-// Restore complete cart item information - Solves display issues with simplified API responses
-export function hydrateCartItems(originalItems, patchedItems) {
-  const originalById = Object.fromEntries(
-    originalItems.map(i => [i.product?.id, i])
-  );
+export function sanitizeCart(raw) {
+  const cleaned = { ...raw };
 
-  return patchedItems.map(item => {
-    const ori = originalById[item.product?.id];
-    if (!ori) return item;
+  cleaned.receiverAddress = null;
+  cleaned.shipmentGroups = [];
+  cleaned.selectedQuote = null;
 
-    return {
-      ...item,
-      product: { ...item.product, ...ori.product }, // Original data overrides server data
-      variationsGroups: item.variationsGroups?.map((g, gi) => ({
-        ...g,
-        variations: g.variations?.map((v, vi) => ({
-          ...v,
-          variationField:
-            ori.variationsGroups?.[gi]?.variations?.[vi]?.variationField ||
-            v.variationField,
-        })),
-      })) || ori.variationsGroups || [],
-    };
-  });
+  cleaned.shipmentSubtotalCost = 0;
+  cleaned.shipmentTaxAmount = 0;
+  cleaned.shipmentTotalCost = 0;
+
+  return cleaned;
 }
-
 

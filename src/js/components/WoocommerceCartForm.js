@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { patchCart } from '../merchi_public_custom';
 import CartItems from './CartItems';
 import CartTotals from './CartTotals';
-
 import { ensureWooNonce, fetchWooNonce, updateWooNonce, getWpApiRoot } from '../utils';
 
 // read cart from local storage
@@ -17,30 +16,8 @@ const readCart = () => {
 
 export default function WoocommerceCartForm() {
   const [cart, setCart] = useState(readCart());
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const onStorage = e =>
-      e.key === 'MerchiCart' && setCart(readCart());
-    window.addEventListener('storage', onStorage);
-
-    // sync with the backend
-    (async () => {
-      try {
-        const patched = await patchCart(readCart(), cart.cartEmbed, { includeShippingFields: false });
-        // update the cart in local storage
-        setCart(JSON.parse(localStorage.getItem('MerchiCart')) || patched);
-      } catch (e) {
-        console.warn('[Cart] patchCart error:', e.response?.status || e);
-      } finally {
-        setLoading(false);
-      }
-    })();
-
-    return () => {
-      window.removeEventListener('storage', onStorage);
-    };
-  }, []);
+  // const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const apiRoot = getWpApiRoot();
 
@@ -118,10 +95,11 @@ export default function WoocommerceCartForm() {
     localStorage.setItem('MerchiCart', JSON.stringify(updatedCart));
     setCart(updatedCart);
 
-    patchCart(updatedCart, cart.cartEmbed, { includeShippingFields: false }).catch(e =>
+    patchCart(updatedCart, cart.cartEmbed, { includeShippingFields: true, preserveShippingInLocalStorage: false }).catch(e =>
       console.warn('[Cart] patchCart error:', e?.response?.status || e)
     );
   }, [cart]);
+
 
 
   if (loading) {
