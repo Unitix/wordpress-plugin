@@ -1144,6 +1144,39 @@ function generateRandomString($length = 10) {
 add_action('wp_ajax_send_id_for_add_cart', 'send_id_for_add_cart');
 add_action('wp_ajax_nopriv_send_id_for_add_cart', 'send_id_for_add_cart');
 
+function merchi_build_clean_payload( array $raw ) : array {
+    $clean = [
+        'id'        => $raw['id'],
+        'domain'    => [ 'id' => $raw['domain']['id'] ],
+        'cartItems' => [],
+    ];
+
+    foreach ( $raw['cartItems'] as $item ) {
+        $cleanItem = [
+            'id'        => $item['id']  ?? null,
+            'product'   => [ 'id' => $item['productID'] ?? $item['product']['id'] ],
+            'quantity'  => (int) $item['quantity'],
+            'totalCost' => (float) $item['totalCost'],
+            'variationsGroups' => array_map( function ( $g ) {
+                return [
+                    'quantity'   => (int) ( $g['quantity'] ?? 0 ),
+                    'variations' => array_map( function ( $v ) {
+                        return [
+                            'variationField' => isset( $v['variationField']['id'] )
+                                ? [ 'id' => $v['variationField']['id'] ]
+                                : null,
+                            'value'          => $v['value'] ?? null,
+                        ];
+                    }, $g['variations'] ?? [] ),
+                ];
+            }, $item['variationsGroups'] ?? [] ),
+        ];
+        $clean['cartItems'][] = $cleanItem;
+    }
+
+    return $clean;
+}
+
 /**
  * Send a PATCH request to the Merchi API to update a cart.
  * @param string $cart_id The Merchi cart ID.
@@ -1304,12 +1337,8 @@ function send_id_for_add_cart(){
         if ($merchi_cart_json && isset($merchi_cart_json['token']) && isset($merchi_cart_json['id'])) {
             $merchi_cart_token = $merchi_cart_json['token'];
             $cart_id = $merchi_cart_json['id'];
-
-								$payload = $merchi_cart_json;
-								unset(
-									$payload['shipmentGroups'],
-									$payload['receiverAddress'],
-								);
+						
+								$payload = merchi_build_clean_payload( $merchi_cart_json );
                 
                 $patch_response = patch_merchi_cart(
                     $cart_id,
@@ -1414,31 +1443,8 @@ function send_id_for_add_cart(){
                         }
                         $cart_item_data['selection'][] = $group;
                     }
-                }
-								// $merchi_qty = intval($cartItem['quantity']);
-								// $merchi_total = floatval($cartItem['totalCost']);
-								// error_log('merchi_qty: ' . $merchi_qty);
-								// error_log('merchi_total: ' . $merchi_total);
-
-								// $wc_qty = 1;
-								// $extra_data = array_merge (
-								// 	$cart_item_data,
-								// 	['merchi_total' => $merchi_total ]
-								// );
-								// $cart_item_key = WC()->cart->add_to_cart( $product_id, $wc_qty, 0, array(), $extra_data );
-
-								// $cart_item_data = array_merge(
-    						// 		$cart_item_data,
-								// 		[ 'merchi_total' => floatval( $cartItem['totalCost'] ) ]
-								// );
-								
+                }							
                 $quantity = $cartItem['quantity'];
-
-								$totalCost = $cartItem['totalCost'];
-								$cart_item_data['merchi_data']['totalCost'] = $totalCost;
-
-								$totalCost = $cartItem['totalCost'];
-								error_log('totalCost: ' . $totalCost);
 
                 $cart_item_key = WC()->cart->find_product_in_cart( WC()->cart->generate_cart_id( $product_id, 0, array(), $cart_item_data ) );
                 $currentCartItem = array();
@@ -1477,6 +1483,7 @@ function send_id_for_add_cart(){
     						// Update WC session with the latest cart data from PATCH response
     						if (WC()->session && $merchi_cart) {
     						    WC()->session->set('merchi_cart_data', $merchi_cart);
+										error_log('-----merchi_cart_data: ' . print_r($merchi_cart, true));
     						}
 						}
 						echo json_encode([
@@ -3183,9 +3190,12 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
             $merchi_cart_data = WC()->session->get('merchi_cart_data');
             if ($merchi_cart_data && isset($merchi_cart_data['totalCost'])) {
                 $total_cost = $merchi_cart_data['totalCost'];
+								error_log('-----total_cost: ' . $total_cost);
                 // calculate unit price by dividing total cost by quantity
                 $quantity = isset($cart_item['quantity']) ? $cart_item['quantity'] : 1;
+								error_log('-----quantity: ' . $quantity);
                 $correct_price = $total_cost / $quantity;
+								error_log('-----correct_price: ' . $correct_price);
             }
         }
         
