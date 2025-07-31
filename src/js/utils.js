@@ -261,4 +261,3 @@ export function sanitizeCart(raw) {
 
   return cleaned;
 }
-

@@ -1274,7 +1274,7 @@ function patch_merchi_cart($cart_id, $cart_token, $payload) {
         );
     }
 }
-
+  
 function send_id_for_add_cart(){
     if (class_exists('WooCommerce')) {
         try {
@@ -1282,13 +1282,28 @@ function send_id_for_add_cart(){
             $cart = $_POST['item'];
             error_log('Cart data: ' . print_r($cart, true));
             
-            // Check if we have valid merchi cart data
-            $merchi_cart_json = isset($cart['merchiCartJson']) ? $cart['merchiCartJson'] : null;
+            // Clear and store new session data
+            WC()->session->__unset('merchi_cart_data');
+            WC()->session->set('merchi_cart_data', $cart['merchiCartJson']);
             
-            // Only attempt to patch Merchi cart if we have valid data
-            if ($merchi_cart_json && isset($merchi_cart_json['token']) && isset($merchi_cart_json['id'])) {
-                $merchi_cart_token = $merchi_cart_json['token'];
-                $cart_id = $merchi_cart_json['id'];
+            // Verify the data was stored correctly
+            $stored_data = WC()->session->get('merchi_cart_data');
+            
+            // Force WooCommerce to refresh cart data
+            if (function_exists('wc_clear_notices')) {
+                wc_clear_notices();
+            }
+            // Trigger cart updated action to refresh blocks
+            do_action('woocommerce_cart_updated');
+						error_log('-------------merchi_cart_data: ' . print_r($cart['merchiCartJson'], true));
+        
+        // Check if we have valid merchi cart data
+        $merchi_cart_json = isset($cart['merchiCartJson']) ? $cart['merchiCartJson'] : null;
+        
+        // Only attempt to patch Merchi cart if we have valid data
+        if ($merchi_cart_json && isset($merchi_cart_json['token']) && isset($merchi_cart_json['id'])) {
+            $merchi_cart_token = $merchi_cart_json['token'];
+            $cart_id = $merchi_cart_json['id'];
 
 								$payload = $merchi_cart_json;
 								unset(
@@ -1400,7 +1415,31 @@ function send_id_for_add_cart(){
                         $cart_item_data['selection'][] = $group;
                     }
                 }
+								// $merchi_qty = intval($cartItem['quantity']);
+								// $merchi_total = floatval($cartItem['totalCost']);
+								// error_log('merchi_qty: ' . $merchi_qty);
+								// error_log('merchi_total: ' . $merchi_total);
+
+								// $wc_qty = 1;
+								// $extra_data = array_merge (
+								// 	$cart_item_data,
+								// 	['merchi_total' => $merchi_total ]
+								// );
+								// $cart_item_key = WC()->cart->add_to_cart( $product_id, $wc_qty, 0, array(), $extra_data );
+
+								// $cart_item_data = array_merge(
+    						// 		$cart_item_data,
+								// 		[ 'merchi_total' => floatval( $cartItem['totalCost'] ) ]
+								// );
+								
                 $quantity = $cartItem['quantity'];
+
+								$totalCost = $cartItem['totalCost'];
+								$cart_item_data['merchi_data']['totalCost'] = $totalCost;
+
+								$totalCost = $cartItem['totalCost'];
+								error_log('totalCost: ' . $totalCost);
+
                 $cart_item_key = WC()->cart->find_product_in_cart( WC()->cart->generate_cart_id( $product_id, 0, array(), $cart_item_data ) );
                 $currentCartItem = array();
                 if( $cart_item_key && array_key_exists($cart_item_key, $productsAdded) ) {
@@ -1434,6 +1473,11 @@ function send_id_for_add_cart(){
      						&& isset( $patch_response['data']['cart'] ) ) {
 
     						$merchi_cart = $patch_response['data']['cart'];
+    						
+    						// Update WC session with the latest cart data from PATCH response
+    						if (WC()->session && $merchi_cart) {
+    						    WC()->session->set('merchi_cart_data', $merchi_cart);
+    						}
 						}
 						echo json_encode([
     						'success'    => true,
@@ -1798,7 +1842,7 @@ function cart_count_fragments_wp( $fragments ) {
     return $fragments;
 }
 
-add_action( 'woocommerce_before_calculate_totals', 'bbloomer_alter_price_cart', 9999 );
+add_action( 'woocommerce_before_calculate_totals', 'bbloomer_alter_price_cart', 0 );
  
 function bbloomer_alter_price_cart( $cart ) {
     if ( is_admin() && ! defined( 'DOING_AJAX' ) ) return;
@@ -1823,12 +1867,21 @@ function bbloomer_alter_price_cart( $cart ) {
         }
         
         $product = $cart_item['data'];
-        $quantity = intval($itemData['quantity']);
-        $subtotalCost = floatval($itemData['subtotalCost']);
+				$quantity = max( 1, intval( $itemData['quantity'] ) );
+				$cost = isset( $itemData['totalCost'] ) ? $itemData['totalCost'] : $itemData['subtotalCost'];
+				$unit = floatval( $cost );
+				if ( $unit <= 0 ) continue;
+        // $quantity = intval($itemData['quantity']);
+        // $subtotalCost = floatval($itemData['subtotalCost']);
+				// $totalCost = floatval($itemData['totalCost']);
 
-        if ($quantity > 0) {
-            $cart_item['data']->set_price($subtotalCost / $quantity);
-        }
+        // if ($quantity > 0) {
+				// 	error_log( "cart {$cart_item_key} | qty={$qty} | cost={$cost} | unit={$unit}" );
+        //     $cart_item['data']->set_price($totalCost / $quantity);
+        // }
+				$cart_item['data']->set_price( $unit );
+        $cart_item['data']->set_regular_price( $unit );
+        $cart_item['data']->set_sale_price( '' );
     }
 }
 
@@ -3080,3 +3133,112 @@ add_action('wp_footer', function() {
     </script>
     <?php
 }, 9999);
+
+// add_filter('woocommerce_cart_item_price', 'merchi_custom_price_display', 10, 3);
+
+// function merchi_custom_price_display($price_html, $cart_item, $cart_item_key) {
+// 	if (isset($_COOKIE['cstCartId'])) {
+//         $cart_id = $_COOKIE['cstCartId'];
+//         $option_key = 'get_cart_myItems_'.$cart_id.'_'.$cart_item_key;
+//         $itemData = get_option($option_key);
+        
+//         if ($itemData && isset($itemData['totalCost'])) {
+//         	$result = wc_price( floatval($itemData['totalCost']) );
+//             return $result;
+//         }
+//     } else {
+//     	error_log('No cstCartId cookie found');
+//     }
+//     error_log('Returning original price: ' . $price_html);
+//     return $price_html;
+// }
+
+add_action('init', function () {
+    add_filter('woocommerce_get_cart_contents', 'merchi_modify_cart_contents_for_blocks', 10, 1);
+});
+
+function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
+    static $logged_once = false;
+    
+    if ( !isset($_COOKIE['cstCartId']) ) {
+        $logged_once = true;
+        return $cart_contents;
+    }   
+    $cart_id = $_COOKIE['cstCartId'];
+    
+    foreach ( $cart_contents as $cart_item_key => &$cart_item ) {
+        if (!$logged_once) {
+            
+            // Check for merchi cart data in WooCommerce session
+            $merchi_cart_data = null;
+            if (WC()->session) {
+                $merchi_cart_data = WC()->session->get('merchi_cart_data');
+            }
+        }
+
+        // Try to get the correct total price from merchi cart data
+        $correct_price = null;
+        // get merchi's totalcost data from WooCommerce session
+        if (WC()->session) {
+            $merchi_cart_data = WC()->session->get('merchi_cart_data');
+            if ($merchi_cart_data && isset($merchi_cart_data['totalCost'])) {
+                $total_cost = $merchi_cart_data['totalCost'];
+                // calculate unit price by dividing total cost by quantity
+                $quantity = isset($cart_item['quantity']) ? $cart_item['quantity'] : 1;
+                $correct_price = $total_cost / $quantity;
+            }
+        }
+        
+        // get stored cart item data if wv session is not ok
+        if (!$correct_price) {
+            $option_key = 'get_cart_myItems_'.$cart_id.'_'.$cart_item_key;
+            $itemData = get_option($option_key);
+            if ( $itemData && isset($itemData['totalCost']) ) {
+                $total_cost = $itemData['totalCost'];
+                $quantity = isset($cart_item['quantity']) ? $cart_item['quantity'] : 1;
+                $correct_price = $total_cost / $quantity;
+            } else {
+                if (!$logged_once) {
+                    error_log('No item data found for option key: ' . $option_key);
+                }
+            }
+        }
+        
+        if ($correct_price) {
+            // set the actual price of the product if get the price
+            $cart_item['data']->set_price( floatval($correct_price) );
+            $cart_item['data']->set_regular_price( floatval($correct_price) );
+            $cart_item['data']->set_sale_price( '' );
+        } else {
+            if (!$logged_once) {
+                error_log('No price data found for ' . $cart_item_key);
+            }
+        }
+    }
+    
+    $logged_once = true;
+    return $cart_contents;
+}
+
+// function merchi_store_api_cart_item_data( $cart_item_data, $cart_item, $cart_item_key ) { 
+//     if ( !isset($_COOKIE['cstCartId']) ) {
+//         return $cart_item_data;
+//     }
+    
+//     $cart_id = $_COOKIE['cstCartId'];
+//     $option_key = 'get_cart_myItems_'.$cart_id.'_'.$cart_item_key;
+//     $itemData = get_option($option_key);
+    
+//     if ( $itemData && isset($itemData['totalCost']) ) {       
+//         // Update the price data for Store API
+//         $price_cents = (int) (floatval($itemData['totalCost']) * 100);
+        
+//         if ( isset($cart_item_data['prices']) ) {
+//             $cart_item_data['prices']['price'] = (string) $price_cents;
+//             $cart_item_data['prices']['regular_price'] = (string) $price_cents;
+//             $cart_item_data['prices']['sale_price'] = '';
+//         }
+//     }
+    
+//     return $cart_item_data;
+// }
