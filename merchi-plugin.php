@@ -1185,7 +1185,7 @@ function merchi_build_clean_payload( array $raw ) : array {
  * @return array|WP_Error The response from the Merchi API.
  */
 function patch_merchi_cart($cart_id, $cart_token, $payload) {  
-    // error_log('Cart data: ' . print_r($payload, true));
+    error_log('----Cart data no patch: ' . print_r($payload, true));
     
     // Validate cart token
     if (empty($cart_token)) {

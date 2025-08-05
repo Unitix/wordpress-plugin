@@ -18,7 +18,7 @@ export default function CartItems({ cartItems, onRemove }) {
           </tr>
         </thead>
         <tbody>
-          {cartItems.map((item) => {
+          {cartItems.map((item, idx) => {
             const { product = {} } = item;
             const thumb =
               product.featureImage?.viewUrl ||
@@ -26,6 +26,9 @@ export default function CartItems({ cartItems, onRemove }) {
               'https://woocommerce.com/wp-content/plugins/woocommerce/assets/images/placeholder.png';
             const name = product.name || 'Product';
             const total = item.totalCost ?? 0;
+
+            const wooKey =
+              JSON.parse(localStorage.storeApiCartData || '{}')?.items?.[idx]?.key ?? null;
 
             return (
               <tr key={item.cartUid ?? item.key ?? product.id} className="wc-block-cart-items__row" tabIndex={-1}>
@@ -43,7 +46,7 @@ export default function CartItems({ cartItems, onRemove }) {
                       <button
                         className="wc-block-cart-item__remove-link"
                         aria-label={`Remove ${name} from cart`}
-                        onClick={() => onRemove(item)}
+                        onClick={() => onRemove(item, idx, wooKey)}
                       >
                         Remove item
                       </button>

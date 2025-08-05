@@ -21,13 +21,15 @@ export default function WoocommerceCartForm() {
 
   const apiRoot = getWpApiRoot();
 
-  const findWooKeyBySku = (sku) => {
+  const findWooKeyBySku = (sku, idx) => {
     const store = JSON.parse(localStorage.storeApiCartData || '{}');
+    const byIdx = store.items?.[idx]?.key;
+    if (byIdx) return byIdx;
     return (store.items || []).find((i) => String(i.sku) === String(sku))?.key;
   };
 
-  const handleRemove = useCallback(async (item) => {
-    const wooKey = findWooKeyBySku(item.product?.id);
+  const handleRemove = useCallback(async (item, idx, wooKeyFromRow) => {
+    const wooKey = wooKeyFromRow || findWooKeyBySku(item.product?.id, idx);
     if (!wooKey) {
       console.warn('Missing Woo item key, cannot sync mini-cart');
       return;
@@ -65,9 +67,11 @@ export default function WoocommerceCartForm() {
     const wooCart = await res.json();
     localStorage.storeApiCartData = JSON.stringify(wooCart);
 
-    const updatedItems = cart.cartItems.filter(
-      ci => String(ci.product?.id) !== String(item.product?.id)
-    );
+    // const updatedItems = cart.cartItems.filter(
+    //   ci => String(ci.product?.id) !== String(item.product?.id)
+    // );
+
+    const updatedItems = cart.cartItems.filter((_, i) => i !== idx);
 
     const subtotalCost = updatedItems.reduce(
       (sum, i) =>
