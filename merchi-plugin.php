@@ -1310,9 +1310,8 @@ function send_id_for_add_cart(){
     if (class_exists('WooCommerce')) {
         try {
             $item_count = count( WC()->cart->get_cart() ) ;
-            $cart = $_POST['item'];
-            error_log('---------------Cart data: ' . print_r($cart, true));
-            
+            $cart = $_POST['item']; 
+
             // Clear and store new session data
             WC()->session->__unset('merchi_cart_data');
             WC()->session->set('merchi_cart_data', $cart['merchiCartJson']);
@@ -1404,7 +1403,7 @@ function send_id_for_add_cart(){
                 }else{
                     $product_id = array_search($sku, $products, true);
                 }
-                
+
                 $cart_item_data = array('selection'=>array());
                 // Build the selection array as in the reference
                 if (isset($cartItem['variations'])) {
@@ -1475,22 +1474,14 @@ function send_id_for_add_cart(){
      						&& ! empty( $patch_response['success'] )
      						&& isset( $patch_response['data']['cart'] ) ) {
 
-    						$merchi_cart = $patch_response['data']['cart'];
-								error_log('-----merchi_cart_data: ' . print_r($merchi_cart, true));
-    						
+    						$merchi_cart = $patch_response['data']['cart'];   						
     						// Update WC session with the latest cart data from PATCH response
     						if (WC()->session && $merchi_cart) {
     						    WC()->session->set('merchi_cart_data', $merchi_cart);
-										error_log('-----merchi_cart_data_price: ' . print_r($merchi_cart['cartItems'][0]['totalCost'], true));
-										error_log('-----merchi_cart_data_price: ' . print_r($merchi_cart['cartItems'][1]['totalCost'], true));
-										error_log('-----merchi_cart_data_id: ' . print_r($merchi_cart['cartItems'][0]['id'], true));
     						}
     						
     						// Update stored cart items with Merchi cart item IDs
-    						if (isset($merchi_cart['cartItems']) && is_array($merchi_cart['cartItems'])) {
-    						    error_log("Updating cart items with Merchi cart item IDs. Products added: " . print_r($productsAdded, true));
-    						    error_log("Merchi cart items: " . print_r($merchi_cart['cartItems'], true));
-    						    
+    						if (isset($merchi_cart['cartItems']) && is_array($merchi_cart['cartItems'])) {   						    
     						    // Create a mapping of cart_item_key to merchi_cart_item_id using unique identifiers
     						    $cart_item_mapping = array();
     						    
@@ -1506,7 +1497,7 @@ function send_id_for_add_cart(){
     						                    $product_sku = $wc_product->get_sku();
     						                    $quantity = $stored_data['quantity'];
     						                    
-    						                    // Find matching Merchi cart item by SKU and quantity
+    						                    // Find matching Merchi cart item
     						                    foreach ($merchi_cart['cartItems'] as $merchi_item) {
     						                        if (isset($merchi_item['product']) && isset($merchi_item['product']['id']) && 
     						                            $merchi_item['product']['id'] == $product_sku && 
@@ -1514,7 +1505,6 @@ function send_id_for_add_cart(){
     						                            
     						                            $merchi_cart_item_id = $merchi_item['id'];
     						                            $cart_item_mapping[$cart_item_key] = $merchi_cart_item_id;
-    						                            error_log("Mapping cart item key {$cart_item_key} (SKU: {$product_sku}, Qty: {$quantity}) to Merchi cart item ID {$merchi_cart_item_id}");
     						                            break;
     						                        }
     						                    }
@@ -1538,7 +1528,6 @@ function send_id_for_add_cart(){
     						        if ($stored_data) {
     						            $stored_data['merchi_cart_item_id'] = $merchi_cart_item_id;
     						            update_option($option_key, $stored_data);
-    						            error_log("Updated cart item {$cart_item_key} with Merchi cart item ID: {$merchi_cart_item_id}");
     						        }
     						    }
     						}
@@ -3198,25 +3187,6 @@ add_action('wp_footer', function() {
     <?php
 }, 9999);
 
-// add_filter('woocommerce_cart_item_price', 'merchi_custom_price_display', 10, 3);
-
-// function merchi_custom_price_display($price_html, $cart_item, $cart_item_key) {
-// 	if (isset($_COOKIE['cstCartId'])) {
-//         $cart_id = $_COOKIE['cstCartId'];
-//         $option_key = 'get_cart_myItems_'.$cart_id.'_'.$cart_item_key;
-//         $itemData = get_option($option_key);
-        
-//         if ($itemData && isset($itemData['totalCost'])) {
-//         	$result = wc_price( floatval($itemData['totalCost']) );
-//             return $result;
-//         }
-//     } else {
-//     	error_log('No cstCartId cookie found');
-//     }
-//     error_log('Returning original price: ' . $price_html);
-//     return $price_html;
-// }
-
 add_action('init', function () {
     add_filter('woocommerce_get_cart_contents', 'merchi_modify_cart_contents_for_blocks', 10, 1);
 });
@@ -3241,11 +3211,7 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
     if (WC()->session) {
         $cart_item_mapping = WC()->session->get('cart_item_mapping');
     }
-    
-    if (!$logged_once) {
-        error_log('merchi_modify_cart_contents_for_blocks - Cart item mapping: ' . print_r($cart_item_mapping, true));
-    }
-    
+      
     foreach ( $cart_contents as $cart_item_key => &$cart_item ) {
         $correct_price = null;
         
@@ -3263,15 +3229,9 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
                 if ($cart_item_mapping && isset($cart_item_mapping[$cart_item_key])) {
                     $expected_merchi_id = $cart_item_mapping[$cart_item_key];
                     if ($expected_merchi_id != $merchi_cart_item_id) {
-                        error_log("WARNING: Mismatch for cart item {$cart_item_key}. Expected: {$expected_merchi_id}, Found: {$merchi_cart_item_id}");
                         // Use the expected ID from mapping
                         $merchi_cart_item_id = $expected_merchi_id;
                     }
-                }
-                
-                if (!$logged_once) {
-                    error_log("Looking for Merchi cart item ID: {$merchi_cart_item_id} in cart item {$cart_item_key}");
-                    error_log("Available Merchi cart items: " . print_r($merchi_cart_data['cartItems'], true));
                 }
                 
                 foreach ($merchi_cart_data['cartItems'] as $merchi_item) {
@@ -3286,21 +3246,8 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
                     $quantity = intval($matching_cart_item['quantity']);             
                     if ($quantity > 0) {
                         $correct_price = $total_cost / $quantity;
-                        
-                        if (!$logged_once) {
-                            error_log("merchi_modify_cart_contents_for_blocks - Found match by Merchi cart item ID {$merchi_cart_item_id}: totalCost: {$total_cost}, quantity: {$quantity}, correct_price: {$correct_price}");
-                        }
-                    }
-                } else {
-                    if (!$logged_once) {
-                        error_log("merchi_modify_cart_contents_for_blocks - No matching cart item found for Merchi cart item ID {$merchi_cart_item_id} in merchi_cart_data");
                     }
                 }
-            } else {
-                if (!$logged_once) {
-                    error_log("merchi_modify_cart_contents_for_blocks - No stored Merchi cart item ID found for cart item {$cart_item_key}");
-                }
-            }
         }
         
         // get stored cart item data if merchi session is not ok
@@ -3311,13 +3258,9 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
                 $correct_price = $total_cost / $quantity;
                 
                 if (!$logged_once) {
-                    $merchi_cart_item_id = isset($stored_item_data['merchi_cart_item_id']) ? $stored_item_data['merchi_cart_item_id'] : 'unknown';
-                    error_log("merchi_modify_cart_contents_for_blocks - Using stored item data for {$cart_item_key} (Merchi cart item ID {$merchi_cart_item_id}): totalCost: {$total_cost}, quantity: {$quantity}, correct_price: {$correct_price}");
+                    $merchi_cart_item_id = isset($stored_item_data['merchi_cart_item_id']) ? 
+										$stored_item_data['merchi_cart_item_id'] : 'unknown';
                 }
-            }
-        } else if (!$correct_price) {
-            if (!$logged_once) {
-                error_log('merchi_modify_cart_contents_for_blocks - No stored item data found for ' . $cart_item_key);
             }
         }
         
@@ -3329,12 +3272,10 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
             
             if (!$logged_once) {
                 $merchi_cart_item_id = isset($stored_item_data['merchi_cart_item_id']) ? $stored_item_data['merchi_cart_item_id'] : 'unknown';
-                error_log("merchi_modify_cart_contents_for_blocks - Set price for Merchi cart item ID {$merchi_cart_item_id}: {$correct_price}");
             }
         } else {
             if (!$logged_once) {
                 $merchi_cart_item_id = isset($stored_item_data['merchi_cart_item_id']) ? $stored_item_data['merchi_cart_item_id'] : 'unknown';
-                error_log('merchi_modify_cart_contents_for_blocks - No price data found for Merchi cart item ID ' . $merchi_cart_item_id);
             }
         }
     }
@@ -3342,26 +3283,3 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
     $logged_once = true;
     return $cart_contents;
 }
-
-// function merchi_store_api_cart_item_data( $cart_item_data, $cart_item, $cart_item_key ) { 
-//     if ( !isset($_COOKIE['cstCartId']) ) {
-//         return $cart_item_data;
-//     }
-    
-//     $cart_id = $_COOKIE['cstCartId'];
-//     $option_key = 'get_cart_myItems_'.$cart_id.'_'.$cart_item_key;
-//     $itemData = get_option($option_key);
-    
-//     if ( $itemData && isset($itemData['totalCost']) ) {       
-//         // Update the price data for Store API
-//         $price_cents = (int) (floatval($itemData['totalCost']) * 100);
-        
-//         if ( isset($cart_item_data['prices']) ) {
-//             $cart_item_data['prices']['price'] = (string) $price_cents;
-//             $cart_item_data['prices']['regular_price'] = (string) $price_cents;
-//             $cart_item_data['prices']['sale_price'] = '';
-//         }
-//     }
-    
-//     return $cart_item_data;
-// }
