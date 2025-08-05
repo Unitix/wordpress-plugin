@@ -3211,7 +3211,7 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
     if (WC()->session) {
         $cart_item_mapping = WC()->session->get('cart_item_mapping');
     }
-      
+       
     foreach ( $cart_contents as $cart_item_key => &$cart_item ) {
         $correct_price = null;
         
@@ -3229,7 +3229,6 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
                 if ($cart_item_mapping && isset($cart_item_mapping[$cart_item_key])) {
                     $expected_merchi_id = $cart_item_mapping[$cart_item_key];
                     if ($expected_merchi_id != $merchi_cart_item_id) {
-                        // Use the expected ID from mapping
                         $merchi_cart_item_id = $expected_merchi_id;
                     }
                 }
@@ -3248,6 +3247,7 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
                         $correct_price = $total_cost / $quantity;
                     }
                 }
+            }
         }
         
         // get stored cart item data if merchi session is not ok
@@ -3255,11 +3255,9 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
             $total_cost = floatval($stored_item_data['totalCost']);
             $quantity = intval($stored_item_data['quantity']);
             if ($quantity > 0) {
-                $correct_price = $total_cost / $quantity;
-                
+                $correct_price = $total_cost / $quantity;               
                 if (!$logged_once) {
-                    $merchi_cart_item_id = isset($stored_item_data['merchi_cart_item_id']) ? 
-										$stored_item_data['merchi_cart_item_id'] : 'unknown';
+                    $merchi_cart_item_id = isset($stored_item_data['merchi_cart_item_id']) ? $stored_item_data['merchi_cart_item_id'] : 'unknown';
                 }
             }
         }
@@ -3279,7 +3277,6 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
             }
         }
     }
-    
     $logged_once = true;
     return $cart_contents;
 }
