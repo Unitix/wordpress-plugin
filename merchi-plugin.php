@@ -1672,7 +1672,7 @@ function merchi_sync_session_after_remove( $removed_cart_item_key, $cart_item ) 
 
     $woo_items       = array_values( $cart->get_cart() );
     $merchi_items    = array_values( $merchi_cart['cartItems'] );
-    $new_merchi_list = [];
+    $new_merchi      = [];
 
     foreach ( $woo_items as $w ) {
 
@@ -1701,7 +1701,7 @@ function merchi_sync_session_after_remove( $removed_cart_item_key, $cart_item ) 
     }
 }
 
-    $merchi_cart['cartItems'] = $new_merchi_list;
+    $merchi_cart['cartItems'] = $new_merchi;
     WC()->session->set( 'merchi_cart_data', $merchi_cart );
 }
 
@@ -3267,6 +3267,10 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
     // if (WC()->session) {
     //     $cart_item_mapping = WC()->session->get('cart_item_mapping');
     // }
+
+		if ( empty($merchi_cart_data['cartItems']) || ! is_array($merchi_cart_data['cartItems']) ) {
+        return $cart_contents;                   
+    }
 
 		$m_items = array_values( $merchi_cart_data['cartItems'] );
 		usort( $m_items, fn( $a, $b ) => ($a['id'] ?? 0) <=> ($b['id'] ?? 0) );
