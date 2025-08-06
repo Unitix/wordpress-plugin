@@ -1674,6 +1674,8 @@ function merchi_sync_session_after_remove( $removed_cart_item_key, $cart_item ) 
     $merchi_items    = array_values( $merchi_cart['cartItems'] );
     $new_merchi      = [];
 
+		$used_idx       = []; 
+
     foreach ( $woo_items as $w ) {
 
     $woo_sku  = $w['data']->get_sku();
