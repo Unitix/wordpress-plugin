@@ -1,8 +1,6 @@
 // Wait for both jQuery and Merchi SDK to be ready
 import { MERCHI_SDK } from './merchi_sdk';
-import { getCookieByName } from './utils';
 import { initializeCheckout } from './merchi_checkout_init';
-import { fixStoreApiCartData } from './components/CartFix';
 
 function initializeWhenReady() {
   const merchiSdk = MERCHI_SDK();
@@ -1330,7 +1328,6 @@ function initializeWhenReady() {
               console.log('[Merchi] merchicart', response.merchiCart);
               localStorage.setItem('MerchiCart', JSON.stringify(response.merchiCart));
             }
-            // fixStoreApiCartData();
             // Set a flag in sessionStorage to show the success message after reload
             sessionStorage.setItem('merchiCartSuccess', '1');
             // Reload the page and scroll to top

@@ -10,6 +10,7 @@ import { MERCHI_API_URL, MERCHI_SDK } from '../merchi_sdk';
 import 'react-phone-input-2/lib/style.css';
 import { ensureWooNonce, fetchWooNonce, updateWooNonce, getCountryFromBrowser, toIso, cleanShipmentGroups } from '../utils';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
+import { mergeCartProducts } from '../utils';
 
 async function createClient(MERCHI, clientJson, cartJson) {
   return new Promise((resolve, reject) => {
@@ -133,7 +134,11 @@ const WoocommerceCheckoutForm = () => {
       const _cartJson = MERCHI.toJson(cartEnt);
 
       const cleanedCartJson = cleanShipmentGroups(_cartJson);
-      setCart(cleanedCartJson);
+      // setCart(cleanedCartJson);
+
+      const merged = mergeCartProducts(cleanedCartJson, cart);
+      setCart(merged);
+      localStorage.setItem('MerchiCart', JSON.stringify(merged));
       await getShippingGroup();
     } catch (error) {
       console.error('Error updating cart:', error);

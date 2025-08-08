@@ -261,3 +261,43 @@ export function sanitizeCart(raw) {
 
   return cleaned;
 }
+
+export function ciKey(ci) {
+  const id = ci?.product?.id ?? ci?.productID ?? ci?.product;
+  const vg = JSON.stringify(
+    (ci?.variationsGroups || []).map(g =>
+      (g.variations || []).map(v => [
+        v?.variationField?.id ?? v?.variationField?.name ?? v?.variationField?.label ?? '',
+        v?.value ?? ''
+      ])
+    )
+  );
+  return `${id}::${vg}`;
+}
+
+export function mergeCartProducts(nextCart, prevCart) {
+  if (!prevCart?.cartItems?.length || !nextCart?.cartItems?.length) return nextCart;
+
+  const bucket = new Map();
+  prevCart.cartItems.forEach(oldCI => {
+    const k = ciKey(oldCI);
+    if (!bucket.has(k)) bucket.set(k, []);
+    bucket.get(k).push(oldCI);
+  });
+
+  const mergedItems = nextCart.cartItems.map(newCI => {
+    const k = ciKey(newCI);
+    const arr = bucket.get(k);
+    const oldCI = arr && arr.length ? arr.shift() : null;
+    if (!oldCI) return newCI;
+
+    const p = newCI.product;
+    const onlyId = (typeof p === 'number') || (p && Object.keys(p).length === 1 && 'id' in p);
+
+    return onlyId
+      ? { ...newCI, product: oldCI.product }
+      : { ...newCI, product: { ...oldCI.product, ...p } };
+  });
+
+  return { ...nextCart, cartItems: mergedItems };
+}

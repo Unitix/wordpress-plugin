@@ -67,10 +67,6 @@ export default function WoocommerceCartForm() {
     const wooCart = await res.json();
     localStorage.storeApiCartData = JSON.stringify(wooCart);
 
-    // const updatedItems = cart.cartItems.filter(
-    //   ci => String(ci.product?.id) !== String(item.product?.id)
-    // );
-
     const updatedItems = cart.cartItems.filter((_, i) => i !== idx);
 
     const subtotalCost = updatedItems.reduce(
@@ -89,11 +85,18 @@ export default function WoocommerceCartForm() {
         (i.totalCost !== undefined ? i.totalCost : (i.subtotalCost ?? i.cost ?? 0) * (i.quantity ?? 1)),
       0
     );
+
+    const taxAmount = Math.max(0, totalCost - subtotalCost);
+
     const updatedCart = {
       ...cart,
       cartItems: updatedItems,
       cartItemsSubtotalCost: subtotalCost,
       cartItemsTotalCost: totalCost,
+      cartItemsTaxAmount: taxAmount,
+      subtotalCost,
+      taxAmount,
+      totalCost,
     };
 
     localStorage.setItem('MerchiCart', JSON.stringify(updatedCart));
