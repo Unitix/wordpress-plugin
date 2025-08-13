@@ -1728,6 +1728,98 @@ function wc_cart_item_quantity( $product_quantity, $cart_item_key, $cart_item ){
 
 }
 
+function merchi_get_selected_value($field_key, $wanted_option_id = null, $group_hint = null) {
+	$field_key = (string) $field_key;
+	$wanted    = $wanted_option_id !== null ? (string) $wanted_option_id : null;
+
+	$groups = [];
+	if (is_array($group_hint) && !empty($group_hint['variations']) && is_array($group_hint['variations'])) {
+		$groups[] = $group_hint;
+	} else {
+		if (!WC()->session) {
+			return null;
+		}
+		$sess = WC()->session->get('merchi_cart_data');
+		if (!$sess) {
+			return null;
+		}
+
+		if (is_string($sess)) {
+			$tmp = json_decode($sess, true);
+			if (json_last_error() === JSON_ERROR_NONE) {
+				$sess = $tmp;
+			}
+		} elseif (is_object($sess)) {
+			$sess = json_decode(json_encode($sess), true);
+		}
+
+		$cart  = $sess['data']['cart'] ?? ($sess['cart'] ?? $sess);
+		$items = (!empty($cart['cartItems']) && is_array($cart['cartItems'])) ? $cart['cartItems'] : [];
+
+		foreach ($items as $it) {
+			if (isset($it['item']) && is_array($it['item'])) {
+				$it = $it['item'];
+			}
+			if (!empty($it['variationsGroups']) && is_array($it['variationsGroups'])) {
+				foreach ($it['variationsGroups'] as $g) {
+					if (is_array($g)) {
+						$groups[] = $g;
+					}
+				}
+			}
+		}
+		if (!$groups) {
+			return null;
+		}
+	}
+
+	// find specific field in target group
+	foreach ($groups as $group) {
+		foreach (($group['variations'] ?? []) as $var) {
+			$vf  = $var['variationField'] ?? [];
+			$vid = isset($vf['id'])   ? (string)$vf['id']   : null;
+			$vnm = isset($vf['name']) ? (string)$vf['name'] : null;
+			if ($vid !== $field_key && $vnm !== $field_key) {
+				continue;
+			}
+
+			// get value from selectedOptions
+			if (!empty($var['selectedOptions']) && is_array($var['selectedOptions'])) {
+				$vals = [];
+				foreach ($var['selectedOptions'] as $so) {
+					if ($wanted !== null && isset($so['optionId']) && (string)$so['optionId'] !== $wanted) {
+						continue;
+					}
+					if (isset($so['value']) && $so['value'] !== '') {
+						$vals[] = (string) $so['value'];
+					}
+				}
+				if ($vals) {
+					return implode(', ', array_values(array_unique($vals)));
+				}
+			}
+
+			// get value from selectableOptions by matching optionId
+			$raw = isset($var['value']) ? (string)$var['value'] : '';
+			if ($raw !== '') {
+				foreach (($var['selectableOptions'] ?? []) as $opt) {
+					if ((string)($opt['optionId'] ?? '') === $raw && isset($opt['value'])) {
+						return (string)$opt['value'];
+					}
+				}
+				foreach (($vf['options'] ?? []) as $opt) {
+					if ((string)($opt['id'] ?? '') === $raw && isset($opt['value'])) {
+						return (string)$opt['value'];
+					}
+				}
+			}
+			return null;
+		}
+	}
+	return null;
+}
+
+add_filter( 'woocommerce_get_item_data', 'filter_woocommerce_get_item_data', 99, 2 );
 function filter_woocommerce_get_item_data( $cart_data, $cart_item = null ) {
     if ( !$cart_item ) {
         return $cart_data;
@@ -1796,6 +1888,13 @@ function filter_woocommerce_get_item_data( $cart_data, $cart_item = null ) {
                     // Field-specific option label mapping
                     $field_id = $field_label_str;
                     $field_options = isset($field_option_label_map[$field_id]) ? $field_option_label_map[$field_id] : array();
+
+										// use merchi selectedOptions value first
+										$selected_text = merchi_get_selected_value((string)$field_label_str, null, $group);
+										if ($selected_text !== null && $selected_text !== '') {
+											$cart_data[] = array('name' => $label, 'value' => esc_html($selected_text), 'display' => '');
+											continue;
+										}
 
                     // --- Look for sibling variationFiles for this field ---
                     $variationFiles = null;
