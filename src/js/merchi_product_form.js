@@ -955,8 +955,18 @@ function initializeWhenReady() {
             value = null;
           }
         } else if ($input.is('input[type="radio"]')) {
-          const $checked = $fieldContainer.find('input[type="radio"]:checked');
-          value = $checked.length ? $checked.val() : null;
+          // Check if this specific field container has colour-select inputs
+          const $fieldContainer = $input.closest('.custom-field');
+          const $colourSelectInputs = $fieldContainer.find('input[data-field-type="colour-select"]');
+          if ($colourSelectInputs.length > 0) {
+            // This is a colour-select field
+            const $checked = $fieldContainer.find('input[data-field-type="colour-select"]:checked');
+            value = $checked.length ? $checked.val() : null;
+          } else {
+            // Handle regular radio fields
+            const $checked = $fieldContainer.find('input[type="radio"]:checked');
+            value = $checked.length ? $checked.val() : null;
+          }
         } else if ($input.is('input[type="color"]')) {
           value = $input.val();
         } else if ($input.is('input[type="file"]')) {
@@ -1043,8 +1053,18 @@ function initializeWhenReady() {
                 value = null;
               }
             } else if ($input.is('input[type="radio"]')) {
-              const $checked = $group.find('input[type="radio"]:checked');
-              value = $checked.length ? $checked.val() : null;
+              // Check if this specific field container has colour-select inputs
+              const $fieldContainer = $input.closest('.custom-field');
+              const $colourSelectInputs = $fieldContainer.find('input[data-field-type="colour-select"]');
+              if ($colourSelectInputs.length > 0) {
+                // This is a colour-select field
+                const $checked = $fieldContainer.find('input[data-field-type="colour-select"]:checked');
+                value = $checked.length ? $checked.val() : null;
+              } else {
+                // This is a regular radio field
+                const $checked = $fieldContainer.find('input[type="radio"]:checked');
+                value = $checked.length ? $checked.val() : null;
+              }
             } else if ($input.is('input[type="color"]')) {
               value = $input.val();
             } else if ($input.is('input[type="file"]')) {

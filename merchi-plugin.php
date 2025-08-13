@@ -1303,7 +1303,7 @@ function patch_merchi_cart($cart_id, $cart_token, $payload) {
         );
     }
 }
-  
+
 function send_id_for_add_cart(){
     if (class_exists('WooCommerce')) {
         try {
