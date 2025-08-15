@@ -32,9 +32,9 @@ export default function CartTotals({ cart }) {
   }
 
   let finalTotal = displayTotal;
-  if (cart.shipmentTotalCost && cart.shipmentTotalCost > 0) {
-    finalTotal -= cart.shipmentTotalCost;
-  }
+  // if (cart.shipmentTotalCost && cart.shipmentTotalCost > 0) {
+  //   finalTotal -= cart.shipmentTotalCost;
+  // }
 
   const totalFmt = finalTotal.toFixed(2);
   const discountFmt = displayDiscount.toFixed(2);
