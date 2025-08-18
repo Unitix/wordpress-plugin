@@ -130,7 +130,7 @@ const WoocommerceCheckoutForm = () => {
     };
     try {
       // the patch with selectedQuote is sent only after the user picks one
-      const cartEnt = await patchCart(cartJson, null, { includeShippingFields: true });
+      const cartEnt = await patchCart(cartJson, undefined, { includeShippingFields: true });
       const _cartJson = MERCHI.toJson(cartEnt);
 
       const cleanedCartJson = cleanShipmentGroups(_cartJson);
@@ -258,11 +258,13 @@ const WoocommerceCheckoutForm = () => {
             },
             orderNote: getValues('order_notes') || ''
           }));
+          // persist to localStorage using the patched cart json
+          localStorage.setItem('MerchiCart', JSON.stringify(responseJson));
         })
         .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
-      // Update localStorage with the patched cart data
-      const fullCart = MERCHI.toJson(response)
-      localStorage.setItem('MerchiCart', JSON.stringify(fullCart));
+      // // Update localStorage with the patched cart data
+      // const fullCart = MERCHI.toJson(response)
+      // localStorage.setItem('MerchiCart', JSON.stringify(fullCart));
 
       const merchi_api_url = MERCHI_API_URL();
       const response = await fetch(`${merchi_api_url}v6/stripe/payment_intent/cart/${cartEnt.id()}/?cart_token=${cartEnt.token()}`);

@@ -791,7 +791,7 @@ function enqueue_my_public_script()
 	wp_enqueue_script('custom-public-script', plugins_url('/dist/js/merchi_public_custom.js', __FILE__), array('jquery', 'merchi-init-frontend'), rand(0,1000), true);
 	
 	// Only load cart/checkout script on relevant pages
-	if (is_cart() || is_checkout() || is_wc_endpoint_url('order-received')) {
+	if (is_cart() || is_checkout() || is_wc_endpoint_url('order-received') || is_page('thankyou')) {
 		wp_enqueue_script('custom-checkout-script', plugins_url('/dist/js/woocommerce_cart_checkout.js', __FILE__), array('merchi-init-frontend'), '1.0', true);
 	}
 	
