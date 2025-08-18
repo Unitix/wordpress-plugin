@@ -824,6 +824,7 @@ function enqueue_my_public_script()
 		'cartUrl' => wc_get_cart_url(),
 		'checkoutUrl' => wc_get_checkout_url(),
 		'shopUrl' => wc_get_page_permalink('shop'),
+        'thankyouUrl' => wc_get_page_permalink('thankyou'),
 	);
 	
 	wp_localize_script('custom-public-script', 'scriptData', $script_data);

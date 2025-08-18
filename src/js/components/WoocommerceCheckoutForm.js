@@ -332,7 +332,15 @@ const WoocommerceCheckoutForm = () => {
       const cartJsonrefetched = await completeResponse.json();
 
       // Handle successful payment
-      window.location.href = window.location.origin + '/thankyou?merchi_value=' + orderInfo.cart.totalCost + '&invoice_id=' + cartJsonrefetched.invoice.id + '&email=' + orderInfo.client.emailAddresses[0].emailAddress;
+      // window.location.href = window.location.origin + '/thankyou?merchi_value=' + orderInfo.cart.totalCost + '&invoice_id=' + cartJsonrefetched.invoice.id + '&email=' + orderInfo.client.emailAddresses[0].emailAddress;
+      window.location.href = (
+        window.scriptData?.checkoutUrl
+          ? window.scriptData.checkoutUrl.replace(/\/checkout\/?$/, '/thankyou')
+          : (window.location.origin + window.location.pathname).replace(/\/checkout\/?$/, '/thankyou')
+      ) +
+        '?merchi_value=' + orderInfo.cart.totalCost +
+        '&invoice_id=' + cartJsonrefetched.invoice.id +
+        '&email=' + orderInfo.client.emailAddresses[0].emailAddress;
 
       //parameters merchi value, invoice id, email
     } catch (error) {

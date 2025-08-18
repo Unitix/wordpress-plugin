@@ -15,7 +15,10 @@ const PaymentForm = ({ onPaymentSuccess, onPaymentError, onBack }) => {
   const [errorMessage, setErrorMessage] = useState('');
 
 
-  const orderConfirmationUrl = `${window.location.origin}/thankyou`;
+  // const orderConfirmationUrl = `${window.location.origin}/thankyou`;
+  const orderConfirmationUrl = window.scriptData?.checkoutUrl
+    ? window.scriptData.checkoutUrl.replace(/\/checkout\/?$/, '/thankyou')
+    : `${window.location.origin}/thankyou`;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
