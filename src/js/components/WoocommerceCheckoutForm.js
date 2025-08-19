@@ -8,7 +8,7 @@ import StripePaymentForm from './StripePaymentForm';
 import { patchCart } from '../merchi_public_custom';
 import { MERCHI_API_URL, MERCHI_SDK } from '../merchi_sdk';
 import 'react-phone-input-2/lib/style.css';
-import { ensureWooNonce, fetchWooNonce, updateWooNonce, getCountryFromBrowser, toIso, cleanShipmentGroups } from '../utils';
+import { ensureWooNonce, fetchWooNonce, updateWooNonce, getCountryFromBrowser, toIso, cleanShipmentGroups, getWpApiRoot } from '../utils';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { mergeCartProducts } from '../utils';
 
@@ -295,12 +295,17 @@ const WoocommerceCheckoutForm = () => {
       // clear the minicart
       async function clearWooCart() {
         const nonce = await ensureWooNonce();
+        const apiRoot = getWpApiRoot();
 
         const doClear = (n) =>
-          fetch('/wp-json/wc/store/v1/cart/items', {
+          fetch(`${apiRoot}wc/store/v1/cart/items`, {
             method: 'DELETE',
             credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json', Nonce: n },
+            headers: {
+              'Content-Type': 'application/json',
+              'X-WC-Store-API-Nonce': n,
+              'Nonce': n,
+            },
           });
 
         let res = await doClear(nonce);
