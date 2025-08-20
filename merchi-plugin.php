@@ -1159,7 +1159,34 @@ function generateRandomString($length = 10) {
 add_action('wp_ajax_send_id_for_add_cart', 'send_id_for_add_cart');
 add_action('wp_ajax_nopriv_send_id_for_add_cart', 'send_id_for_add_cart');
 
-function merchi_build_clean_payload( array $raw ) : array {
+/**
+ * Clean a single cart item payload for API requests.
+ * @param array $item The cart item data to clean.
+ * @return array The cleaned cart item payload.
+ */
+function merchi_build_clean_cart_item_payload( array $item ) : array {
+    return [
+        'id'        => $item['id']  ?? null,
+        'product'   => [ 'id' => $item['productID'] ?? $item['product']['id'] ],
+        'quantity'  => (int) $item['quantity'],
+        'totalCost' => (float) $item['totalCost'],
+        'variationsGroups' => array_map( function ( $g ) {
+            return [
+                'quantity'   => (int) ( $g['quantity'] ?? 0 ),
+                'variations' => array_map( function ( $v ) {
+                    return [
+                        'variationField' => isset( $v['variationField']['id'] )
+                            ? [ 'id' => $v['variationField']['id'] ]
+                            : null,
+                        'value'          => $v['value'] ?? null,
+                    ];
+                }, $g['variations'] ?? [] ),
+            ];
+        }, $item['variationsGroups'] ?? [] ),
+    ];
+}
+
+function merchi_build_clean_cart_payload( array $raw ) : array {
     $clean = [
         'id'        => $raw['id'],
         'domain'    => [ 'id' => $raw['domain']['id'] ],
@@ -1167,26 +1194,7 @@ function merchi_build_clean_payload( array $raw ) : array {
     ];
 
     foreach ( $raw['cartItems'] as $item ) {
-        $cleanItem = [
-            'id'        => $item['id']  ?? null,
-            'product'   => [ 'id' => $item['productID'] ?? $item['product']['id'] ],
-            'quantity'  => (int) $item['quantity'],
-            'totalCost' => (float) $item['totalCost'],
-            'variationsGroups' => array_map( function ( $g ) {
-                return [
-                    'quantity'   => (int) ( $g['quantity'] ?? 0 ),
-                    'variations' => array_map( function ( $v ) {
-                        return [
-                            'variationField' => isset( $v['variationField']['id'] )
-                                ? [ 'id' => $v['variationField']['id'] ]
-                                : null,
-                            'value'          => $v['value'] ?? null,
-                        ];
-                    }, $g['variations'] ?? [] ),
-                ];
-            }, $item['variationsGroups'] ?? [] ),
-        ];
-        $clean['cartItems'][] = $cleanItem;
+        $clean['cartItems'][] = merchi_build_clean_cart_item_payload( $item );
     }
 
     return $clean;
@@ -1199,7 +1207,7 @@ function merchi_build_clean_payload( array $raw ) : array {
  * @param array $payload The data to PATCH to the cart.
  * @return array|WP_Error The response from the Merchi API.
  */
-function patch_merchi_cart($cart_id, $cart_token, $payload) {     
+function merchi_cart_patch($cart_id, $cart_token, $payload) {     
     // Validate cart token
     if (empty($cart_token)) {
         error_log('Merchi PATCH skipped: cart_token not found');
@@ -1209,7 +1217,7 @@ function patch_merchi_cart($cart_id, $cart_token, $payload) {
         );
     }
     
-     $cart_embed = [
+    $cart_embed = [
         'cartItems' => [
             'product' => (object)[
             'domain' => (object)[
@@ -1319,6 +1327,160 @@ function patch_merchi_cart($cart_id, $cart_token, $payload) {
     }
 }
 
+/**
+ * @param array $cart_item The cart item data to be posted.
+ * @param string $cart_token The Merchi cart token.
+ * @return array The response from the Merchi API.
+ */
+function merchi_cart_item_post($cart_item, $cart_token) {
+    // Validate parameters
+    if (empty($cart_item)) {
+        error_log('Merchi POST skipped: cart_item not provided or invalid');
+        return array(
+            'success' => false,
+            'error' => 'Cart item data is required for POST request'
+        );
+    }
+    
+    if (empty($cart_token)) {
+        error_log('Merchi POST skipped: cart_token not provided');
+        return array(
+            'success' => false,
+            'error' => 'Cart token is required for POST request'
+        );
+    }
+    
+    // Build the API URL
+    $api_url = MERCHI_URL . 'v6/cart_items/?cart_token=' . urlencode($cart_token);
+    
+    error_log('Merchi POST request to: ' . $api_url);
+    error_log('Merchi POST cart item data: ' . json_encode($cart_item));
+    
+    $response = wp_remote_request(
+        $api_url,
+        array(
+            'method' => 'POST',
+            'headers' => array(
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json'
+            ),
+            'body' => json_encode($cart_item),
+            'timeout' => 30
+        )
+    );
+    
+    if (is_wp_error($response)) {
+        error_log('Merchi POST error: ' . $response->get_error_message());
+        return array(
+            'success' => false,
+            'error' => $response->get_error_message()
+        );
+    }
+    
+    $response_code = wp_remote_retrieve_response_code($response);
+    $response_body = wp_remote_retrieve_body($response);
+    $response_data = json_decode($response_body, true);
+    
+    error_log('Merchi POST response code: ' . $response_code);
+    error_log('Merchi POST response body: ' . $response_body);
+    
+    // Check for successful creation (typically 200, 201, or 202)
+    if ($response_code >= 200 && $response_code < 300 && (!isset($response_data['errorCode']) || $response_data['errorCode'] === 0)) {
+        error_log('Merchi POST successful for cart item');
+        return array(
+            'success' => true,
+            'message' => 'Cart item created successfully',
+            'data' => $response_data,
+            'response_code' => $response_code
+        );
+    } else {
+        $error_message = isset($response_data['message']) ? $response_data['message'] : 'Unknown error';
+        error_log('Merchi POST failed with code: ' . $response_code);
+        return array(
+            'success' => false,
+            'error' => 'API request failed: ' . $error_message,
+            'response_code' => $response_code,
+            'details' => $response_data
+        );
+    }
+}
+
+/**
+ * Send a DELETE request to the Merchi API to remove a cart item.
+ * @param string $cart_item_id The Merchi cart item ID.
+ * @param string $cart_token The Merchi cart token.
+ * @return array The response from the Merchi API.
+ */
+function merchi_cart_item_delete($cart_item_id, $cart_token) {
+    // Validate parameters
+    if (empty($cart_item_id)) {
+        error_log('Merchi DELETE skipped: cart_item_id not provided');
+        return array(
+            'success' => false,
+            'error' => 'Cart item ID is required for DELETE request'
+        );
+    }
+    
+    if (empty($cart_token)) {
+        error_log('Merchi DELETE skipped: cart_token not provided');
+        return array(
+            'success' => false,
+            'error' => 'Cart token is required for DELETE request'
+        );
+    }
+    
+    // Build the API URL
+    $api_url = MERCHI_URL . 'v6/cart_items/' . urlencode($cart_item_id) . '/?cart_token=' . urlencode($cart_token);
+    
+    error_log('Merchi DELETE request to: ' . $api_url);
+    
+    $response = wp_remote_request(
+        $api_url,
+        array(
+            'method' => 'DELETE',
+            'headers' => array(
+                'Accept' => 'application/json'
+            ),
+            'timeout' => 30
+        )
+    );
+    
+    if (is_wp_error($response)) {
+        error_log('Merchi DELETE error: ' . $response->get_error_message());
+        return array(
+            'success' => false,
+            'error' => $response->get_error_message()
+        );
+    }
+    
+    $response_code = wp_remote_retrieve_response_code($response);
+    $response_body = wp_remote_retrieve_body($response);
+    
+    error_log('Merchi DELETE response code: ' . $response_code);
+    error_log('Merchi DELETE response body: ' . $response_body);
+    
+    // Check for successful deletion (typically 200, 202, or 204)
+    if ($response_code >= 200 && $response_code < 300) {
+        error_log('Merchi DELETE successful for cart item: ' . $cart_item_id);
+        return array(
+            'success' => true,
+            'message' => 'Cart item deleted successfully',
+            'response_code' => $response_code,
+            'response_body' => $response_body
+        );
+    } else {
+        $response_data = json_decode($response_body, true);
+        $error_message = isset($response_data['message']) ? $response_data['message'] : 'Unknown error';
+        error_log('Merchi DELETE failed with code: ' . $response_code);
+        return array(
+            'success' => false,
+            'error' => 'API request failed: ' . $error_message,
+            'response_code' => $response_code,
+            'details' => $response_data
+        );
+    }
+}
+
 function send_id_for_add_cart(){
     if (class_exists('WooCommerce')) {
         try {
@@ -1343,9 +1505,9 @@ function send_id_for_add_cart(){
             $merchi_cart_token = $merchi_cart_json['token'];
             $cart_id = $merchi_cart_json['id'];
 						
-								$payload = merchi_build_clean_payload( $merchi_cart_json );
+				$payload = merchi_build_clean_cart_payload( $merchi_cart_json );
                 
-                $patch_response = patch_merchi_cart(
+                $patch_response = merchi_cart_patch(
                     $cart_id,
                     $merchi_cart_token,
                     $payload
@@ -1615,54 +1777,6 @@ function cst_cart_item_after_remove() {
     error_log('=== Merchi Cart Item Removal Process Completed ===');
     exit;
 }
-
-// function my_custom_remove_cart_item_action( $removed_cart_item_key, $cart_item ) {
-//     // Prevent recursive calls
-//     static $is_processing = false;
-//     if ($is_processing) {
-//         return;
-//     }
-//     $is_processing = true;
-
-//     try {
-//         // Get the cart item data from the cart
-//         $cart = WC()->cart;
-//         if (!$cart) {
-//             return;
-//         }
-
-//         // Remove the item from WooCommerce cart (if not already removed)
-//         if ($cart->get_cart_item($removed_cart_item_key)) {
-//             $cart->remove_cart_item($removed_cart_item_key);
-//         }
-        
-//         // Get the cart ID from cookie
-//         if (isset($_COOKIE['cstCartId'])) {
-//             $cart_id = $_COOKIE['cstCartId'];
-            
-//             // Remove the item data from WordPress options
-//             $option_key = 'get_cart_myItems_'.$cart_id.'_'.$removed_cart_item_key;
-//             delete_option($option_key);
-            
-//             // Refresh cart session and totals
-//             $cart->set_session();
-//             $cart->calculate_totals();
-            
-//             // Get remaining cart items count
-//             $remaining_items = $cart->get_cart_contents_count();
-            
-//             // If this was the last item, clear the cart cookies
-//             if ($remaining_items <= 0) {
-//                 //setcookie('cart-'.MERCHI_DOMAIN, "", time() - 3600, "/");
-//                 setcookie("cstCartId", "", time() - 3600, "/");
-//             }
-//         }
-//     } catch (Exception $e) {
-//         error_log('Error in cart item removal: ' . $e->getMessage());
-//     } finally {
-//         $is_processing = false;
-//     }
-// }
 
 function merchi_norm( $str ) {
     return strtolower( trim( (string) $str ) );
@@ -2626,7 +2740,7 @@ function my_submenu_page_callback() {
     
     echo '<h1>Submenu Page</h1>';
     
-	  echo '<button class="clickme" type="button">Click Me!</button>';
+	echo '<button class="clickme" type="button">Click Me!</button>';
 	
 }
 
