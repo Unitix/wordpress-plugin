@@ -815,6 +815,19 @@ function enqueue_my_public_script()
 	// 	$stripeSecret = $resp->stripeClientSecret;
 	// }
 
+    $cart_contents = [];
+    foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) {
+        $_product = $cart_item['data'];
+        $cart_contents[] = [
+            'key'         => $cart_item_key,
+            'product_id'  => $cart_item['product_id'],
+            'quantity'    => $cart_item['quantity'],
+            'price'       => $_product->get_price(),
+            'name'        => $_product->get_name(),
+            'merchi_cart_item_id' => $cart_item['merchi_cart_item_id']
+        ];
+    }
+
 	// Localize scriptData for all scripts that need it
 	$script_data = array(
 		'merchi_mode' => MERCHI_MODE,
@@ -825,6 +838,7 @@ function enqueue_my_public_script()
 		'checkoutUrl' => wc_get_checkout_url(),
 		'shopUrl' => wc_get_page_permalink('shop'),
         'thankyouUrl' => wc_get_page_permalink('thankyou'),
+        'wooCartData' => $cart_contents,
 	);
 	
 	wp_localize_script('custom-public-script', 'scriptData', $script_data);
@@ -1400,6 +1414,7 @@ function send_id_for_add_cart(){
                 }
 
                 $cart_item_data = array('selection'=>array());
+                $cart_item_data['merchi_cart_item_id'] = $cart_id;
                 // Build the selection array as in the reference
                 if (isset($cartItem['variations'])) {
                     foreach ($cartItem['variations'] as $i => $variationGroup) {

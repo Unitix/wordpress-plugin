@@ -4,6 +4,17 @@ import VariationGroupsDisplay from './VariationGroupsDisplay'
 export default function CartItems({ cartItems, onRemove }) {
   if (!cartItems?.length) return null;
 
+  const getWooKey = (item, idx) => {
+    const list = (window.scriptData && (window.scriptData.wooCartDat || window.scriptData.wooCartData)) || [];
+    const merchiId = item?.id || item?.merchi_cart_item_id;
+    if (merchiId != null) {
+      const found = list.find((row) => String(row.merchi_cart_item_id) === String(merchiId));
+      if (found && found.key) return found.key;
+    }
+    if (typeof idx === 'number' && list[idx] && list[idx].key) return list[idx].key;
+    return null;
+  };
+
   return (
     <div className="wc-block-components-main wc-block-cart__main wp-block-woocommerce-cart-items-block">
       <table className="wc-block-cart-items wp-block-woocommerce-cart-line-items-block" tabIndex="-1">
@@ -27,8 +38,7 @@ export default function CartItems({ cartItems, onRemove }) {
             const name = product.name || 'Product';
             const total = item.totalCost ?? 0;
 
-            const wooKey =
-              JSON.parse(localStorage.storeApiCartData || '{}')?.items?.[idx]?.key ?? null;
+            const wooKey = getWooKey(item, idx);
 
             return (
               <tr key={item.cartUid ?? item.key ?? product.id} className="wc-block-cart-items__row" tabIndex={-1}>

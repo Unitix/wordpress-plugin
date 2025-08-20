@@ -21,19 +21,36 @@ export default function WoocommerceCartForm() {
 
   const apiRoot = getWpApiRoot();
 
-  const findWooKeyBySku = (sku, idx) => {
-    const store = JSON.parse(localStorage.storeApiCartData || '{}');
-    const byIdx = store.items?.[idx]?.key;
-    if (byIdx) return byIdx;
-    return (store.items || []).find((i) => String(i.sku) === String(sku))?.key;
+  const getWooCartList = () => {
+    const sd = window.scriptData || {};
+    return sd.wooCartDat || sd.wooCartData || [];
   };
 
+  const findWooKey = (item) => {
+    const list = getWooCartList();
+    const merchiId = item?.merchi_cart_item_id;
+    if (merchiId != null) {
+      const found = list.find((row) => String(row.merchi_cart_item_id) === String(merchiId));
+      if (found && found.key) return found.key;
+    }
+    return undefined;
+  };
+
+  console.log('-----WoocommerceCartForm------');
+  console.log('scriptData', window.scriptData.wooCartData);
+
   const handleRemove = useCallback(async (item, idx, wooKeyFromRow) => {
-    const wooKey = wooKeyFromRow || findWooKeyBySku(item.product?.id, idx);
+    console.log('-----handleRemove------');
+    console.log('item', item);
+    console.log('idx', idx);
+    console.log('wooKeyFromRow', wooKeyFromRow);
+    const wooKey = wooKeyFromRow || findWooKey(item);
+    console.log('wooKey', wooKey);
     if (!wooKey) {
       console.warn('Missing Woo item key, cannot sync mini-cart');
       return;
     }
+    console.log('we have wooKey, start removing');
 
     // get current valid nonce
     const nonce = await ensureWooNonce();

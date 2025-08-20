@@ -139,6 +139,14 @@ export function getWpApiRoot() {
   if (window.wpApiSettings?.root) return wpApiSettings.root;
   const link = document.querySelector('link[rel="https://api.w.org/"]')?.href;
   if (link) return link.endsWith('/') ? link : link + '/';
+
+  const path = window.location.pathname;
+  const segments = path.split('/').filter(Boolean);
+
+  if (segments.length > 0 && segments[0] !== 'wp-json') {
+    return `/${segments[0]}/wp-json/`;
+  }
+
   return '/wp-json/';
 }
 
