@@ -434,9 +434,6 @@ export async function initOrSyncCart() {
 // perhaps within jQuery(document).ready or after MERCHI SDK is confirmed loaded):
 
 jQuery(document).ready(function ($) {
-  $(document.body).on('click', '[data-cart_item_key]', function (e) {
-    console.log('clicked');
-  });
   // Add a flag to track if initOrSyncCart has been called
   if (window.initOrSyncCartCalled) {
     return;
