@@ -262,10 +262,6 @@ export async function patchCartDiscountItems(cartJson, discountItems = [], embed
 
 // All PATCH requests should now be handled by the backend via send_id_for_add_cart.
 
-function setCookie(name, value, days) {
-  COOKIE_MANAGER.setCookie(name, value, days);
-}
-
 async function createCart() {
   const domainId = scriptData.merchi_domain;
   const domain = new MERCHI.Domain().id(domainId);
@@ -474,180 +470,180 @@ function showSuccessMessage() {
   }, 5000);
 }
 
-// document.addEventListener("click", function (event) {
-//   var target = event.target;
-//   const $button = jQuery('.product-button-add-to-cart');
-//   // the observer is used to watch the cart button for a state change on the
-//   // disabled attr. We need this because if we mutate the DOM element while
-//   // react is in the middle of a state change, the page will crash.
-//   const observer = new MutationObserver((mutationsList) => {
-//     for (const mutation of mutationsList) {
-//       if (mutation.type === 'attributes' && mutation.attributeName === 'disabled') {
-//         // Check if 'disabled' attribute has been removed
-//         const isDisabled = mutation.target.hasAttribute('disabled');
-//         // When the disabled attr is removed from the button this means that react
-//         // has finished with the element; it's now save to use jQuery to change the button
-//         if (!isDisabled) {
-//           $button.text('Loading...');
-//           $button.prop('disabled', true);
-//         }
-//       }
-//     }
-//   });
+document.addEventListener("click", function (event) {
+  var target = event.target;
+  const $button = jQuery('.product-button-add-to-cart');
+  // the observer is used to watch the cart button for a state change on the
+  // disabled attr. We need this because if we mutate the DOM element while
+  // react is in the middle of a state change, the page will crash.
+  const observer = new MutationObserver((mutationsList) => {
+    for (const mutation of mutationsList) {
+      if (mutation.type === 'attributes' && mutation.attributeName === 'disabled') {
+        // Check if 'disabled' attribute has been removed
+        const isDisabled = mutation.target.hasAttribute('disabled');
+        // When the disabled attr is removed from the button this means that react
+        // has finished with the element; it's now save to use jQuery to change the button
+        if (!isDisabled) {
+          $button.text('Loading...');
+          $button.prop('disabled', true);
+        }
+      }
+    }
+  });
 
-//   if (target?.classList?.contains("product-button-add-to-cart")) {
-//     // Ensure target is a valid DOM node before observing
-//     if (target instanceof Element) {
-//       try {
-//         observer.observe(target, { attributes: true });
-//       } catch (error) {
-//         console.warn('Failed to observe target element:', error);
-//         return;
-//       }
-//     } else {
-//       console.warn('Target element is not a valid DOM node');
-//       return;
-//     }
-//     try {
-//       setTimeout(function () {
-//         // Check if the current page is a single product page
-//         // Retrieve the cart cookie to get cart details
-//         const cookie = getCookieByName("cart-" + scriptData.merchi_domain);
-//         // Parse the cart cookie value
-//         const cookieValueArray = cookie.split(",");
-//         const id = cookieValueArray[0].trim();
-//         const token = cookieValueArray[1].trim();
-//         // Create a new Cart instance and fetch the cart details
-//         const cartEnt = new MERCHI.Cart().id(id).token(token);
-//         cartEnt.get(
-//           (cart) => {
-//             // Update local storage with cart details
-//             localStorageUpdateCartEnt(cart);
-//             const cartJson = new MERCHI.toJson(cart);
-//             console.log(cartJson);
-//             var cartPayload = {};
-//             cartPayload["cartId"] = cartJson.id;
-//             cartPayload["taxAmount"] = cartJson.taxAmount;
-//             cartPayload["cartItems"] = {};
-//             // Process each cart item of response
-//             cartJson.cartItems.forEach(function (item, itemIndex) {
-//               cartPayload["cartItems"][itemIndex] = {
-//                 productID: item.product.id,
-//                 quantity: item.quantity,
-//                 subTotal: item.subtotalCost,
-//                 totalCost: item.totalCost,
-//               };
-//               var obj = {};
-//               var objExtras = {};
-//               var count = 0;
-//               // Process item variations groups if present
-//               if (
-//                 Array.isArray(item.variationsGroups) &&
-//                 item.variationsGroups.length > 0
-//               ) {
-//                 item.variationsGroups.forEach(function (group, gi) {
-//                   cartPayload["cartItems"][itemIndex]["variations"] = [];
-//                   cartPayload["cartItems"][itemIndex]["objExtras"] = [];
-//                   obj[count] = {};
-//                   objExtras[count] = {};
-//                   var loopcount = 0;
-//                   var varQuant = false;
-//                   group.variations.forEach(function (variation, vi) {
-//                     if (variation.selectedOptions.length) {
-//                       obj[count][vi] = variation.selectedOptions[0].value;
-//                     } else if (variation.hasOwnProperty("value")) {
-//                       obj[count][vi] = variation.value;
-//                     }
-//                     varQuant = variation.quantity;
-//                     loopcount = vi + 1;
-//                   });
-//                   objExtras[count][loopcount] = varQuant;
-//                   objExtras[count]["quantity"] = varQuant;
-//                   count++;
-//                   cartPayload["cartItems"][itemIndex]["variations"].push(obj);
-//                   cartPayload["cartItems"][itemIndex]["objExtras"].push(
-//                     objExtras
-//                   );
-//                 });
-//               }
-//               // Process item variations if present
-//               if (
-//                 Array.isArray(item.variations) &&
-//                 item.variations.length > 0
-//               ) {
-//                 cartPayload["cartItems"][itemIndex]["variations"] = [];
-//                 cartPayload["cartItems"][itemIndex]["objExtras"] = [];
-//                 obj[count] = {};
-//                 objExtras[count] = {};
-//                 var loopcount = 0;
-//                 var varQuant = false;
-//                 item.variations.forEach(function (variation, vi) {
-//                   if (variation.selectedOptions.length) {
-//                     obj[count][vi] = variation.selectedOptions[0].value;
-//                   } else if (variation.hasOwnProperty("value")) {
-//                     obj[count][vi] = variation.value;
-//                   }
-//                   varQuant = variation.quantity;
-//                   loopcount = vi + 1;
-//                 });
-//                 objExtras[count][loopcount] = varQuant;
-//                 objExtras[count]["quantity"] = varQuant;
-//                 cartPayload["cartItems"][itemIndex]["variations"].push(obj);
-//                 cartPayload["cartItems"][itemIndex]["objExtras"].push(
-//                   objExtras
-//                 );
-//               }
-//             });
-//             // Check if the cart has items
-//             if (
-//               cartJson.hasOwnProperty("cartItems") &&
-//               Array.isArray(cartJson.cartItems) &&
-//               cartJson.cartItems.length !== 0
-//             ) {
-//               // Send cart data to the server using AJAX
-//               jQuery.ajax({
-//                 method: "POST",
-//                 url: frontendajax.ajaxurl,
-//                 data: {
-//                   action: "send_id_for_add_cart",
-//                   item: cartPayload,
-//                 },
-//                 success: function (response) {
-//                   // Show success message
-//                   showSuccessMessage();
-//                   // On success, restore the original button state
-//                   target.parentElement.classList.remove(
-//                     "cst-disabled-btn-parent"
-//                   );
-//                   target.style.display = "block";
-//                   // Trigger a refresh of the cart fragments
-//                   jQuery(document.body).trigger("wc_fragment_refresh");
-//                 },
-//                 error: function (error) {
-//                   alert("Something went wrong, Please try again later");
-//                 },
-//               });
-//             } else {
-//               // If the cart is empty, restore the button state
-//               target.parentElement.classList.remove(
-//                 "cst-disabled-btn-parent"
-//               );
-//               target.style.display = "block";
-//               target.innerHTML = "Add To Cart";
-//             }
-//           },
-//           (error) => {
-//             console.log(error);
-//             return null;
-//           },
-//           cartEmbed
-//         );
-//       }, 500);
-//     } catch (e) {
-//       console.error(e);
-//     }
-//   }
-// });
+  if (target?.classList?.contains("product-button-add-to-cart")) {
+    // Ensure target is a valid DOM node before observing
+    if (target instanceof Element) {
+      try {
+        observer.observe(target, { attributes: true });
+      } catch (error) {
+        console.warn('Failed to observe target element:', error);
+        return;
+      }
+    } else {
+      console.warn('Target element is not a valid DOM node');
+      return;
+    }
+    try {
+      setTimeout(function () {
+        // Check if the current page is a single product page
+        // Retrieve the cart cookie to get cart details
+        const cookie = getCookieByName("cart-" + scriptData.merchi_domain);
+        // Parse the cart cookie value
+        const cookieValueArray = cookie.split(",");
+        const id = cookieValueArray[0].trim();
+        const token = cookieValueArray[1].trim();
+        // Create a new Cart instance and fetch the cart details
+        const cartEnt = new MERCHI.Cart().id(id).token(token);
+        cartEnt.get(
+          (cart) => {
+            // Update local storage with cart details
+            localStorageUpdateCartEnt(cart);
+            const cartJson = new MERCHI.toJson(cart);
+            console.log(cartJson);
+            var cartPayload = {};
+            cartPayload["cartId"] = cartJson.id;
+            cartPayload["taxAmount"] = cartJson.taxAmount;
+            cartPayload["cartItems"] = {};
+            // Process each cart item of response
+            cartJson.cartItems.forEach(function (item, itemIndex) {
+              cartPayload["cartItems"][itemIndex] = {
+                productID: item.product.id,
+                quantity: item.quantity,
+                subTotal: item.subtotalCost,
+                totalCost: item.totalCost,
+              };
+              var obj = {};
+              var objExtras = {};
+              var count = 0;
+              // Process item variations groups if present
+              if (
+                Array.isArray(item.variationsGroups) &&
+                item.variationsGroups.length > 0
+              ) {
+                item.variationsGroups.forEach(function (group, gi) {
+                  cartPayload["cartItems"][itemIndex]["variations"] = [];
+                  cartPayload["cartItems"][itemIndex]["objExtras"] = [];
+                  obj[count] = {};
+                  objExtras[count] = {};
+                  var loopcount = 0;
+                  var varQuant = false;
+                  group.variations.forEach(function (variation, vi) {
+                    if (variation.selectedOptions.length) {
+                      obj[count][vi] = variation.selectedOptions[0].value;
+                    } else if (variation.hasOwnProperty("value")) {
+                      obj[count][vi] = variation.value;
+                    }
+                    varQuant = variation.quantity;
+                    loopcount = vi + 1;
+                  });
+                  objExtras[count][loopcount] = varQuant;
+                  objExtras[count]["quantity"] = varQuant;
+                  count++;
+                  cartPayload["cartItems"][itemIndex]["variations"].push(obj);
+                  cartPayload["cartItems"][itemIndex]["objExtras"].push(
+                    objExtras
+                  );
+                });
+              }
+              // Process item variations if present
+              if (
+                Array.isArray(item.variations) &&
+                item.variations.length > 0
+              ) {
+                cartPayload["cartItems"][itemIndex]["variations"] = [];
+                cartPayload["cartItems"][itemIndex]["objExtras"] = [];
+                obj[count] = {};
+                objExtras[count] = {};
+                var loopcount = 0;
+                var varQuant = false;
+                item.variations.forEach(function (variation, vi) {
+                  if (variation.selectedOptions.length) {
+                    obj[count][vi] = variation.selectedOptions[0].value;
+                  } else if (variation.hasOwnProperty("value")) {
+                    obj[count][vi] = variation.value;
+                  }
+                  varQuant = variation.quantity;
+                  loopcount = vi + 1;
+                });
+                objExtras[count][loopcount] = varQuant;
+                objExtras[count]["quantity"] = varQuant;
+                cartPayload["cartItems"][itemIndex]["variations"].push(obj);
+                cartPayload["cartItems"][itemIndex]["objExtras"].push(
+                  objExtras
+                );
+              }
+            });
+            // Check if the cart has items
+            if (
+              cartJson.hasOwnProperty("cartItems") &&
+              Array.isArray(cartJson.cartItems) &&
+              cartJson.cartItems.length !== 0
+            ) {
+              // Send cart data to the server using AJAX
+              jQuery.ajax({
+                method: "POST",
+                url: frontendajax.ajaxurl,
+                data: {
+                  action: "send_id_for_add_cart",
+                  item: cartPayload,
+                },
+                success: function (response) {
+                  // Show success message
+                  showSuccessMessage();
+                  // On success, restore the original button state
+                  target.parentElement.classList.remove(
+                    "cst-disabled-btn-parent"
+                  );
+                  target.style.display = "block";
+                  // Trigger a refresh of the cart fragments
+                  jQuery(document.body).trigger("wc_fragment_refresh");
+                },
+                error: function (error) {
+                  alert("Something went wrong, Please try again later");
+                },
+              });
+            } else {
+              // If the cart is empty, restore the button state
+              target.parentElement.classList.remove(
+                "cst-disabled-btn-parent"
+              );
+              target.style.display = "block";
+              target.innerHTML = "Add To Cart";
+            }
+          },
+          (error) => {
+            console.log(error);
+            return null;
+          },
+          cartEmbed
+        );
+      }, 500);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+});
 
 // Function to handle cart item removal
 async function handleCartItemRemoval(cartItemKey) {

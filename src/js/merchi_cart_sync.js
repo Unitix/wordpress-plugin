@@ -2,6 +2,33 @@
 
 const PATCH_DISABLED = false;
 
+export async function syncWooLocalStorageCart(merchiCartJson) {
+  const cartLocalKey = 'storeApiCartData';
+
+  // Check if another cart operation is in progress
+  const localCartJsonStirng = localStorage.getItem(cartLocalKey);
+  let localCartJson;
+  try {
+    localCartJson = JSON.parse(localCartJsonStirng);
+  } catch (e) {
+    console.error(e);
+  }
+
+  if (localCartJson.totals) {
+    localCartJson.totals.total_items = merchiCartJson.cartItemsSubtotalCost;
+    localCartJson.totals.total_items_tax = merchiCartJson.cartItemsTaxAmount;
+    localCartJson.totals.total_price = merchiCartJson.totalCost;
+    localCartJson.totals.total_tax = merchiCartJson.taxAmount;
+    localCartJson.totals.total_shipping = merchiCartJson.shipmentTotalCost;
+    localCartJson.totals.total_shipping_tax = merchiCartJson.shipmentTaxAmount;
+  }
+  console.log(merchiCartJson);
+  localStorage.setItem(cartLocalKey, JSON.stringify(localCartJson));
+  // merchiCartJson.items.forEach(function (merchiCartItem, index) {
+
+  // });
+}
+
 // SKU Filtering && clear cart Logic
 async function reconcileMerchiWithStore({ items }) {
   if (!Array.isArray(items)) return;
