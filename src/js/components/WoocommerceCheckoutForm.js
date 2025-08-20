@@ -8,11 +8,9 @@ import StripePaymentForm from './StripePaymentForm';
 import { patchCart } from '../merchi_public_custom';
 import { MERCHI_API_URL, MERCHI_SDK } from '../merchi_sdk';
 import 'react-phone-input-2/lib/style.css';
-import { getCart } from '../merchi_public_custom';
-import { ensureWooNonce, fetchWooNonce, updateWooNonce } from '../utils';
+import { ensureWooNonce, fetchWooNonce, updateWooNonce, getCountryFromBrowser, toIso, cleanShipmentGroups, getWpApiRoot } from '../utils';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
-import { getCountryFromBrowser, toIso } from '../utils';
-import { cleanShipmentGroups } from '../utils';
+import { mergeCartProducts } from '../utils';
 
 async function createClient(MERCHI, clientJson, cartJson) {
   return new Promise((resolve, reject) => {
@@ -59,24 +57,6 @@ const WoocommerceCheckoutForm = () => {
   // save localCart to orderInfo before doing patch cart
   const [cart, setCart] = useState(localCart);
 
-  useEffect(() => {
-    if (!localCart.id) return;
-    (async () => {
-      try {
-        const ent = await getCart(localCart.id, localCart.token);
-
-        const full = cleanShipmentGroups(MERCHI.toJson(ent));
-
-        // const full = MERCHI.toJson(ent);
-        setCart(full);
-        localStorage.setItem('MerchiCart', JSON.stringify(full));
-        setShipmentGroups(full.shipmentGroups || []);
-      } catch (err) {
-        console.warn('[Checkout] init patch error', err);
-      }
-    })();
-  }, []);
-
   const { domain = {} } = cart;
   const { country = 'AU' } = domain;
   const [orderInfo, setOrderInfo] = useState({ cart, client: null, receiverAddress: null });
@@ -107,6 +87,7 @@ const WoocommerceCheckoutForm = () => {
     // Handle form submission here
   };
 
+
   const [shipmentGroups, setShipmentGroups] = useState([]);
   const [shipmentOptionsLoading, setShipmentOptionsLoading] = useState(false);
   const [isUpdatingShipping, setIsUpdatingShipping] = useState(false);
@@ -125,9 +106,7 @@ const WoocommerceCheckoutForm = () => {
           requestOptions
         );
         const { shipmentGroups } = await response.json();
-        // setShipmentGroups(shipmentGroups);
         setShipmentGroups(shipmentGroups.filter((g) => g.cartItems?.length));
-
         return;
       } catch (error) {
         setShipmentGroups([]);
@@ -140,6 +119,10 @@ const WoocommerceCheckoutForm = () => {
     setShipmentOptionsLoading(true);
     const c = toIso(country);
     const s = toIso(state);
+
+    // keep the original cartItems
+    const originalCartItems = cart.cartItems || [];
+
     const cartJson = {
       ...cart,
       receiverAddress: { ...cart.receiverAddress, country: c, state: s },
@@ -147,10 +130,15 @@ const WoocommerceCheckoutForm = () => {
     };
     try {
       // the patch with selectedQuote is sent only after the user picks one
-      const cartEnt = await patchCart(cartJson, null, { includeShippingFields: false });
+      const cartEnt = await patchCart(cartJson, undefined, { includeShippingFields: true });
       const _cartJson = MERCHI.toJson(cartEnt);
-      setCart(cleanShipmentGroups(_cartJson));
-      // setCart(_cartJson);
+
+      const cleanedCartJson = cleanShipmentGroups(_cartJson);
+      // setCart(cleanedCartJson);
+
+      const merged = mergeCartProducts(cleanedCartJson, cart);
+      setCart(merged);
+      localStorage.setItem('MerchiCart', JSON.stringify(merged));
       await getShippingGroup();
     } catch (error) {
       console.error('Error updating cart:', error);
@@ -270,10 +258,13 @@ const WoocommerceCheckoutForm = () => {
             },
             orderNote: getValues('order_notes') || ''
           }));
+          // persist to localStorage using the patched cart json
+          localStorage.setItem('MerchiCart', JSON.stringify(responseJson));
         })
         .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
-      // Update localStorage with the patched cart data
-      localStorage.setItem('MerchiCart', JSON.stringify(MERCHI.toJson(cartEnt)));
+      // // Update localStorage with the patched cart data
+      // const fullCart = MERCHI.toJson(response)
+      // localStorage.setItem('MerchiCart', JSON.stringify(fullCart));
 
       const merchi_api_url = MERCHI_API_URL();
       const response = await fetch(`${merchi_api_url}v6/stripe/payment_intent/cart/${cartEnt.id()}/?cart_token=${cartEnt.token()}`);
@@ -304,12 +295,17 @@ const WoocommerceCheckoutForm = () => {
       // clear the minicart
       async function clearWooCart() {
         const nonce = await ensureWooNonce();
+        const apiRoot = getWpApiRoot();
 
         const doClear = (n) =>
-          fetch('/wp-json/wc/store/v1/cart/items', {
+          fetch(`${apiRoot}wc/store/v1/cart/items`, {
             method: 'DELETE',
             credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json', Nonce: n },
+            headers: {
+              'Content-Type': 'application/json',
+              'X-WC-Store-API-Nonce': n,
+              'Nonce': n,
+            },
           });
 
         let res = await doClear(nonce);
@@ -341,7 +337,15 @@ const WoocommerceCheckoutForm = () => {
       const cartJsonrefetched = await completeResponse.json();
 
       // Handle successful payment
-      window.location.href = window.location.origin + '/thankyou?merchi_value=' + orderInfo.cart.totalCost + '&invoice_id=' + cartJsonrefetched.invoice.id + '&email=' + orderInfo.client.emailAddresses[0].emailAddress;
+      // window.location.href = window.location.origin + '/thankyou?merchi_value=' + orderInfo.cart.totalCost + '&invoice_id=' + cartJsonrefetched.invoice.id + '&email=' + orderInfo.client.emailAddresses[0].emailAddress;
+      window.location.href = (
+        window.scriptData?.checkoutUrl
+          ? window.scriptData.checkoutUrl.replace(/\/checkout\/?$/, '/thankyou')
+          : (window.location.origin + window.location.pathname).replace(/\/checkout\/?$/, '/thankyou')
+      ) +
+        '?merchi_value=' + orderInfo.cart.totalCost +
+        '&invoice_id=' + cartJsonrefetched.invoice.id +
+        '&email=' + orderInfo.client.emailAddresses[0].emailAddress;
 
       //parameters merchi value, invoice id, email
     } catch (error) {

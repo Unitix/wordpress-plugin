@@ -791,7 +791,7 @@ function enqueue_my_public_script()
 	wp_enqueue_script('custom-public-script', plugins_url('/dist/js/merchi_public_custom.js', __FILE__), array('jquery', 'merchi-init-frontend'), rand(0,1000), true);
 	
 	// Only load cart/checkout script on relevant pages
-	if (is_cart() || is_checkout() || is_wc_endpoint_url('order-received')) {
+	if (is_cart() || is_checkout() || is_wc_endpoint_url('order-received') || is_page('thankyou')) {
 		wp_enqueue_script('custom-checkout-script', plugins_url('/dist/js/woocommerce_cart_checkout.js', __FILE__), array('merchi-init-frontend'), '1.0', true);
 	}
 	
@@ -815,6 +815,19 @@ function enqueue_my_public_script()
 	// 	$stripeSecret = $resp->stripeClientSecret;
 	// }
 
+    $cart_contents = [];
+    foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) {
+        $_product = $cart_item['data'];
+        $cart_contents[] = [
+            'key'         => $cart_item_key,
+            'product_id'  => $cart_item['product_id'],
+            'quantity'    => $cart_item['quantity'],
+            'price'       => $_product->get_price(),
+            'name'        => $_product->get_name(),
+            'merchi_cart_item_id' => $cart_item['merchi_cart_item_id']
+        ];
+    }
+
 	// Localize scriptData for all scripts that need it
 	$script_data = array(
 		'merchi_mode' => MERCHI_MODE,
@@ -823,6 +836,9 @@ function enqueue_my_public_script()
 		'merchi_stripe_api_key' => MERCHI_STRIPE_API_KEY,
 		'cartUrl' => wc_get_cart_url(),
 		'checkoutUrl' => wc_get_checkout_url(),
+		'shopUrl' => wc_get_page_permalink('shop'),
+        'thankyouUrl' => wc_get_page_permalink('thankyou'),
+        'wooCartData' => $cart_contents,
 	);
 	
 	wp_localize_script('custom-public-script', 'scriptData', $script_data);
@@ -1143,6 +1159,39 @@ function generateRandomString($length = 10) {
 add_action('wp_ajax_send_id_for_add_cart', 'send_id_for_add_cart');
 add_action('wp_ajax_nopriv_send_id_for_add_cart', 'send_id_for_add_cart');
 
+function merchi_build_clean_payload( array $raw ) : array {
+    $clean = [
+        'id'        => $raw['id'],
+        'domain'    => [ 'id' => $raw['domain']['id'] ],
+        'cartItems' => [],
+    ];
+
+    foreach ( $raw['cartItems'] as $item ) {
+        $cleanItem = [
+            'id'        => $item['id']  ?? null,
+            'product'   => [ 'id' => $item['productID'] ?? $item['product']['id'] ],
+            'quantity'  => (int) $item['quantity'],
+            'totalCost' => (float) $item['totalCost'],
+            'variationsGroups' => array_map( function ( $g ) {
+                return [
+                    'quantity'   => (int) ( $g['quantity'] ?? 0 ),
+                    'variations' => array_map( function ( $v ) {
+                        return [
+                            'variationField' => isset( $v['variationField']['id'] )
+                                ? [ 'id' => $v['variationField']['id'] ]
+                                : null,
+                            'value'          => $v['value'] ?? null,
+                        ];
+                    }, $g['variations'] ?? [] ),
+                ];
+            }, $item['variationsGroups'] ?? [] ),
+        ];
+        $clean['cartItems'][] = $cleanItem;
+    }
+
+    return $clean;
+}
+
 /**
  * Send a PATCH request to the Merchi API to update a cart.
  * @param string $cart_id The Merchi cart ID.
@@ -1150,11 +1199,7 @@ add_action('wp_ajax_nopriv_send_id_for_add_cart', 'send_id_for_add_cart');
  * @param array $payload The data to PATCH to the cart.
  * @return array|WP_Error The response from the Merchi API.
  */
-function patch_merchi_cart($cart_id, $cart_token, $payload) {
-    error_log('Merchi Patch Cart:' . $cart_id . ' ' . $cart_token);
-    
-    // error_log('Cart data: ' . print_r($payload, true));
-    
+function patch_merchi_cart($cart_id, $cart_token, $payload) {     
     // Validate cart token
     if (empty($cart_token)) {
         error_log('Merchi PATCH skipped: cart_token not found');
@@ -1164,8 +1209,74 @@ function patch_merchi_cart($cart_id, $cart_token, $payload) {
         );
     }
     
+     $cart_embed = [
+        'cartItems' => [
+            'product' => (object)[
+            'domain' => (object)[
+                'company' => (object)[
+                    'defaultTaxType' => (object)[],
+                    'taxTypes'       => (object)[]
+                ]
+            ],
+            'featureImage'              => (object)[],  
+            'groupVariationFields'      => (object)[   
+                'options' => (object)[ 'linkedFile' => (object)[] ]
+            ],
+            'images'                    => (object)[],  
+            'independentVariationFields'=> (object)[  
+                'options' => (object)[ 'linkedFile' => (object)[] ]
+            ],
+            'taxType'                   => (object)[]
+        ],
+            'taxType'          => (object)[],
+            'variations'       => (object)[     // variationsEmbed
+                'selectedOptions' => (object)[],
+                'variationField'  => (object)[  // optionsEmbed
+                    'options' => (object)[ 'linkedFile' => (object)[] ],
+                    'variationCostDiscountGroup'  => (object)[],
+                    'variationUnitCostDiscountGroup' => (object)[]
+                ],
+                'variationFiles' => (object)[]
+            ],
+            'variationsGroups' => (object)[     // variationsGroupsEmbed
+                'variations' => (object)[
+                    'selectedOptions' => (object)[],
+                    'variationField'  => (object)[
+                        'options' => (object)[ 'linkedFile' => (object)[] ],
+                        'variationCostDiscountGroup'  => (object)[],
+                        'variationUnitCostDiscountGroup' => (object)[]
+                    ],
+                    'variationFiles' => (object)[]
+                ]
+            ],
+        ],
+        'client'        => [ 'emailAddresses' => (object)[], 'profilePicture' => (object)[] ],
+        'clientCompany' => (object)[],
+        'domain'        => [
+            'company' => [
+                'defaultTaxType'         => (object)[],
+                'isStripeAccountEnabled' => (object)[],
+                'taxTypes'               => (object)[],
+            ],
+        ],
+        'invoice'         => (object)[],
+        'receiverAddress' => (object)[],
+        'shipmentGroups'  => [
+            'cartItems'    => [ 'product' => (object)[] ],
+            'quotes'       => [ 'shipmentMethod' => [ 'originAddress' => (object)[], 'taxType' => (object)[] ] ],
+            'selectedQuote'=> [ 'shipmentMethod' => [ 'originAddress' => (object)[], 'taxType' => (object)[] ] ],
+        ],
+        'discountItems'   => (object)[],
+    ];
+    // Convert embed to JSON and URL encode
+    $embed_json = json_encode($cart_embed);
+    $embed_encoded = urlencode($embed_json);
+    
+    // Build the URL with embed parameter
+    $api_url = MERCHI_URL . 'v6/carts/' . $cart_id . '/?cart_token=' . $cart_token . '&embed=' . $embed_encoded;
+    
     $response = wp_remote_request(
-        MERCHI_URL . 'v6/carts/' . $cart_id . '/?cart_token=' . $cart_token,
+        $api_url,
         array(
             'method' => 'PATCH',
             'headers' => array(
@@ -1212,21 +1323,32 @@ function send_id_for_add_cart(){
     if (class_exists('WooCommerce')) {
         try {
             $item_count = count( WC()->cart->get_cart() ) ;
-            $cart = $_POST['item'];
-            error_log('Cart data: ' . print_r($cart, true));
-            
-            // Check if we have valid merchi cart data
-            $merchi_cart_json = isset($cart['merchiCartJson']) ? $cart['merchiCartJson'] : null;
-            
-            // Only attempt to patch Merchi cart if we have valid data
-            if ($merchi_cart_json && isset($merchi_cart_json['token']) && isset($merchi_cart_json['id'])) {
-                $merchi_cart_token = $merchi_cart_json['token'];
-                $cart_id = $merchi_cart_json['id'];
+            $cart = $_POST['item']; 
+
+            // Clear and store new session data
+            WC()->session->__unset('merchi_cart_data');
+            WC()->session->set('merchi_cart_data', $cart['merchiCartJson']);
+                        
+            if (function_exists('wc_clear_notices')) {
+                wc_clear_notices();
+            }
+            // Trigger cart updated action to refresh blocks
+            do_action('woocommerce_cart_updated');
+        
+        // Check if we have valid merchi cart data
+        $merchi_cart_json = isset($cart['merchiCartJson']) ? $cart['merchiCartJson'] : null;
+        
+        // Only attempt to patch Merchi cart if we have valid data
+        if ($merchi_cart_json && isset($merchi_cart_json['token']) && isset($merchi_cart_json['id'])) {
+            $merchi_cart_token = $merchi_cart_json['token'];
+            $cart_id = $merchi_cart_json['id'];
+						
+								$payload = merchi_build_clean_payload( $merchi_cart_json );
                 
                 $patch_response = patch_merchi_cart(
                     $cart_id,
                     $merchi_cart_token,
-                    $merchi_cart_json
+                    $payload
                 );
                 // Optionally, handle/log the response or errors
                 if (is_wp_error($patch_response)) {
@@ -1290,8 +1412,9 @@ function send_id_for_add_cart(){
                 }else{
                     $product_id = array_search($sku, $products, true);
                 }
-                
+
                 $cart_item_data = array('selection'=>array());
+                $cart_item_data['merchi_cart_item_id'] = $cart_id;
                 // Build the selection array as in the reference
                 if (isset($cartItem['variations'])) {
                     foreach ($cartItem['variations'] as $i => $variationGroup) {
@@ -1326,8 +1449,9 @@ function send_id_for_add_cart(){
                         }
                         $cart_item_data['selection'][] = $group;
                     }
-                }
+                }							
                 $quantity = $cartItem['quantity'];
+
                 $cart_item_key = WC()->cart->find_product_in_cart( WC()->cart->generate_cart_id( $product_id, 0, array(), $cart_item_data ) );
                 $currentCartItem = array();
                 if( $cart_item_key && array_key_exists($cart_item_key, $productsAdded) ) {
@@ -1352,9 +1476,24 @@ function send_id_for_add_cart(){
                 $currentCartItem['taxAmount'] = $taxAmount;
                 update_option("get_cart_myItems_".$cart_id."_".$cart_item_key, $currentCartItem);
                 $productsAdded[] = $cart_item_key;
-            }
+            }				
+						$merchi_cart = null;
 
-            echo json_encode(array('success' => true));
+						if ( is_array( $patch_response )
+     						&& ! empty( $patch_response['success'] )
+     						&& isset( $patch_response['data']['cart'] ) ) {
+
+    						$merchi_cart = $patch_response['data']['cart'];   						
+    						// Update WC session with the latest cart data from PATCH response
+    						if (WC()->session && $merchi_cart) {
+    						    WC()->session->set('merchi_cart_data', $merchi_cart);
+    						}
+						}
+						echo json_encode([
+    						'success'    => true,
+    						'merchiCart' => $merchi_cart
+						]);
+						wp_die();
         } catch(Exception $e) {
             error_log('Error in send_id_for_add_cart: ' . $e->getMessage());
             echo json_encode(array('success' => false, 'error' => $e->getMessage()));
@@ -1446,54 +1585,246 @@ function cst_cart_item_after_remove() {
     exit;
 }
 
-function my_custom_remove_cart_item_action( $removed_cart_item_key, $cart_item ) {
-    // Prevent recursive calls
-    static $is_processing = false;
-    if ($is_processing) {
-        return;
-    }
-    $is_processing = true;
+// function my_custom_remove_cart_item_action( $removed_cart_item_key, $cart_item ) {
+//     // Prevent recursive calls
+//     static $is_processing = false;
+//     if ($is_processing) {
+//         return;
+//     }
+//     $is_processing = true;
 
-    try {
-        // Get the cart item data from the cart
-        $cart = WC()->cart;
-        if (!$cart) {
-            return;
-        }
+//     try {
+//         // Get the cart item data from the cart
+//         $cart = WC()->cart;
+//         if (!$cart) {
+//             return;
+//         }
 
-        // Remove the item from WooCommerce cart (if not already removed)
-        if ($cart->get_cart_item($removed_cart_item_key)) {
-            $cart->remove_cart_item($removed_cart_item_key);
-        }
+//         // Remove the item from WooCommerce cart (if not already removed)
+//         if ($cart->get_cart_item($removed_cart_item_key)) {
+//             $cart->remove_cart_item($removed_cart_item_key);
+//         }
         
-        // Get the cart ID from cookie
-        if (isset($_COOKIE['cstCartId'])) {
-            $cart_id = $_COOKIE['cstCartId'];
+//         // Get the cart ID from cookie
+//         if (isset($_COOKIE['cstCartId'])) {
+//             $cart_id = $_COOKIE['cstCartId'];
             
-            // Remove the item data from WordPress options
-            $option_key = 'get_cart_myItems_'.$cart_id.'_'.$removed_cart_item_key;
-            delete_option($option_key);
+//             // Remove the item data from WordPress options
+//             $option_key = 'get_cart_myItems_'.$cart_id.'_'.$removed_cart_item_key;
+//             delete_option($option_key);
             
-            // Refresh cart session and totals
-            $cart->set_session();
-            $cart->calculate_totals();
+//             // Refresh cart session and totals
+//             $cart->set_session();
+//             $cart->calculate_totals();
             
-            // Get remaining cart items count
-            $remaining_items = $cart->get_cart_contents_count();
+//             // Get remaining cart items count
+//             $remaining_items = $cart->get_cart_contents_count();
             
-            // If this was the last item, clear the cart cookies
-            if ($remaining_items <= 0) {
-                //setcookie('cart-'.MERCHI_DOMAIN, "", time() - 3600, "/");
-                setcookie("cstCartId", "", time() - 3600, "/");
+//             // If this was the last item, clear the cart cookies
+//             if ($remaining_items <= 0) {
+//                 //setcookie('cart-'.MERCHI_DOMAIN, "", time() - 3600, "/");
+//                 setcookie("cstCartId", "", time() - 3600, "/");
+//             }
+//         }
+//     } catch (Exception $e) {
+//         error_log('Error in cart item removal: ' . $e->getMessage());
+//     } finally {
+//         $is_processing = false;
+//     }
+// }
+
+function merchi_norm( $str ) {
+    return strtolower( trim( (string) $str ) );
+}
+
+// extract the variation name → variation value mapping from woo cart
+function merchi_variation_from_woo( $woo_item ) {
+    $map = [];
+    // Prefer selection array (contains stable field IDs)
+    if ( is_array( $woo_item ) && ! empty( $woo_item['selection'] ) && is_array( $woo_item['selection'] ) ) {
+        foreach ( $woo_item['selection'] as $group ) {
+            if ( ! is_array( $group ) ) { continue; }
+            foreach ( $group as $field_key => $field_value ) {
+                if ( $field_key === 'quantity' ) { continue; }
+                $key = (string) $field_key;
+                $val = null;
+                if ( is_array( $field_value ) ) {
+                    if ( isset( $field_value['value'] ) && $field_value['value'] !== '' ) {
+                        $val = (string) $field_value['value'];
+                    } elseif ( isset( $field_value['selectedOptions'] ) && is_array( $field_value['selectedOptions'] ) ) {
+                        $vals = [];
+                        foreach ( $field_value['selectedOptions'] as $so ) {
+                            if ( isset( $so['optionId'] ) ) { $vals[] = (string) $so['optionId']; }
+                            elseif ( isset( $so['value'] ) ) { $vals[] = (string) $so['value']; }
+                        }
+                        if ( $vals ) { $val = implode( ',', $vals ); }
+                    } elseif ( isset( $field_value['valueId'] ) ) {
+                        $val = (string) $field_value['valueId'];
+                    }
+                } else {
+                    $val = (string) $field_value;
+                }
+                if ( $val !== null && $val !== '' ) {
+                    $map[ $key ] = merchi_norm( $val );
+                }
             }
         }
-    } catch (Exception $e) {
-        error_log('Error in cart item removal: ' . $e->getMessage());
-    } finally {
-        $is_processing = false;
+    }
+    // Fallback: use item_data (label/value) when selection is not available
+    if ( ! $map && ! empty( $woo_item['item_data'] ) && is_array( $woo_item['item_data'] ) ) {
+        foreach ( $woo_item['item_data'] as $data ) {
+            if ( isset( $data['name'], $data['value'] ) ) {
+                $map[ merchi_norm( $data['name'] ) ] = merchi_norm( $data['value'] );
+            }
+        }
+    }
+    return $map;
+}
+// extract the variation name → variation value mapping from merchi cart
+function merchi_variation_from_merchi( $m_item ) {
+    $map = [];
+    if ( ! empty( $m_item['variationsGroups'] ) ) {
+        foreach ( $m_item['variationsGroups'] as $g ) {
+            foreach ( ($g['variations'] ?? []) as $v ) {
+                $field = $v['variationField'] ?? [];
+                $fname = isset( $field['id'] ) ? (string)$field['id'] : (string)($field['name'] ?? '');
+                $val   = null;
+                if ( isset( $v['selectedOptions'] ) && is_array( $v['selectedOptions'] ) ) {
+                    $vals = [];
+                    foreach ( $v['selectedOptions'] as $so ) {
+                        if ( isset( $so['optionId'] ) ) { $vals[] = (string)$so['optionId']; }
+                        elseif ( isset( $so['value'] ) ) { $vals[] = (string)$so['value']; }
+                    }
+                    if ( $vals ) { $val = implode( ',', $vals ); }
+                }
+                if ( $val === null && isset( $v['value'] ) ) {
+                    $val = (string)$v['value'];
+                }
+                if ( $fname !== '' && $val !== null ) {
+                    $map[ merchi_norm( $fname ) ] = merchi_norm( $val );
+                }
+            }
+        }
+    }
+    return $map;
+}
+
+function merchi_fingerprint( $sku, $qty, $var_map ) {
+    ksort( $var_map );
+    return $sku . ':' . intval( $qty ) . ':' . md5( wp_json_encode( $var_map ) );
+}
+
+function merchi_sync_session_after_remove( $removed_key, $cart_obj ) {
+    if ( ! WC()->session || empty( $_COOKIE['cstCartId'] ) ) {
+        return;
+    }
+    $cart_id = $_COOKIE['cstCartId'];
+
+    $merchi_cart = WC()->session->get( 'merchi_cart_data' );
+    if ( empty( $merchi_cart['cartItems'] ) || ! is_array( $merchi_cart['cartItems'] ) ) {
+        return;
+    }
+
+    // Attempt to identify the removed Woo item using WC's removed_cart_contents
+    $removed_item = null;
+    if ( isset( $cart_obj->removed_cart_contents ) && isset( $cart_obj->removed_cart_contents[ $removed_key ] ) ) {
+        $removed_item = $cart_obj->removed_cart_contents[ $removed_key ];
+    }
+
+    $deleted_merchi_item_id = null;
+
+    if ( $removed_item ) {
+        $sku = isset( $removed_item['data'] ) && is_object( $removed_item['data'] ) && method_exists( $removed_item['data'], 'get_sku' )
+            ? $removed_item['data']->get_sku()
+            : '';
+        $qty = intval( $removed_item['quantity'] ?? 0 );
+        $var = merchi_variation_from_woo( $removed_item );
+        $fp_removed = merchi_fingerprint( $sku, $qty, $var );
+
+        $match_index = null;
+        foreach ( $merchi_cart['cartItems'] as $idx => $m_item ) {
+            $m_fp = merchi_fingerprint(
+                $m_item['product']['id'] ?? $m_item['productID'],
+                intval( $m_item['quantity'] ?? 0 ),
+                merchi_variation_from_merchi( $m_item )
+            );
+            if ( $fp_removed === $m_fp ) {
+                $match_index = $idx;
+                $deleted_merchi_item_id = $m_item['id'] ?? null;
+                break;
+            }
+        }
+
+        if ( $match_index !== null ) {
+            // Remove from session snapshot
+            array_splice( $merchi_cart['cartItems'], $match_index, 1 );
+            WC()->session->set( 'merchi_cart_data', $merchi_cart );
+
+            // Also propagate deletion to Merchi API when possible
+            if ( $deleted_merchi_item_id ) {
+                $cart_token = null;
+                if ( isset( $_COOKIE['cart-' . MERCHI_DOMAIN] ) ) {
+                    $cookie_parts = explode( ',', $_COOKIE['cart-' . MERCHI_DOMAIN] );
+                    if ( count( $cookie_parts ) > 1 ) {
+                        $cart_token = trim( $cookie_parts[1] );
+                    }
+                }
+                if ( $cart_token ) {
+                    $url  = MERCHI_URL . 'v6/cart_items/' . urlencode( (string)$deleted_merchi_item_id ) . '/?cart_token=' . urlencode( $cart_token );
+                    $args = array( 'method' => 'DELETE', 'timeout' => 30 );
+                    wp_remote_request( $url, $args );
+                }
+            }
+        }
+    }
+
+    // Rebuild per-item mapping for remaining items (handle duplicates safely)
+    $used = [];
+    $m_items_copy = $merchi_cart['cartItems'];
+    foreach ( WC()->cart->get_cart() as $cart_item_key => $woo_item ) {
+        $sku  = $woo_item['data']->get_sku();
+        $qty  = intval( $woo_item['quantity'] );
+        $var  = merchi_variation_from_woo( $woo_item );
+        $fp   = merchi_fingerprint( $sku, $qty, $var );
+
+        // find the matching item in merchi_cart_data
+        $matched = null;
+        foreach ( $m_items_copy as $m_item ) {
+            $mid = (string) ( $m_item['id'] ?? md5( wp_json_encode( $m_item ) ) );
+            if ( isset( $used[ $mid ] ) ) { continue; }
+            $m_fp = merchi_fingerprint(
+                $m_item['product']['id'] ?? $m_item['productID'],
+                intval( $m_item['quantity'] ?? 0 ),
+                merchi_variation_from_merchi( $m_item )
+            );
+            if ( $fp === $m_fp ) {
+                $matched = $m_item;
+                $used[ $mid ] = true;
+                break;
+            }
+        }
+        if ( ! $matched ) {
+            continue;
+        }
+
+        $lineTotal = floatval( $matched['totalCost'] ?? 0 );
+        if ( $lineTotal <= 0 ) {
+            $lineTotal = floatval( $matched['subtotalCost'] ?? 0 );
+        }
+        $quantity  = intval( $matched['quantity'] ?? 0 );
+        $currentCartItem = [
+            'product_id'   => $matched['product']['id']    ?? $matched['productID'],
+            'quantity'     => $quantity,
+            'subtotalCost' => floatval( $matched['subtotalCost'] ?? 0 ),
+            'totalCost'    => $lineTotal,
+            'taxAmount'    => floatval( $matched['taxAmount'] ?? 0 ),
+        ];
+        update_option( "get_cart_myItems_{$cart_id}_{$cart_item_key}", $currentCartItem );
     }
 }
-add_action( 'woocommerce_remove_cart_item', 'my_custom_remove_cart_item_action', 10, 2 );
+
+// add_action( 'woocommerce_remove_cart_item', 'my_custom_remove_cart_item_action', 10, 2 );
+add_action( 'woocommerce_remove_cart_item', 'merchi_sync_session_after_remove', 10, 2 );
 
 add_filter( 'woocommerce_cart_item_quantity', 'wc_cart_item_quantity', 10, 3 );
 function wc_cart_item_quantity( $product_quantity, $cart_item_key, $cart_item ){
@@ -1504,6 +1835,61 @@ function wc_cart_item_quantity( $product_quantity, $cart_item_key, $cart_item ){
 
 }
 
+function merchi_get_selected_value($field_key, $wanted_option_id = null, $group_hint = null) {
+	$field_key = (string) $field_key;
+	$wanted    = $wanted_option_id !== null ? (string) $wanted_option_id : null;
+
+	if (!is_array($group_hint) || empty($group_hint['variations']) || !is_array($group_hint['variations'])) {
+		return null;
+	}
+
+	// find specific field in target group
+	foreach (($group_hint ? [$group_hint] : []) as $group) {
+		foreach (($group['variations'] ?? []) as $var) {
+			$vf  = $var['variationField'] ?? [];
+			$vid = isset($vf['id'])   ? (string)$vf['id']   : null;
+			$vnm = isset($vf['name']) ? (string)$vf['name'] : null;
+			if ($vid !== $field_key && $vnm !== $field_key) {
+				continue;
+			}
+
+			// get value from selectedOptions
+			if (!empty($var['selectedOptions']) && is_array($var['selectedOptions'])) {
+				$vals = [];
+				foreach ($var['selectedOptions'] as $so) {
+					if ($wanted !== null && isset($so['optionId']) && (string)$so['optionId'] !== $wanted) {
+						continue;
+					}
+					if (isset($so['value']) && $so['value'] !== '') {
+						$vals[] = (string) $so['value'];
+					}
+				}
+				if ($vals) {
+					return implode(', ', array_values(array_unique($vals)));
+				}
+			}
+
+			// get value from selectableOptions by matching optionId
+			$raw = isset($var['value']) ? (string)$var['value'] : '';
+			if ($raw !== '') {
+				foreach (($var['selectableOptions'] ?? []) as $opt) {
+					if ((string)($opt['optionId'] ?? '') === $raw && isset($opt['value'])) {
+						return (string)$opt['value'];
+					}
+				}
+				foreach (($vf['options'] ?? []) as $opt) {
+					if ((string)($opt['id'] ?? '') === $raw && isset($opt['value'])) {
+						return (string)$opt['value'];
+					}
+				}
+			}
+			return null;
+		}
+	}
+	return null;
+}
+
+add_filter( 'woocommerce_get_item_data', 'filter_woocommerce_get_item_data', 99, 2 );
 function filter_woocommerce_get_item_data( $cart_data, $cart_item = null ) {
     if ( !$cart_item ) {
         return $cart_data;
@@ -1548,6 +1934,37 @@ function filter_woocommerce_get_item_data( $cart_data, $cart_item = null ) {
         }
     }
 
+    // Build a per-item Merchi group hint (variations list) by matching this cart row
+    $merchi_group_hint = null;
+    if (WC()->session) {
+        $__m = WC()->session->get('merchi_cart_data');
+        if (is_array($__m) && !empty($__m['cartItems']) && is_array($__m['cartItems'])) {
+            $__sku = (isset($cart_item['data']) && is_object($cart_item['data']) && method_exists($cart_item['data'], 'get_sku')) ? $cart_item['data']->get_sku() : '';
+            $__qty = intval($cart_item['quantity'] ?? 0);
+            $__var = merchi_variation_from_woo($cart_item);
+            $__fp  = merchi_fingerprint($__sku, $__qty, $__var);
+
+            $__matched = null;
+            foreach ($__m['cartItems'] as $__mi) {
+                $__mfp = merchi_fingerprint(
+                    $__mi['product']['id'] ?? $__mi['productID'],
+                    intval($__mi['quantity'] ?? 0),
+                    merchi_variation_from_merchi($__mi)
+                );
+                if ($__mfp === $__fp) { $__matched = $__mi; break; }
+            }
+            if ($__matched && !empty($__matched['variationsGroups'])) {
+                $__vars = array();
+                foreach ($__matched['variationsGroups'] as $__g) {
+                    if (!empty($__g['variations']) && is_array($__g['variations'])) {
+                        foreach ($__g['variations'] as $__v) { $__vars[] = $__v; }
+                    }
+                }
+                if ($__vars) { $merchi_group_hint = array('variations' => $__vars); }
+            }
+        }
+    }
+
     if (isset($cart_item['selection']) && is_array($cart_item['selection'])) {
         $group_count = 1;
         foreach ($cart_item['selection'] as $group) {
@@ -1572,6 +1989,13 @@ function filter_woocommerce_get_item_data( $cart_data, $cart_item = null ) {
                     // Field-specific option label mapping
                     $field_id = $field_label_str;
                     $field_options = isset($field_option_label_map[$field_id]) ? $field_option_label_map[$field_id] : array();
+
+                    // peritem selectedOptions text from matched merchi item
+                    $selected_text = $merchi_group_hint ? merchi_get_selected_value((string)$field_label_str, null, $merchi_group_hint) : null;
+                    if ($selected_text !== null && $selected_text !== '') {
+                        $cart_data[] = array('name' => $label, 'value' => esc_html($selected_text), 'display' => '');
+                        continue;
+                    }
 
                     // --- Look for sibling variationFiles for this field ---
                     $variationFiles = null;
@@ -1713,8 +2137,31 @@ function cart_count_fragments_wp( $fragments ) {
     return $fragments;
 }
 
-add_action( 'woocommerce_before_calculate_totals', 'bbloomer_alter_price_cart', 9999 );
- 
+// add_action( 'woocommerce_before_calculate_totals', 'merchi_apply_prices_by_index', 20 );
+
+function merchi_apply_prices_by_index( $cart ) {
+    $merchi_cart = WC()->session ? WC()->session->get( 'merchi_cart_data' ) : null;
+    if ( ! $merchi_cart || empty( $merchi_cart['cartItems'] ) ) return;
+
+    $m_items = array_values( $merchi_cart['cartItems'] );
+    $woo_items = array_values( $cart->get_cart() );
+    $max = min( count( $woo_items ), count( $m_items ) );
+
+    for ( $i = 0; $i < $max; $i++ ) {
+        $m = $m_items[ $i ];
+        if ( ! isset( $m['totalCost'], $m['quantity'] ) || $m['quantity'] <= 0 ) {
+            continue;
+        }
+
+        $unit = floatval( $m['totalCost'] ) / intval( $m['quantity'] );
+        $woo_items[ $i ]['data']->set_price( $unit );
+        $woo_items[ $i ]['data']->set_regular_price( $unit );
+        $woo_items[ $i ]['data']->set_sale_price( '' );
+    }
+}
+
+// add_action( 'woocommerce_before_calculate_totals', 'bbloomer_alter_price_cart', 0 );
+
 function bbloomer_alter_price_cart( $cart ) {
     if ( is_admin() && ! defined( 'DOING_AJAX' ) ) return;
     
@@ -1738,12 +2185,13 @@ function bbloomer_alter_price_cart( $cart ) {
         }
         
         $product = $cart_item['data'];
-        $quantity = intval($itemData['quantity']);
-        $subtotalCost = floatval($itemData['subtotalCost']);
-
-        if ($quantity > 0) {
-            $cart_item['data']->set_price($subtotalCost / $quantity);
-        }
+				$quantity = max( 1, intval( $itemData['quantity'] ) );
+				$cost = isset( $itemData['totalCost'] ) ? $itemData['totalCost'] : $itemData['subtotalCost'];
+				$unit = floatval( $cost );
+				if ( $unit <= 0 ) continue;
+				$cart_item['data']->set_price( $unit );
+        $cart_item['data']->set_regular_price( $unit );
+        $cart_item['data']->set_sale_price( '' );
     }
 }
 
@@ -2995,3 +3443,141 @@ add_action('wp_footer', function() {
     </script>
     <?php
 }, 9999);
+
+add_action('init', function () {
+    add_filter('woocommerce_get_cart_contents', 'merchi_modify_cart_contents_for_blocks', 10, 1);
+});
+
+function merchi_modify_cart_contents_for_blocks( $cart_contents ) {   
+    if ( ! isset( $_COOKIE['cstCartId'] ) ) {
+        $logged_once = true;
+        return $cart_contents;
+    }
+    $cart_id = $_COOKIE['cstCartId'];
+    
+    $merchi_cart_data = null;
+    if ( WC()->session ) {
+        $merchi_cart_data = WC()->session->get( 'merchi_cart_data' );
+    }
+
+    // Preload option mapping per Woo cart_item_key
+    $options_map = get_option_extended( 'get_cart_myItems_' . $cart_id . '_' );
+
+    $has_merchi_items = ( ! empty( $merchi_cart_data['cartItems'] ) && is_array( $merchi_cart_data['cartItems'] ) );
+    $has_options_map  = ( is_array( $options_map ) && ! empty( $options_map ) );
+    if ( ! $has_merchi_items && ! $has_options_map ) {
+        return $cart_contents;
+    }
+
+    // Build Merchi lookup maps and ordered list for final fallback
+    $m_by_fp = array();
+    $m_by_skuqty = array();
+    $m_items_indexed = array();
+    if ( $has_merchi_items ) {
+        $m_items_indexed = array_values( $merchi_cart_data['cartItems'] );
+        // keep stable order by id like old behavior for last fallback only
+        usort( $m_items_indexed, fn( $a, $b ) => ( $a['id'] ?? 0 ) <=> ( $b['id'] ?? 0 ) );
+
+        foreach ( $merchi_cart_data['cartItems'] as $m_item ) {
+            $sku_m = (string) ( $m_item['product']['id'] ?? $m_item['productID'] ?? '' );
+            $qty_m = intval( $m_item['quantity'] ?? 0 );
+            $fp_m  = merchi_fingerprint( $sku_m, $qty_m, merchi_variation_from_merchi( $m_item ) );
+
+            $m_by_fp[ $fp_m ] = $m_item;
+
+            $key = $sku_m . '|' . $qty_m;
+            if ( ! isset( $m_by_skuqty[ $key ] ) ) {
+                $m_by_skuqty[ $key ] = array();
+            }
+            // queue to handle duplicates
+            $m_by_skuqty[ $key ][] = $m_item;
+        }
+    }
+
+    $idx_fallback = 0;
+
+    foreach ( $cart_contents as $cart_item_key => &$cart_item ) {
+        $applied = false;
+        if ( $has_options_map && ! $applied ) {
+            $opt_key = 'get_cart_myItems_' . $cart_id . '_' . $cart_item_key;
+
+            if ( isset( $options_map[ $opt_key ] ) && is_array( $options_map[ $opt_key ] ) ) {
+                $itemData = $options_map[ $opt_key ];
+                $qty_m = max( 1, intval( $itemData['quantity'] ?? ( $cart_item['quantity'] ?? 1 ) ) );
+                $cost_m = floatval( $itemData['totalCost'] ?? ( $itemData['subtotalCost'] ?? 0 ) );
+
+                if ( $cost_m > 0 && $qty_m > 0 ) {
+                    $unit = $cost_m / $qty_m;
+                    $cart_item['data']->set_price( $unit );
+                    $cart_item['data']->set_regular_price( $unit );
+                    $cart_item['data']->set_sale_price( '' );
+                    $applied = true;
+                }
+            }
+        }
+
+        if ( $applied ) {
+            continue;
+        }
+
+        // fingerprint match from merchi session
+        if ( $has_merchi_items && ! $applied ) {
+            $sku  = (string) $cart_item['data']->get_sku();
+            $qty  = intval( $cart_item['quantity'] );
+            $var  = merchi_variation_from_woo( $cart_item );
+            $fp   = merchi_fingerprint( $sku, $qty, $var );
+
+            if ( isset( $m_by_fp[ $fp ] ) ) {
+                $m = $m_by_fp[ $fp ];
+
+                if ( isset( $m['totalCost'], $m['quantity'] ) && intval( $m['quantity'] ) > 0 ) {
+                    $unit = floatval( $m['totalCost'] ) / intval( $m['quantity'] );
+                    $cart_item['data']->set_price( $unit );
+                    $cart_item['data']->set_regular_price( $unit );
+                    $cart_item['data']->set_sale_price( '' );
+                    $applied = true;
+                }
+            }
+        }
+
+        if ( $applied ) {
+            continue;
+        }
+
+        if ( $has_merchi_items && ! $applied ) {
+            $sku  = (string) $cart_item['data']->get_sku();
+            $qty  = intval( $cart_item['quantity'] );
+            $key  = $sku . '|' . $qty;
+
+            if ( isset( $m_by_skuqty[ $key ] ) && ! empty( $m_by_skuqty[ $key ] ) ) {
+                $m = array_shift( $m_by_skuqty[ $key ] );
+
+                if ( isset( $m['totalCost'], $m['quantity'] ) && intval( $m['quantity'] ) > 0 ) {
+                    $unit = floatval( $m['totalCost'] ) / intval( $m['quantity'] );
+                    $cart_item['data']->set_price( $unit );
+                    $cart_item['data']->set_regular_price( $unit );
+                    $cart_item['data']->set_sale_price( '' );
+                    $applied = true;
+                }
+            }
+        }
+
+        if ( $applied ) {
+            continue;
+        }
+
+        // // position fallback to preserve initial display
+        // if ( $has_merchi_items && isset( $m_items_indexed[ $idx_fallback ] ) ) {
+        //     $m = $m_items_indexed[ $idx_fallback ];
+        //     $idx_fallback++;
+        //     if ( isset( $m['totalCost'], $m['quantity'] ) && intval( $m['quantity'] ) > 0 ) {
+        //         $unit = floatval( $m['totalCost'] ) / intval( $m['quantity'] );
+        //         $cart_item['data']->set_price( $unit );
+        //         $cart_item['data']->set_regular_price( $unit );
+        //         $cart_item['data']->set_sale_price( '' );
+        //     }
+        // }
+    }
+    return $cart_contents;
+}
+

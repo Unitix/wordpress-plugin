@@ -1,6 +1,5 @@
 // Wait for both jQuery and Merchi SDK to be ready
 import { MERCHI_SDK } from './merchi_sdk';
-import { getCookieByName } from './utils';
 import { initializeCheckout } from './merchi_checkout_init';
 
 function initializeWhenReady() {
@@ -26,6 +25,42 @@ function initializeWhenReady() {
   }
 
   jQuery(document).ready(function ($) {
+    // Check if we just added something to cart and need to fix pricing
+    // if (sessionStorage.getItem('merchiCartSuccess')) {
+    //   sessionStorage.removeItem('merchiCartSuccess');
+    //   console.log('[Merchi] Starting cart pricing fix process');
+
+    //   // Wait for WooCommerce to update storeApiCartData, then fix it
+    //   let attempts = 0;
+    //   const maxAttempts = 50;
+    //   const checkInterval = setInterval(() => {
+    //     attempts++;
+
+    //     if (localStorage.storeApiCartData && localStorage.storeApiCartData !== '{}') {
+    //       const cartData = JSON.parse(localStorage.storeApiCartData);
+    //       console.log('Found storeApiCartData:', cartData);
+
+    //       if (cartData.items && cartData.items.length > 0) {
+    //         clearInterval(checkInterval);
+    //         console.log('Cart has items, proceeding with fix');
+
+    //         setTimeout(() => {
+    //           console.log('About to call fixStoreApiCartData');
+    //           fixStoreApiCartData();
+
+    //           setTimeout(() => {
+    //             const fixedData = JSON.parse(localStorage.storeApiCartData);
+    //             console.log('Data after fix:', fixedData);
+    //           }, 500);
+    //         }, 500);
+    //       }
+    //     } else if (attempts >= maxAttempts) {
+    //       clearInterval(checkInterval);
+    //       console.warn('Could not find storeApiCartData after', maxAttempts, 'attempts');
+    //     }
+    //   }, 200);
+    // }
+
     const merchiProductId = merchiConfig.productId;
     let productJson = {};
     let defaultJobJson = {};
@@ -920,8 +955,18 @@ function initializeWhenReady() {
             value = null;
           }
         } else if ($input.is('input[type="radio"]')) {
-          const $checked = $fieldContainer.find('input[type="radio"]:checked');
-          value = $checked.length ? $checked.val() : null;
+          // Check if this specific field container has colour-select inputs
+          const $fieldContainer = $input.closest('.custom-field');
+          const $colourSelectInputs = $fieldContainer.find('input[data-field-type="colour-select"]');
+          if ($colourSelectInputs.length > 0) {
+            // This is a colour-select field
+            const $checked = $fieldContainer.find('input[data-field-type="colour-select"]:checked');
+            value = $checked.length ? $checked.val() : null;
+          } else {
+            // Handle regular radio fields
+            const $checked = $fieldContainer.find('input[type="radio"]:checked');
+            value = $checked.length ? $checked.val() : null;
+          }
         } else if ($input.is('input[type="color"]')) {
           value = $input.val();
         } else if ($input.is('input[type="file"]')) {
@@ -1008,8 +1053,18 @@ function initializeWhenReady() {
                 value = null;
               }
             } else if ($input.is('input[type="radio"]')) {
-              const $checked = $group.find('input[type="radio"]:checked');
-              value = $checked.length ? $checked.val() : null;
+              // Check if this specific field container has colour-select inputs
+              const $fieldContainer = $input.closest('.custom-field');
+              const $colourSelectInputs = $fieldContainer.find('input[data-field-type="colour-select"]');
+              if ($colourSelectInputs.length > 0) {
+                // This is a colour-select field
+                const $checked = $fieldContainer.find('input[data-field-type="colour-select"]:checked');
+                value = $checked.length ? $checked.val() : null;
+              } else {
+                // This is a regular radio field
+                const $checked = $fieldContainer.find('input[type="radio"]:checked');
+                value = $checked.length ? $checked.val() : null;
+              }
             } else if ($input.is('input[type="color"]')) {
               value = $input.val();
             } else if ($input.is('input[type="file"]')) {
@@ -1276,6 +1331,7 @@ function initializeWhenReady() {
           merchiCartJson: updatedCartJson,
         };
 
+        console.log('About to POST send_id_for_add_cart with payload:', cartPayload);
         jQuery.ajax({
           method: "POST",
           url: (typeof frontendajax !== 'undefined' ? frontendajax.ajaxurl : '/wp-admin/admin-ajax.php'),
@@ -1283,13 +1339,22 @@ function initializeWhenReady() {
             action: "send_id_for_add_cart",
             item: cartPayload,
           },
+          dataType: "json",
           success: function (response) {
             setLoadingState(false);
+            console.log('[Merchi] full AJAX response:', response);
+
+            if (response.success && response.merchiCart) {
+              console.log('[Merchi] merchicart', response.merchiCart);
+              localStorage.setItem('MerchiCart', JSON.stringify(response.merchiCart));
+            }
             // Set a flag in sessionStorage to show the success message after reload
             sessionStorage.setItem('merchiCartSuccess', '1');
             // Reload the page and scroll to top
+
             window.scrollTo({ top: 0, behavior: 'smooth' });
             window.location.reload();
+
             // Do NOT show the success message here
             // Do NOT submit the form here
             // Cart fragment refresh will happen on reload

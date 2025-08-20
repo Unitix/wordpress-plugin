@@ -79,6 +79,9 @@ export function getCookieByName(name) {
   return null; // Cookie not found
 }
 
+// ============================================================================
+// WooCommerce Form Input Style Control - Handles input active states
+// ============================================================================
 export default function useWooActive() {
   useEffect(() => {
     const INPUT = '.wc-block-components-text-input__input';
@@ -129,14 +132,25 @@ export default function useWooActive() {
   }, []);
 }
 
+// ============================================================================
+// WordPress API Utilities - Handle WP REST API and WooCommerce Store API
+// ============================================================================
 export function getWpApiRoot() {
   if (window.wpApiSettings?.root) return wpApiSettings.root;
   const link = document.querySelector('link[rel="https://api.w.org/"]')?.href;
   if (link) return link.endsWith('/') ? link : link + '/';
+
+  const path = window.location.pathname;
+  const segments = path.split('/').filter(Boolean);
+
+  if (segments.length > 0 && segments[0] !== 'wp-json') {
+    return `/${segments[0]}/wp-json/`;
+  }
+
   return '/wp-json/';
 }
 
-// Woo Store Nonce helper
+// WooCommerce Store API Nonce Management
 let wooNonceCache = '';
 
 export async function fetchWooNonce() {
@@ -171,6 +185,9 @@ export function updateWooNonce(res) {
   if (n) wooNonceCache = n;
 }
 
+// ============================================================================
+// Product Variations Utilities - Handle product options and variation groups
+// ============================================================================
 export const shouldShow = (v) => {
   if (Array.isArray(v.selectedOptions) && v.selectedOptions.length) return true;
   if (typeof v.value === 'string' && v.value.trim() !== '') return true;
@@ -190,6 +207,9 @@ export const buildOptionMap = (product = {}) => {
   return map;
 };
 
+// ============================================================================
+// Geographic and Country Utilities - Handle country codes and browser location
+// ============================================================================
 // Convert country name to ISO code
 export const toIso = (val = '') =>
   typeof val === 'string'
@@ -222,6 +242,9 @@ export function getCountryFromBrowser() {
   return null;
 }
 
+// ============================================================================
+// Cart Data Processing Utilities - Handle cart data cleaning and restoration
+// ============================================================================
 export function cleanShipmentGroups(cartJson = {}) {
   if (!Array.isArray(cartJson.shipmentGroups)) return cartJson;
 
@@ -233,4 +256,56 @@ export function cleanShipmentGroups(cartJson = {}) {
   };
 }
 
+export function sanitizeCart(raw) {
+  const cleaned = { ...raw };
 
+  cleaned.receiverAddress = null;
+  cleaned.shipmentGroups = [];
+  cleaned.selectedQuote = null;
+
+  cleaned.shipmentSubtotalCost = 0;
+  cleaned.shipmentTaxAmount = 0;
+  cleaned.shipmentTotalCost = 0;
+
+  return cleaned;
+}
+
+export function ciKey(ci) {
+  const id = ci?.product?.id ?? ci?.productID ?? ci?.product;
+  const vg = JSON.stringify(
+    (ci?.variationsGroups || []).map(g =>
+      (g.variations || []).map(v => [
+        v?.variationField?.id ?? v?.variationField?.name ?? v?.variationField?.label ?? '',
+        v?.value ?? ''
+      ])
+    )
+  );
+  return `${id}::${vg}`;
+}
+
+export function mergeCartProducts(nextCart, prevCart) {
+  if (!prevCart?.cartItems?.length || !nextCart?.cartItems?.length) return nextCart;
+
+  const bucket = new Map();
+  prevCart.cartItems.forEach(oldCI => {
+    const k = ciKey(oldCI);
+    if (!bucket.has(k)) bucket.set(k, []);
+    bucket.get(k).push(oldCI);
+  });
+
+  const mergedItems = nextCart.cartItems.map(newCI => {
+    const k = ciKey(newCI);
+    const arr = bucket.get(k);
+    const oldCI = arr && arr.length ? arr.shift() : null;
+    if (!oldCI) return newCI;
+
+    const p = newCI.product;
+    const onlyId = (typeof p === 'number') || (p && Object.keys(p).length === 1 && 'id' in p);
+
+    return onlyId
+      ? { ...newCI, product: oldCI.product }
+      : { ...newCI, product: { ...oldCI.product, ...p } };
+  });
+
+  return { ...nextCart, cartItems: mergedItems };
+}

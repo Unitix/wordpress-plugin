@@ -451,7 +451,7 @@ class ProductPage extends BaseController {
 							$variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
 							$color = get_term_meta($term->term_id, 'colour', true);
 							$html .= '<label class="color-option">';
-							$html .= '<input type="' . $input_type . '" name="' . $field_name . '" value="' . esc_attr($variation_option_id) . '" ' . ($is_multiple ? '' : $is_checked) . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '"/>';
+							$html .= '<input type="' . $input_type . '" name="' . $field_name . '" value="' . esc_attr($variation_option_id) . '" ' . ($is_multiple ? '' : $is_checked) . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '" data-field-type="colour-select"/>';
 							$html .= '<div class="color-option-inner">';
 							$html .= '<span class="color-indicator" style="background-color: ' . esc_attr($color) . ';"></span>';
 							$html .= '<span class="checkmark">✓</span>';

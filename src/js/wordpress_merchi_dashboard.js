@@ -69,7 +69,7 @@ function fetchProducts() {
     },
     beforeSend: function () {
       loadingData = true;
-    }, 
+    },
     success: (response) => {
       if (response.success && response.data.products.length > 0) {
         const { products } = response.data;
@@ -94,7 +94,7 @@ function fetchProducts() {
                 border: "1px solid #eee"
               });
             // Hover preview logic
-            img.on("mouseenter", function(e) {
+            img.on("mouseenter", function (e) {
               let preview = jQuery("#merchi-thumb-preview");
               if (preview.length === 0) {
                 preview = jQuery('<div id="merchi-thumb-preview"></div>');
@@ -111,13 +111,13 @@ function fetchProducts() {
                 padding: "4px"
               });
             });
-            img.on("mousemove", function(e) {
+            img.on("mousemove", function (e) {
               jQuery("#merchi-thumb-preview").css({
                 top: e.clientY + 10 + "px",
                 left: e.clientX + 10 + "px"
               });
             });
-            img.on("mouseleave", function() {
+            img.on("mouseleave", function () {
               jQuery("#merchi-thumb-preview").remove();
             });
             div.append(img);
@@ -134,7 +134,7 @@ function fetchProducts() {
             customValueField.style.display = "inline-block";
             dropdownContent.hide();
             const wooProductId = scriptData.woo_product_id;
-            if(wooProductId) {
+            if (wooProductId) {
               jQuery.ajax({
                 url: frontendajax.ajaxurl,
                 type: "POST",
@@ -158,7 +158,10 @@ function fetchProducts() {
                         if (response.success) {
                           var postId = jQuery('#post_ID').val();
                           if (postId) {
-                            redirectUrl = '/wp-admin/post.php?post=' + postId + '&action=edit';
+                            // redirectUrl = '/wp-admin/post.php?post=' + postId + '&action=edit';
+                            const u = new URL(frontendajax.ajaxurl || window.ajaxurl);
+                            const adminBase = u.origin + u.pathname.replace(/admin-ajax\.php$/, '');
+                            redirectUrl = adminBase + 'post.php?post=' + postId + '&action=edit';
                             readyToRedirect = true;
                             maybeRedirect();
                           } else {
@@ -182,29 +185,29 @@ function fetchProducts() {
               });
             } else {
               jQuery.ajax({
-                  url: frontendajax.ajaxurl,
-                  type: "POST",
-                  data: {
-                      action: "create_product_from_merchi",
-                      merchiProductId: id,
-                      merchiProductName: name,
-                      merchiProductPrice: bestPrice
-                  },
-                  success: function(response) {
-                      if (response.success) {
-                          var editUrl = response.data.edit_url;
-                          if (editUrl) {
-                              window.location = editUrl; // Redirect to the edit post page
-                          } else {
-                              window.location.reload(); // fallback
-                          }
-                      } else {
-                          console.error("Error creating product:", response.data.message);
-                      }
-                  },
-                  error: function(error) {
-                      console.error("Error creating product:", error);
+                url: frontendajax.ajaxurl,
+                type: "POST",
+                data: {
+                  action: "create_product_from_merchi",
+                  merchiProductId: id,
+                  merchiProductName: name,
+                  merchiProductPrice: bestPrice
+                },
+                success: function (response) {
+                  if (response.success) {
+                    var editUrl = response.data.edit_url;
+                    if (editUrl) {
+                      window.location = editUrl; // Redirect to the edit post page
+                    } else {
+                      window.location.reload(); // fallback
+                    }
+                  } else {
+                    console.error("Error creating product:", response.data.message);
                   }
+                },
+                error: function (error) {
+                  console.error("Error creating product:", error);
+                }
               });
             }
           });
@@ -247,7 +250,7 @@ function attachProdcutTitle(product_title, product_id) {
       postId: postId,
       product_id: product_id,
     },
-    success: function (response) {},
+    success: function (response) { },
     error: function (error) {
       console.error("Error attaching product_title:", error);
     },
@@ -399,7 +402,7 @@ function hideCentralLoader() {
 })();
 
 // Patch spinner() and yourMethod() to use the new loader
-window.spinner = function() {
+window.spinner = function () {
   var postId = jQuery("#post_ID").val();
   jQuery.ajax({
     method: "POST",
@@ -443,33 +446,33 @@ jQuery(document).ready(function ($) {
 
   function setImageUpload(inputField, preview, removeBtn) {
     var fileFrame;
-    $('.upload_image_button').click(function(e) {
-        e.preventDefault();
-        if (fileFrame) {
-            fileFrame.open();
-            return;
-        }
-        fileFrame = wp.media.frames.fileFrame = wp.media({
-            title: 'Select Image',
-            button: { text: 'Use Image' },
-            multiple: false
-        });
-
-        fileFrame.on('select', function() {
-            var attachment = fileFrame.state().get('selection').first().toJSON();
-            preview.attr('src', attachment.url).show();
-            inputField.val(attachment.id);
-            removeBtn.show();
-        });
-
+    $('.upload_image_button').click(function (e) {
+      e.preventDefault();
+      if (fileFrame) {
         fileFrame.open();
+        return;
+      }
+      fileFrame = wp.media.frames.fileFrame = wp.media({
+        title: 'Select Image',
+        button: { text: 'Use Image' },
+        multiple: false
+      });
+
+      fileFrame.on('select', function () {
+        var attachment = fileFrame.state().get('selection').first().toJSON();
+        preview.attr('src', attachment.url).show();
+        inputField.val(attachment.id);
+        removeBtn.show();
+      });
+
+      fileFrame.open();
     });
 
-    $('.remove_image_button').click(function(e) {
-        e.preventDefault();
-        preview.hide().attr('src', '');
-        inputField.val('');
-        $(this).hide();
+    $('.remove_image_button').click(function (e) {
+      e.preventDefault();
+      preview.hide().attr('src', '');
+      inputField.val('');
+      $(this).hide();
     });
   }
 
@@ -697,8 +700,8 @@ jQuery(document).ready(function ($) {
   fixDuplicateNonceFields();
 
   // Run when DOM changes (for dynamic content)
-  var observer = new MutationObserver(function(mutations) {
-    mutations.forEach(function(mutation) {
+  var observer = new MutationObserver(function (mutations) {
+    mutations.forEach(function (mutation) {
       if (mutation.type === 'childList') {
         fixDuplicateNonceFields();
       }
@@ -714,22 +717,22 @@ jQuery(document).ready(function ($) {
 
 // Update showMerchiSuccessMessage to accept a message and optional link
 function showMerchiSuccessMessage(message, viewUrl) {
-    // Remove any existing message
-    jQuery('#merchi-success-message').remove();
-    // Insert new message after the main page title (h1 inside .wrap)
-    var $wrapH1 = jQuery('.wrap h1');
-    var linkHtml = '';
-    if (viewUrl) {
-        linkHtml = ' <a href="' + viewUrl + '" style="text-decoration:underline;" target="_blank" rel="noopener">View Product</a>';
-    }
-    if ($wrapH1.length) {
-        $wrapH1.after(
-            '<div id="merchi-success-message" style="margin:10px 0;padding:10px 16px;background:#fff;border-left:4px solid #46b450;color:#23282d;box-shadow:0 1px 1px rgba(0,0,0,0.04);font-size:15px;">' +
-            '<span style="font-weight:600;">Product published.</span>' + linkHtml +
-            '</div>'
-        );
-        setTimeout(function() {
-            jQuery('#merchi-success-message').fadeOut();
-        }, 7000);
-    }
+  // Remove any existing message
+  jQuery('#merchi-success-message').remove();
+  // Insert new message after the main page title (h1 inside .wrap)
+  var $wrapH1 = jQuery('.wrap h1');
+  var linkHtml = '';
+  if (viewUrl) {
+    linkHtml = ' <a href="' + viewUrl + '" style="text-decoration:underline;" target="_blank" rel="noopener">View Product</a>';
+  }
+  if ($wrapH1.length) {
+    $wrapH1.after(
+      '<div id="merchi-success-message" style="margin:10px 0;padding:10px 16px;background:#fff;border-left:4px solid #46b450;color:#23282d;box-shadow:0 1px 1px rgba(0,0,0,0.04);font-size:15px;">' +
+      '<span style="font-weight:600;">Product published.</span>' + linkHtml +
+      '</div>'
+    );
+    setTimeout(function () {
+      jQuery('#merchi-success-message').fadeOut();
+    }, 7000);
+  }
 }

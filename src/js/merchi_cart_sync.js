@@ -2,6 +2,7 @@
 
 const PATCH_DISABLED = false;
 
+<<<<<<< HEAD
 export async function syncWooLocalStorageCart(merchiCartJson) {
   const cartLocalKey = 'storeApiCartData';
 
@@ -27,6 +28,64 @@ export async function syncWooLocalStorageCart(merchiCartJson) {
   // merchiCartJson.items.forEach(function (merchiCartItem, index) {
 
   // });
+=======
+const fpWoo = (it) => {
+  const vars = {};
+  (it.item_data || []).forEach(d => {
+    // if (d?.name && d?.value && d.name !== 'Quantity') {
+    //   vars[d.name.trim().toLowerCase()] = String(d.value).trim().toLowerCase();
+    // }
+    if (d?.name && d?.value) {
+      vars[d.name.trim().toLowerCase().replace(/\s+/g, ' ')] =
+        String(d.value).trim().toLowerCase();
+    }
+  });
+  return [
+    String(it.sku),
+    String(it.quantity ?? 1),
+    JSON.stringify(Object.entries(vars).sort())
+  ].join('|');
+};
+
+const fpMerchi = (ci) => {
+  const vars = {};
+  (ci.variationsGroups || []).forEach(g =>
+    (g.variations || []).forEach(v => {
+      // const n = v?.variationField?.name ?? v?.variationField?.id ?? '';
+      const field = v?.variationField || {};
+      const n = field.label ?? field.labelText ?? field.name ?? field.id ?? '';
+      if (n) vars[n.trim().toLowerCase()] = String(v.value).trim().toLowerCase();
+    })
+  );
+  return [
+    String(ci.product?.id),
+    String(ci.quantity ?? 1),
+    JSON.stringify(Object.entries(vars).sort())
+  ].join('|');
+};
+
+function reorderIfNeeded(wooItems, merchi) {
+  const buckets = {};
+  (merchi.cartItems || []).forEach(ci => {
+    const fp = fpMerchi(ci);
+    (buckets[fp] ||= []).push(ci);
+  });
+
+  const aligned = [];
+  for (const w of wooItems) {
+    const fp = fpWoo(w);
+    if (buckets[fp]?.length) {
+      aligned.push(buckets[fp].shift());
+    } else {
+      const skuQty = `${w.sku}|${w.quantity ?? 1}`;
+      const k = Object.keys(buckets).find(k => k.startsWith(skuQty) && buckets[k].length);
+      if (k) aligned.push(buckets[k].shift());
+      else return false;
+    }
+  }
+  merchi.cartItems = aligned;
+  return true;
+>>>>>>> 987eecf661d7b0da2d5f1f48b22764b6c1fd1d92
 }
 
 // SKU Filtering && clear cart Logic
@@ -58,11 +117,44 @@ async function reconcileMerchiWithStore({ items }) {
   if (!raw) return;
   const merchi = JSON.parse(raw);
 
-  const wooSkus = new Set(items.map(i => String(i.sku)));
+  // const wooSkus = new Set(items.map(i => String(i.sku)));
+  if (!Array.isArray(merchi.cartItems)) merchi.cartItems = [];
+
+  // const fpQuota = (items || []).reduce((acc, it) => {
+  //   const fp = fpWoo(it);
+  //   acc[fp] = (acc[fp] || 0) + 1;
+  //   return acc;
+  // }, {});
+
   const before = merchi.cartItems.length;
-  merchi.cartItems = merchi.cartItems.filter(ci =>
-    wooSkus.has(String(ci.product?.id))
-  );
+
+  if (before > items.length) {
+    // merchi.cartItems = merchi.cartItems.slice(0, items.length);
+    const buckets = {};
+    (merchi.cartItems || []).forEach(ci => {
+      const fp = fpMerchi(ci);
+      (buckets[fp] ||= []).push(ci);
+    });
+
+    const newCart = [];
+    (items || []).forEach(w => {
+      const fp = fpWoo(w);
+      if (buckets[fp]?.length) {
+        newCart.push(buckets[fp].shift());
+      } else {
+        const skuQty = String(w.sku) + '|' + String(w.quantity ?? 1);
+        const anyKey = Object.keys(buckets).find(k =>
+          k.startsWith(skuQty) && buckets[k].length
+        );
+        if (anyKey) newCart.push(buckets[anyKey].shift());
+      }
+    });
+
+    merchi.cartItems = newCart;
+  } else if (before === items.length) {
+    reorderIfNeeded(items, merchi);
+  }
+
   if (merchi.cartItems.length === before) return;
 
   merchi.cartItemsSubtotalCost = merchi.cartItems.reduce(

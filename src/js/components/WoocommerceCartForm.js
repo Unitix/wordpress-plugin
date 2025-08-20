@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { patchCart } from '../merchi_public_custom';
 import CartItems from './CartItems';
 import CartTotals from './CartTotals';
-
 import { ensureWooNonce, fetchWooNonce, updateWooNonce, getWpApiRoot } from '../utils';
 
 // read cart from local storage
@@ -17,44 +16,41 @@ const readCart = () => {
 
 export default function WoocommerceCartForm() {
   const [cart, setCart] = useState(readCart());
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const onStorage = e =>
-      e.key === 'MerchiCart' && setCart(readCart());
-    window.addEventListener('storage', onStorage);
-
-    // sync with the backend
-    (async () => {
-      try {
-        const patched = await patchCart(readCart(), cart.cartEmbed, { includeShippingFields: false });
-        // update the cart in local storage
-        setCart(JSON.parse(localStorage.getItem('MerchiCart')) || patched);
-      } catch (e) {
-        console.warn('[Cart] patchCart error:', e.response?.status || e);
-      } finally {
-        setLoading(false);
-      }
-    })();
-
-    return () => {
-      window.removeEventListener('storage', onStorage);
-    };
-  }, []);
+  // const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const apiRoot = getWpApiRoot();
 
-  const findWooKeyBySku = (sku) => {
-    const store = JSON.parse(localStorage.storeApiCartData || '{}');
-    return (store.items || []).find((i) => String(i.sku) === String(sku))?.key;
+  const getWooCartList = () => {
+    const sd = window.scriptData || {};
+    return sd.wooCartDat || sd.wooCartData || [];
   };
 
-  const handleRemove = useCallback(async (item) => {
-    const wooKey = findWooKeyBySku(item.product?.id);
+  const findWooKey = (item) => {
+    const list = getWooCartList();
+    const merchiId = item?.merchi_cart_item_id;
+    if (merchiId != null) {
+      const found = list.find((row) => String(row.merchi_cart_item_id) === String(merchiId));
+      if (found && found.key) return found.key;
+    }
+    return undefined;
+  };
+
+  console.log('-----WoocommerceCartForm------');
+  console.log('scriptData', window.scriptData.wooCartData);
+
+  const handleRemove = useCallback(async (item, idx, wooKeyFromRow) => {
+    console.log('-----handleRemove------');
+    console.log('item', item);
+    console.log('idx', idx);
+    console.log('wooKeyFromRow', wooKeyFromRow);
+    const wooKey = wooKeyFromRow || findWooKey(item);
+    console.log('wooKey', wooKey);
     if (!wooKey) {
       console.warn('Missing Woo item key, cannot sync mini-cart');
       return;
     }
+    console.log('we have wooKey, start removing');
 
     // get current valid nonce
     const nonce = await ensureWooNonce();
@@ -88,9 +84,7 @@ export default function WoocommerceCartForm() {
     const wooCart = await res.json();
     localStorage.storeApiCartData = JSON.stringify(wooCart);
 
-    const updatedItems = cart.cartItems.filter(
-      ci => String(ci.product?.id) !== String(item.product?.id)
-    );
+    const updatedItems = cart.cartItems.filter((_, i) => i !== idx);
 
     const subtotalCost = updatedItems.reduce(
       (sum, i) =>
@@ -108,20 +102,28 @@ export default function WoocommerceCartForm() {
         (i.totalCost !== undefined ? i.totalCost : (i.subtotalCost ?? i.cost ?? 0) * (i.quantity ?? 1)),
       0
     );
+
+    const taxAmount = Math.max(0, totalCost - subtotalCost);
+
     const updatedCart = {
       ...cart,
       cartItems: updatedItems,
       cartItemsSubtotalCost: subtotalCost,
       cartItemsTotalCost: totalCost,
+      cartItemsTaxAmount: taxAmount,
+      subtotalCost,
+      taxAmount,
+      totalCost,
     };
 
     localStorage.setItem('MerchiCart', JSON.stringify(updatedCart));
     setCart(updatedCart);
 
-    patchCart(updatedCart, cart.cartEmbed, { includeShippingFields: false }).catch(e =>
+    patchCart(updatedCart, cart.cartEmbed, { includeShippingFields: true, preserveShippingInLocalStorage: false }).catch(e =>
       console.warn('[Cart] patchCart error:', e?.response?.status || e)
     );
   }, [cart]);
+
 
 
   if (loading) {
@@ -131,6 +133,8 @@ export default function WoocommerceCartForm() {
       </div>
     );
   }
+
+  const shopUrl = window.scriptData?.shopUrl || '/shop';
 
   if (!cart.cartItems?.length) {
     return (
@@ -145,7 +149,7 @@ export default function WoocommerceCartForm() {
                 Your cart is currently empty!
               </h2>
               <p style={{ textAlign: 'center', marginTop: '3rem' }}>
-                <a href="/shop" className="wp-element-button">
+                <a href={shopUrl} className="wp-element-button">
                   Return to shop
                 </a>
               </p>

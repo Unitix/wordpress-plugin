@@ -21,8 +21,8 @@ export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdat
   const couponPanelRef = useRef(null);
 
   const cartReady =
-    (cart?.cartItems?.length && cart.cartItems[0].product?.name) ||
-    (localCart.cartItems?.length && localCart.cartItems[0].product?.name);
+    (cart?.cartItems?.length) ||
+    (localCart.cartItems?.length);
 
   useEffect(() => {
     const onStorage = (e) =>

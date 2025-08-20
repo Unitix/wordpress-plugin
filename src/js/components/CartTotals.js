@@ -26,26 +26,15 @@ export default function CartTotals({ cart }) {
 
   let displayDiscount = calcDisc(cart);
 
-  if (couponData.totals && !isNaN(couponData.totals.total)) {
+  if (couponData.appliedCodes.length > 0 && couponData.totals && !isNaN(couponData.totals.total)) {
     displayTotal = couponData.totals.total;
     displayDiscount = Math.abs(couponData.totals.discount || 0);
-  } else {
-    try {
-      const raw = localStorage.getItem('MerchiCart');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        displayTotal = +(parsed.totalCost ?? originalTotal);
-        displayDiscount = calcDisc(parsed);
-      }
-    } catch (error) {
-      console.error('Error reading cart from localStorage:', error);
-    }
   }
 
   let finalTotal = displayTotal;
-  if (cart.shipmentTotalCost && cart.shipmentTotalCost > 0) {
-    finalTotal -= cart.shipmentTotalCost;
-  }
+  // if (cart.shipmentTotalCost && cart.shipmentTotalCost > 0) {
+  //   finalTotal -= cart.shipmentTotalCost;
+  // }
 
   const totalFmt = finalTotal.toFixed(2);
   const discountFmt = displayDiscount.toFixed(2);
