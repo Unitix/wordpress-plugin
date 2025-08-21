@@ -1157,6 +1157,11 @@ function initializeWhenReady() {
         }
 
         let merchiCartJson = localStorage.getItem('MerchiCart');
+        const cartData = merchiCartJson ? JSON.parse(merchiCartJson) : null;
+        merchiCartItemJson.cart = cartData ? {
+          id: cartData.id,
+          token: cartData.token
+        } : null;
         let merchiCartToken = getMerchiCartToken();
         // If no cart exists, create a new one
         if (!merchiCartToken) {

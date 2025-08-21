@@ -1166,8 +1166,7 @@ add_action('wp_ajax_nopriv_send_id_for_add_cart', 'send_id_for_add_cart');
  * @return array The cleaned cart item payload.
  */
 function merchi_build_clean_cart_item_payload( array $item ) : array {
-    return [
-        'id'        => $item['id']  ?? null,
+    $payload = [
         'product'   => [ 'id' => $item['productID'] ?? $item['product']['id'] ],
         'quantity'  => (int) $item['quantity'],
         'totalCost' => (float) $item['totalCost'],
@@ -1185,6 +1184,17 @@ function merchi_build_clean_cart_item_payload( array $item ) : array {
             ];
         }, $item['variationsGroups'] ?? [] ),
     ];
+
+    // only include id if it's not null
+    if (!empty($item['id'])) {
+        $payload['id'] = $item['id'];
+    }
+
+    if (isset($item['cart']) && isset($item['cart']['id'])) {
+        $payload['cart'] = ['id' => $item['cart']['id']];
+    }
+
+    return $payload;
 }
 
 function merchi_build_clean_cart_payload( array $raw ) : array {
@@ -1559,7 +1569,7 @@ function merchi_cart_item_to_woo_cart_item($merchiCartItemJson) {
     $woocommerceCartItem = array(
         'merchiCartItemId' => isset($merchiCartItemJson['id']) ? $merchiCartItemJson['id'] : '',
         'productID' => isset($merchiCartItemJson['product']['id']) ? $merchiCartItemJson['product']['id'] : '',
-        'subTotal' => isset($merchiCartItemJson['cost']) ? floatval($merchiCartItemJson['cost']) : 0,
+        'subtotalCost' => isset($merchiCartItemJson['subtotalCost']) ? floatval($merchiCartItemJson['subtotalCost']) : 0,
         'totalCost' => isset($merchiCartItemJson['totalCost']) ? floatval($merchiCartItemJson['totalCost']) : 0,
         'variations' => array(),
         'objExtras' => array()
@@ -1694,16 +1704,16 @@ function send_id_for_add_cart(){
             }
 
             $cartItems = null;
-            if (isset($create_cart_item_response['cartItem']['cart']) && isset($create_cart_item_response['cartItem']['cart']['cartItems'])) {
-                $cart = $create_cart_item_response['cartItem']['cart'];
-                $cartItems = $create_cart_item_response['cartItem']['cart']['cartItems'];
+            if (isset($create_cart_item_response['data']['cartItem']['cart']) && isset($create_cart_item_response['data']['cartItem']['cart']['cartItems'])) {
+                $cart = $create_cart_item_response['data']['cartItem']['cart'];
+                $cartItems = $create_cart_item_response['data']['cartItem']['cart']['cartItems'];
             } else {
                 error_log('Merchi PATCH error: Cart items were not embedded in the response');
                 echo 0;
                 exit;
             }
             $taxAmount = $cart['taxAmount'];
-            if (!isset($cart['cartItems'])) {
+            if (!isset($cartItems) || empty($cartItems)) {
                 echo 0;
                 exit;
             }
@@ -1789,14 +1799,14 @@ function send_id_for_add_cart(){
                     WC()->cart->remove_cart_item( $cart_item_key );
                     $cart_item_key = WC()->cart->add_to_cart($product_id, $newQuantity, 0, array(), $cart_item_data);
                     $currentCartItem['quantity'] = $newQuantity;
-                    $currentCartItem['subtotalCost'] = floatval($current_subTotal) + floatval($merchiCartItem['subTotal']);
+                    $currentCartItem['subtotalCost'] = floatval($current_subTotal) + floatval($merchiCartItem['subtotalCost']);
                     $productsAdded[$cart_item_key] = array( 'subtotal' => $currentCartItem['subtotalCost'], 'quantity' => $newQuantity );
                 }else if( !$cart_item_key ){
                     $cart_item_key = WC()->cart->add_to_cart($product_id, $quantity, 0, array(), $cart_item_data);
                     $currentCartItem['quantity'] = $quantity;
-                    $currentCartItem['subtotalCost'] = $merchiCartItem['subTotal'];
+                    $currentCartItem['subtotalCost'] = $merchiCartItem['subtotalCost'];
                 }else{
-                    $productsAdded[$cart_item_key] = array( 'subtotal' => $merchiCartItem['subTotal'], 'quantity' => $quantity );
+                    $productsAdded[$cart_item_key] = array( 'subtotal' => $merchiCartItem['subtotalCost'], 'quantity' => $quantity );
                     continue;
                 }
                 $currentCartItem['product_id'] = $product_id;
@@ -1828,7 +1838,7 @@ function send_id_for_add_cart(){
             // }
             echo json_encode([
                 'success'    => true,
-                'merchiCart' => $merchi_cart_item_json['cart']
+                'merchiCart' => $cart
             ]);
             wp_die();
         } catch(Exception $e) {
