@@ -1126,16 +1126,15 @@ function initializeWhenReady() {
             setLoadingState(false);
             return;
           }
+          merchiCartJson = localStorage.getItem('MerchiCart');
+          cartData = merchiCartJson ? JSON.parse(merchiCartJson) : null;
         }
-
-        let merchiCartJson = localStorage.getItem('MerchiCart');
-        const cartData = merchiCartJson ? JSON.parse(merchiCartJson) : null;
 
         merchiCartItemJson.cart = cartData ? {
           id: cartData.id,
           token: cartData.token
         } : null;
-  
+
         const cartPayload = {
           merchiCartItemJson,
         };
