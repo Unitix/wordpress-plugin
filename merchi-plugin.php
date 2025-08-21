@@ -1459,6 +1459,7 @@ function merchi_cart_item_post($cart_item_json, $cart_token) {
             'success' => true,
             'message' => 'Cart item created successfully',
             'data' => $response_data,
+            'cartItem' => $response_data['cartItem'],
             'response_code' => $response_code
         );
     } else {
@@ -1694,6 +1695,7 @@ function send_id_for_add_cart(){
             }
 
             $cartItems = null;
+
             if (isset($create_cart_item_response['cartItem']['cart']) && isset($create_cart_item_response['cartItem']['cart']['cartItems'])) {
                 $cart = $create_cart_item_response['cartItem']['cart'];
                 $cartItems = $create_cart_item_response['cartItem']['cart']['cartItems'];
