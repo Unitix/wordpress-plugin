@@ -1,46 +1,6 @@
 // Wait for both jQuery and Merchi SDK to be ready
 import { MERCHI_SDK } from './merchi_sdk';
 import { initializeCheckout } from './merchi_checkout_init';
-const domainId = merchiConfig.domainId;
-
-/**
- * Get cart token from browser cookies
- * @param {string} cookieName - Name of the cookie containing the cart token (defaults to common WooCommerce cart cookie)
- * @returns {string|null} - Cart token value or null if not found
- */
-function getCartTokenFromCookies(cookieName = 'woocommerce_cart_hash') {
-  // Handle case where cookies are not available
-  if (!document.cookie) {
-    return null;
-  }
-
-  // Parse all cookies into key-value pairs
-  const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-    const [key, value] = cookie.trim().split('=');
-    if (key && value) {
-      try {
-        // Decode URI component to handle encoded values
-        acc[key] = decodeURIComponent(value);
-      } catch (e) {
-        // If decoding fails, use raw value
-        acc[key] = value;
-      }
-    }
-    return acc;
-  }, {});
-
-  // Return the specific cookie value or null if not found
-  return cookies[cookieName] || null;
-}
-
-/**
- * Get merchi cart token from cookies
- * @returns {string} - merchi cart token as a string
- */
-function getMerchiCartToken() {
-  return getCartTokenFromCookies(`cart-${domainId}`);
-}
-
 
 function initializeWhenReady() {
   const merchiSdk = MERCHI_SDK();
@@ -1145,7 +1105,6 @@ function initializeWhenReady() {
         const { quantity, variationsGroups = [], variations = [] } = merchiCartItemJson;
 
         let cartId = null;
-        let totalQuantity = variationsGroups.length ? 0 : quantity;
 
         // use querySelector to get the main image and assign it to featureImage
         const pageImg = document.querySelector(
@@ -1158,104 +1117,29 @@ function initializeWhenReady() {
 
         let merchiCartJson = localStorage.getItem('MerchiCart');
         const cartData = merchiCartJson ? JSON.parse(merchiCartJson) : null;
-        merchiCartItemJson.cart = cartData ? {
-          id: cartData.id,
-          token: cartData.token
-        } : null;
-        let merchiCartToken = getMerchiCartToken();
         // If no cart exists, create a new one
-        if (!merchiCartToken) {
+        if (!cartData) {
           try {
-            const newCart = await initOrSyncCart();
-            if (newCart) {
-              merchiCartJson = JSON.parse(localStorage.getItem('MerchiCart'));
-              merchiCartToken = merchiCartJson.token
-              cartId = merchiCartJson.id;
-            } else {
-              throw new Error('Failed to create new cart');
-            }
+            await initOrSyncCart();
           } catch (error) {
-            console.error('Error creating new cart:', error);
             alert("Failed to initialize cart. Please try again.");
             setLoadingState(false);
             return;
           }
         }
 
-        // Build cartItems from formData (detailed version)
-        const woocommerceCartItem = {
-          productID: merchiCartItemJson.product?.id || '',
-          subTotal: merchiCartItemJson.cost || 0,
-          totalCost: merchiCartItemJson.totalCost || 0,
-          variations: [],
-          objExtras: []
-        };
+        let merchiCartJson = localStorage.getItem('MerchiCart');
+        const cartData = merchiCartJson ? JSON.parse(merchiCartJson) : null;
 
-        // Map group variations (variationsGroups)
-        if (variationsGroups?.length) {
-          variationsGroups.forEach((group, gi) => {
-            let groupObj = {};
-            let groupExtras = {};
-            let varQuant = group.quantity || 1;
-
-            // Use variationField.id or variationField.name as key, fallback to index
-            if (Array.isArray(group.variations)) {
-              group.variations.forEach((variation, vi) => {
-                let key = vi;
-                if (variation && variation.variationField) {
-                  key = variation.variationField.id || variation.variationField.name || vi;
-                }
-                if (variation && (variation.value !== undefined)) {
-                  // If this is a file upload field, store the full file object(s)
-                  if (
-                    Array.isArray(variation.value) &&
-                    variation.value.length > 0 &&
-                    variation.value[0] &&
-                    typeof variation.value[0] === 'object' &&
-                    variation.value[0].id &&
-                    variation.value[0].name &&
-                    variation.value[0].downloadUrl
-                  ) {
-                    groupObj[key] = variation.value; // Store array of file objects
-                  } else {
-                    groupObj[key] = variation.value;
-                  }
-                }
-              });
-            }
-            groupExtras['quantity'] = varQuant;
-            totalQuantity += varQuant;
-
-            woocommerceCartItem.variations.push(groupObj);
-            woocommerceCartItem.objExtras.push(groupExtras);
-          });
-        }
-
-        // Map standalone variations (if any)
-        if (variations?.length) {
-          let obj = {};
-          let objExtras = {};
-          let loopcount = 0;
-
-          variations.forEach((variation, vi) => {
-            if (variation && (variation.value !== undefined)) {
-              obj[vi] = variation.value;
-            }
-            loopcount = vi + 1;
-          });
-          objExtras[loopcount] = totalQuantity;
-          objExtras['quantity'] = totalQuantity;
-
-          woocommerceCartItem.variations.push(obj);
-          woocommerceCartItem.objExtras.push(objExtras);
-        }
-        woocommerceCartItem.quantity = totalQuantity;
+        merchiCartItemJson.cart = cartData ? {
+          id: cartData.id,
+          token: cartData.token
+        } : null;
+  
         const cartPayload = {
-          cartItems: [woocommerceCartItem],
           merchiCartItemJson,
         };
 
-        console.log('About to POST send_id_for_add_cart with payload:', cartPayload);
         jQuery.ajax({
           method: "POST",
           url: (typeof frontendajax !== 'undefined' ? frontendajax.ajaxurl : '/wp-admin/admin-ajax.php'),
@@ -1266,10 +1150,8 @@ function initializeWhenReady() {
           dataType: "json",
           success: function (response) {
             setLoadingState(false);
-            console.log('[Merchi] full AJAX response:', response);
 
             if (response.success && response.merchiCart) {
-              console.log('[Merchi] merchicart', response.merchiCart);
               localStorage.setItem('MerchiCart', JSON.stringify(response.merchiCart));
             }
             // Set a flag in sessionStorage to show the success message after reload
