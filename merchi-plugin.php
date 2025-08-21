@@ -1678,16 +1678,15 @@ function cst_cart_item_after_remove() {
     error_log('=== Merchi Cart Item Removal Process Started ===');
     
     if (isset($_COOKIE['cstCartId'])) {
-        $item_id = $_POST['item_id'];
-        $cart_id = $_COOKIE['cstCartId'];
-        $cart_length = $_POST['cart_length'];
+        $merchi_cart_item_id = sanitize_text_field($_POST['item_id']);
+        $cart_id = sanitize_text_field($_COOKIE['cstCartId']);
+        $cart_length = intval($_POST['cart_length']);
         
         error_log('Removal parameters:');
-        error_log('- Item ID: ' . $item_id);
+        error_log('- Merchi Cart Item ID: ' . $merchi_cart_item_id);
         error_log('- Cart ID: ' . $cart_id);
         error_log('- Cart length: ' . $cart_length);
         
-        // Get cart token from cookie
         $cart_token = null;
         if (isset($_COOKIE['cart-'.MERCHI_DOMAIN])) {
             $cookie_parts = explode(',', $_COOKIE['cart-'.MERCHI_DOMAIN]);
@@ -1701,57 +1700,37 @@ function cst_cart_item_after_remove() {
             error_log('Warning: No cart cookie found');
         }
 
-        // Make delete request to Merchi API if we have the token
-        if ($cart_token) {
-            $url = MERCHI_URL . 'v6/cart_items/' . urlencode((string)$item_id) . '/?cart_token=' . urlencode($cart_token);
-            error_log('Attempting DELETE request to Merchi API: ' . $url);
+        if ($cart_token && $merchi_cart_item_id) {
+            $delete_result = merchi_cart_item_delete($merchi_cart_item_id, $cart_token);
             
-            $args = array(
-                'method' => 'DELETE',
-                'timeout' => 30,
-            );
-
-            $response = wp_remote_request($url, $args);
-            
-            if (is_wp_error($response)) {
-                error_log('Merchi API DELETE error: ' . $response->get_error_message());
+            if ($delete_result['success']) {
+                error_log('Successfully deleted Merchi cart item ' . $merchi_cart_item_id);
             } else {
-                $response_code = wp_remote_retrieve_response_code($response);
-                $response_body = wp_remote_retrieve_body($response);
-                error_log('Merchi API DELETE response:');
-                error_log('- Status code: ' . $response_code);
-                error_log('- Response body: ' . $response_body);
+                error_log('Failed to delete Merchi cart item ' . $merchi_cart_item_id . ': ' . $delete_result['error']);
             }
         } else {
             error_log('Skipping Merchi API call - no cart token available');
         }
 
-        if (1 == $cart_length || 0 == $cart_length) {
-            error_log('Cart is empty or has only one item, clearing cookies');
+        if ($cart_length <= 1) {
+            error_log('Cart is empty, clearing cookies');
             setcookie('cart-'.MERCHI_DOMAIN, "", time() - 3600, "/");
             setcookie("cstCartId", "", time() - 3600, "/");
             error_log('Cart cookies cleared');
         }
-
-        $options = get_option_extended("get_cart_myItems_".$cart_id);
-        $itemData = $options['get_cart_myItems_'.$cart_id.'_'.$item_id];
-        error_log('Item data retrieved from options: ' . print_r($itemData, true));
         
-        // Send success response with event data
         wp_send_json_success(array(
             'event' => 'merchi_cart_item_removed',
             'data' => array(
-                'item_id' => $item_id,
+                'merchi_cart_item_id' => $merchi_cart_item_id,
                 'cart_id' => $cart_id,
-                'cart_length' => $cart_length,
-                'item_data' => $itemData
+                'cart_length' => $cart_length
             )
         ));
     } else {
         error_log('Error: No cstCartId cookie found during Merchi cart item removal');
-    }
-    error_log('=== Merchi Cart Item Removal Process Completed ===');
-    exit;
+    }  
+    wp_die();
 }
 
 function merchi_sync_session_after_remove( $removed_key, $cart_obj ) {   
@@ -1760,23 +1739,21 @@ function merchi_sync_session_after_remove( $removed_key, $cart_obj ) {
     }
     $cart_id = $_COOKIE['cstCartId'];
 
-    $merchi_cart = WC()->session->get( 'merchi_cart_data' );
-    if ( empty( $merchi_cart['cartItems'] ) || ! is_array( $merchi_cart['cartItems'] ) ) {
-        return;
-    }
-
-    // Attempt to identify the removed Woo item using WC's removed_cart_contents
-    $removed_item = null;
+    // get merchi_cart_item_id from removed item
     $deleted_merchi_item_id = null;
     if ( isset( $cart_obj->removed_cart_contents ) && isset( $cart_obj->removed_cart_contents[ $removed_key ] ) ) {
         $removed_item = $cart_obj->removed_cart_contents[ $removed_key ];
         $deleted_merchi_item_id = $removed_item['merchi_cart_item_id'] ?? null;
-        error_log('Found removed item with merchi_cart_item_id: ' . $deleted_merchi_item_id);
     }
 
-    // If we found the merchi item ID, remove it from session
-    if ($deleted_merchi_item_id) {
-        error_log('Processing deletion for merchi item ID: ' . $deleted_merchi_item_id);
+    if ( ! $deleted_merchi_item_id ) {
+        error_log('No merchi_cart_item_id found for removed item: ' . $removed_key);
+        return;
+    }
+    error_log('Removing merchi item ID: ' . $deleted_merchi_item_id);
+
+    $merchi_cart = WC()->session->get( 'merchi_cart_data' );
+    if ( ! empty( $merchi_cart['cartItems'] ) && is_array( $merchi_cart['cartItems'] ) ) {
         $updated_cart_items = [];
         foreach ($merchi_cart['cartItems'] as $m_item) {
             if (($m_item['id'] ?? null) != $deleted_merchi_item_id) {
@@ -1788,57 +1765,25 @@ function merchi_sync_session_after_remove( $removed_key, $cart_obj ) {
         
         $merchi_cart['cartItems'] = $updated_cart_items;
         WC()->session->set( 'merchi_cart_data', $merchi_cart );
+    }
 
-        // Also propagate deletion to Merchi API
-        $cart_token = null;
-        if ( isset( $_COOKIE['cart-' . MERCHI_DOMAIN] ) ) {
-            $cookie_parts = explode( ',', $_COOKIE['cart-' . MERCHI_DOMAIN] );
-            if ( count( $cookie_parts ) > 1 ) {
-                $cart_token = trim( $cookie_parts[1] );
-            }
-        }       
-        if ( $cart_token ) {
-            $delete_result = merchi_cart_item_delete($deleted_merchi_item_id, $cart_token);
-            
-            if ($delete_result['success']) {
-                error_log('Successfully deleted Merchi cart item ' . $deleted_merchi_item_id);
-            } else {
-                error_log('Failed to delete Merchi cart item ' . $deleted_merchi_item_id . ': ' . $delete_result['error']);
-            }
+    $cart_token = null;
+    if ( isset( $_COOKIE['cart-' . MERCHI_DOMAIN] ) ) {
+        $cookie_parts = explode( ',', $_COOKIE['cart-' . MERCHI_DOMAIN] );
+        if ( count( $cookie_parts ) > 1 ) {
+            $cart_token = trim( $cookie_parts[1] );
+        }
+    }       
+    if ( $cart_token ) {
+        $delete_result = merchi_cart_item_delete($deleted_merchi_item_id, $cart_token);   
+        if ($delete_result['success']) {
+            error_log('Successfully deleted Merchi cart item ' . $deleted_merchi_item_id);
+        } else {
+            error_log('Failed to delete Merchi cart item ' . $deleted_merchi_item_id . ': ' . $delete_result['error']);
         }
     }
-    // Rebuild per-item mapping for remaining items using direct mapping
-    foreach ( WC()->cart->get_cart() as $cart_item_key => $woo_item ) {
-        $merchi_item_id = $woo_item['merchi_cart_item_id'] ?? null;
-        if (!$merchi_item_id) continue;
-
-        // Find matching merchi item by ID
-        $matched = null;
-        foreach ( $merchi_cart['cartItems'] as $m_item ) {
-            if (($m_item['id'] ?? null) == $merchi_item_id) {
-                $matched = $m_item;
-                break;
-            }
-        }
-        
-        if ( ! $matched ) {
-            continue;
-        }
-
-        $lineTotal = floatval( $matched['totalCost'] ?? 0 );
-        if ( $lineTotal <= 0 ) {
-            $lineTotal = floatval( $matched['subtotalCost'] ?? 0 );
-        }
-        $quantity  = intval( $matched['quantity'] ?? 0 );
-        $currentCartItem = [
-            'product_id'   => $matched['product']['id']    ?? $matched['productID'],
-            'quantity'     => $quantity,
-            'subtotalCost' => floatval( $matched['subtotalCost'] ?? 0 ),
-            'totalCost'    => $lineTotal,
-            'taxAmount'    => floatval( $matched['taxAmount'] ?? 0 ),
-        ];
-        update_option( "get_cart_myItems_{$cart_id}_{$cart_item_key}", $currentCartItem );
-    }
+    $option_key = 'get_cart_myItems_' . $cart_id . '_' . $removed_key;
+    delete_option( $option_key );
 }
 
 add_action( 'woocommerce_remove_cart_item', 'merchi_sync_session_after_remove', 10, 2 );
