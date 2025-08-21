@@ -35,22 +35,14 @@ export default function WoocommerceCartForm() {
     }
     return undefined;
   };
-
-  console.log('-----WoocommerceCartForm------');
   console.log('scriptData', window.scriptData.wooCartData);
 
   const handleRemove = useCallback(async (item, idx, wooKeyFromRow) => {
-    console.log('-----handleRemove------');
-    console.log('item', item);
-    console.log('idx', idx);
-    console.log('wooKeyFromRow', wooKeyFromRow);
     const wooKey = wooKeyFromRow || findWooKey(item);
-    console.log('wooKey', wooKey);
     if (!wooKey) {
       console.warn('Missing Woo item key, cannot sync mini-cart');
       return;
     }
-    console.log('we have wooKey, start removing');
 
     // get current valid nonce
     const nonce = await ensureWooNonce();
