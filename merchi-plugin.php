@@ -1801,6 +1801,7 @@ function send_id_for_add_cart(){
                 $currentCartItem['product_id'] = $product_id;
                 $currentCartItem['totalCost'] = $merchiCartItem['totalCost'];
                 $currentCartItem['taxAmount'] = $taxAmount;
+                $currentCartItem['merchi_cart_item_id'] = $cartItem['merchiCartItemId'];
                 update_option("get_cart_myItems_".$cart_id."_".$cart_item_key, $currentCartItem);
                 $productsAdded[] = $cart_item_key;
             }
@@ -1809,6 +1810,21 @@ function send_id_for_add_cart(){
             if (WC()->session && $merchi_cart_item_json) {
                 WC()->session->set('merchi_cart_item_data', $merchi_cart_item_json);
             }
+            // update merchi_cart_item_id in WooCommerce cart items
+            // if (isset($merchi_cart['cartItems']) && is_array($merchi_cart['cartItems'])) {
+            //     $woo_cart_contents = WC()->cart->get_cart();
+            //     $cart_item_index = 0;
+
+            //     foreach ($woo_cart_contents as $cart_item_key => $cart_item) {
+            //         if (isset($merchi_cart['cartItems'][$cart_item_index]['id'])) {
+            //             $merchi_id = $merchi_cart['cartItems'][$cart_item_index]['id'];
+            //             WC()->cart->cart_contents[$cart_item_key]['merchi_cart_item_id'] = $merchi_id;
+            //             error_log('Updated cart item ' . $cart_item_key . ' with merchi ID: ' . $merchi_id);
+            //         }
+            //         $cart_item_index++;
+            //     }
+            //     WC()->cart->set_session();
+            // }
             echo json_encode([
                 'success'    => true,
                 'merchiCart' => $merchi_cart_item_json['cart']
