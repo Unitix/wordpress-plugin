@@ -1,6 +1,46 @@
 // Wait for both jQuery and Merchi SDK to be ready
 import { MERCHI_SDK } from './merchi_sdk';
 import { initializeCheckout } from './merchi_checkout_init';
+const domainId = merchiConfig.domainId;
+
+/**
+ * Get cart token from browser cookies
+ * @param {string} cookieName - Name of the cookie containing the cart token (defaults to common WooCommerce cart cookie)
+ * @returns {string|null} - Cart token value or null if not found
+ */
+function getCartTokenFromCookies(cookieName = 'woocommerce_cart_hash') {
+  // Handle case where cookies are not available
+  if (!document.cookie) {
+    return null;
+  }
+
+  // Parse all cookies into key-value pairs
+  const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+    const [key, value] = cookie.trim().split('=');
+    if (key && value) {
+      try {
+        // Decode URI component to handle encoded values
+        acc[key] = decodeURIComponent(value);
+      } catch (e) {
+        // If decoding fails, use raw value
+        acc[key] = value;
+      }
+    }
+    return acc;
+  }, {});
+
+  // Return the specific cookie value or null if not found
+  return cookies[cookieName] || null;
+}
+
+/**
+ * Get merchi cart token from cookies
+ * @returns {string} - merchi cart token as a string
+ */
+function getMerchiCartToken() {
+  return getCartTokenFromCookies(`cart-${domainId}`);
+}
+
 
 function initializeWhenReady() {
   const merchiSdk = MERCHI_SDK();
@@ -25,41 +65,6 @@ function initializeWhenReady() {
   }
 
   jQuery(document).ready(function ($) {
-    // Check if we just added something to cart and need to fix pricing
-    // if (sessionStorage.getItem('merchiCartSuccess')) {
-    //   sessionStorage.removeItem('merchiCartSuccess');
-    //   console.log('[Merchi] Starting cart pricing fix process');
-
-    //   // Wait for WooCommerce to update storeApiCartData, then fix it
-    //   let attempts = 0;
-    //   const maxAttempts = 50;
-    //   const checkInterval = setInterval(() => {
-    //     attempts++;
-
-    //     if (localStorage.storeApiCartData && localStorage.storeApiCartData !== '{}') {
-    //       const cartData = JSON.parse(localStorage.storeApiCartData);
-    //       console.log('Found storeApiCartData:', cartData);
-
-    //       if (cartData.items && cartData.items.length > 0) {
-    //         clearInterval(checkInterval);
-    //         console.log('Cart has items, proceeding with fix');
-
-    //         setTimeout(() => {
-    //           console.log('About to call fixStoreApiCartData');
-    //           fixStoreApiCartData();
-
-    //           setTimeout(() => {
-    //             const fixedData = JSON.parse(localStorage.storeApiCartData);
-    //             console.log('Data after fix:', fixedData);
-    //           }, 500);
-    //         }, 500);
-    //       }
-    //     } else if (attempts >= maxAttempts) {
-    //       clearInterval(checkInterval);
-    //       console.warn('Could not find storeApiCartData after', maxAttempts, 'attempts');
-    //     }
-    //   }, 200);
-    // }
 
     const merchiProductId = merchiConfig.productId;
     let productJson = {};
@@ -75,19 +80,6 @@ function initializeWhenReady() {
         return {};
       }
     };
-
-    // Add cart-loader and cart-count elements if not present
-    // if ($('#cart-loader').length === 0) {
-    //   $('body').prepend('<div id="cart-loader" style="display:none;position:fixed;top:20px;right:20px;z-index:9999;"><div style="width:32px;height:32px;border:4px solid #eee;border-top:4px solid #3498db;border-radius:50%;animation:spin 1s linear infinite;"></div></div>');
-    // }
-    // if ($('#cart-count').length === 0) {
-    //   // Add to header if exists, else to body
-    //   if ($('header').length > 0) {
-    //     $('header').append('<span id="cart-count" style="margin-left:16px;font-weight:bold;">0</span>');
-    //   } else {
-    //     $('body').prepend('<span id="cart-count" style="position:fixed;top:20px;left:20px;z-index:9999;font-weight:bold;">0</span>');
-    //   }
-    // }
 
     // Function to fetch product details
     function fetchProductDetails() {
@@ -1149,8 +1141,8 @@ function initializeWhenReady() {
       setLoadingState(true);
       try {
         // Gather form data and log it
-        const formData = await gatherFormData();
-        const { quantity, variationsGroups = [], variations = [] } = formData;
+        const merchiCartItemJson = await gatherFormData();
+        const { quantity, variationsGroups = [], variations = [] } = merchiCartItemJson;
 
         let cartId = null;
         let totalQuantity = variationsGroups.length ? 0 : quantity;
@@ -1161,32 +1153,18 @@ function initializeWhenReady() {
         )?.src;
 
         if (pageImg && !formData.product.featureImage) {
-          formData.product.featureImage = { viewUrl: pageImg };
+          merchiCartItemJson.product.featureImage = { viewUrl: pageImg };
         }
 
-        // Get the cart in local storage
-        const merchiCart = localStorage.getItem('MerchiCart');
-        let merchiCartJson = null;
-        let updatedCartJson = null;
-
-        // Only try to parse if merchiCart exists and is not null
-        if (merchiCart) {
-          try {
-            // Convert the cart to JSON
-            merchiCartJson = JSON.parse(merchiCart);
-            cartId = merchiCartJson.id;
-          } catch (error) {
-            console.error('Error parsing MerchiCart:', error);
-            merchiCartJson = null;
-          }
-        }
-
+        let merchiCartJson = localStorage.getItem('MerchiCart');
+        let merchiCartToken = getMerchiCartToken();
         // If no cart exists, create a new one
-        if (!merchiCartJson || !merchiCartJson.id) {
+        if (!merchiCartToken) {
           try {
             const newCart = await initOrSyncCart();
             if (newCart) {
               merchiCartJson = JSON.parse(localStorage.getItem('MerchiCart'));
+              merchiCartToken = merchiCartJson.token
               cartId = merchiCartJson.id;
             } else {
               throw new Error('Failed to create new cart');
@@ -1199,67 +1177,14 @@ function initializeWhenReady() {
           }
         }
 
-        // Process cart (either existing or newly created)
-        if (merchiCartJson && merchiCartJson.id) {
-          // Add the new item to the cart
-
-          // fill the basic quantity and price fields to formData
-          formData.quantity = variationsGroups.length ? 0 : quantity;
-          formData.subtotalCost = (formData.cost ?? 0) * formData.quantity;
-          formData.totalCost = (formData.totalCost ?? formData.cost ?? 0) * formData.quantity;
-
-          const cartItems = [...merchiCartJson.cartItems, formData];
-
-          // calculate the subtotal and total cost of the cart items (based on variationsGroups)
-          const cartItemsSubtotalCost = cartItems.reduce((sum, it) => {
-            if (Array.isArray(it.variationsGroups) && it.variationsGroups.length) {
-              return sum + it.variationsGroups.reduce((s, g) => s + (g.groupCost ?? 0), 0);
-            }
-            return sum + (it.subtotalCost ?? (it.cost ?? 0) * (it.quantity ?? 1));
-          }, 0);
-
-          const cartItemsTotalCost = cartItems.reduce((sum, it) => {
-            if (Array.isArray(it.variationsGroups) && it.variationsGroups.length) {
-              return sum + it.variationsGroups.reduce((s, g) => s + (g.groupCost ?? 0), 0);
-            }
-            return sum + (it.totalCost ?? it.subtotalCost ?? (it.cost ?? 0) * (it.quantity ?? 1));
-          }, 0);
-
-          updatedCartJson = {
-            ...merchiCartJson,
-            cartItems: cartItems.map(item => ({
-              ...item,
-              // product: { id: item.product.id },
-              product: {
-                id: item.product?.id,
-                name: item.product?.name,
-                featureImage: item.product?.featureImage
-                  ?? item.product?.images?.[0]
-                  ?? undefined,
-              },
-              subtotalCost: item.subtotalCost,
-              totalCost: item.totalCost,
-              taxType: item.taxType ? { id: item.taxType.id } : undefined,
-              variations: item.variations,
-              variationsGroups: item.variationsGroups,
-            })),
-            cartItemsSubtotalCost,
-            cartItemsTotalCost,
-            domain: { id: merchiCartJson?.domain?.id },
-          };
-          localStorage.setItem('MerchiCart', JSON.stringify(updatedCartJson)); //use the patchcart method here from merchi_public_custom.js
-        }
-
-        let taxAmount = 0;
         // Build cartItems from formData (detailed version)
-        const cartItems = [];
-        cartItems.push({
-          productID: formData.product?.id || '',
-          subTotal: formData.cost || 0,
-          totalCost: formData.totalCost || 0,
+        const woocommerceCartItem = {
+          productID: merchiCartItemJson.product?.id || '',
+          subTotal: merchiCartItemJson.cost || 0,
+          totalCost: merchiCartItemJson.totalCost || 0,
           variations: [],
           objExtras: []
-        });
+        };
 
         // Map group variations (variationsGroups)
         if (variationsGroups?.length) {
@@ -1296,12 +1221,8 @@ function initializeWhenReady() {
             groupExtras['quantity'] = varQuant;
             totalQuantity += varQuant;
 
-            cartItems[0].variations.push(groupObj);
-            cartItems[0].objExtras.push(groupExtras);
-
-            formData.quantity = totalQuantity;
-            formData.subtotalCost = (formData.cost ?? 0) * totalQuantity;
-            formData.totalCost = (formData.totalCost ?? formData.cost ?? 0) * totalQuantity;
+            woocommerceCartItem.variations.push(groupObj);
+            woocommerceCartItem.objExtras.push(groupExtras);
           });
         }
 
@@ -1320,15 +1241,13 @@ function initializeWhenReady() {
           objExtras[loopcount] = totalQuantity;
           objExtras['quantity'] = totalQuantity;
 
-          cartItems[0].variations.push(obj);
-          cartItems[0].objExtras.push(objExtras);
+          woocommerceCartItem.variations.push(obj);
+          woocommerceCartItem.objExtras.push(objExtras);
         }
-        cartItems[0].quantity = totalQuantity;
+        woocommerceCartItem.quantity = totalQuantity;
         const cartPayload = {
-          cartId: cartId,
-          taxAmount: taxAmount,
-          cartItems: cartItems,
-          merchiCartJson: updatedCartJson,
+          cartItems: [woocommerceCartItem],
+          merchiCartItemJson,
         };
 
         console.log('About to POST send_id_for_add_cart with payload:', cartPayload);
@@ -1509,10 +1428,4 @@ function showSuccessMessage() {
   closeBtn.onkeydown = (e) => {
     if (e.key === 'Enter' || e.key === ' ') message.remove();
   };
-
-  // Remove message after 8 seconds with a 1-second fade
-  // setTimeout(() => {
-  //   message.style.opacity = '0';
-  //   setTimeout(() => message.remove(), 1000);
-  // }, 8000);
 }

@@ -1548,6 +1548,106 @@ function merchi_cart_item_delete($cart_item_id, $cart_token) {
     }
 }
 
+/**
+ * Convert Merchi cart item JSON to WooCommerce cart item format
+ * @param array $merchiCartItemJson The Merchi cart item data
+ * @return array The WooCommerce cart item format
+ */
+function merchi_cart_item_to_woo_cart_item($merchiCartItemJson) {
+    // Initialize the WooCommerce cart item structure
+    $woocommerceCartItem = array(
+        'merchiCartItemId' => isset($merchiCartItemJson['id']) ? $merchiCartItemJson['id'] : '',
+        'productID' => isset($merchiCartItemJson['product']['id']) ? $merchiCartItemJson['product']['id'] : '',
+        'subTotal' => isset($merchiCartItemJson['cost']) ? floatval($merchiCartItemJson['cost']) : 0,
+        'totalCost' => isset($merchiCartItemJson['totalCost']) ? floatval($merchiCartItemJson['totalCost']) : 0,
+        'variations' => array(),
+        'objExtras' => array()
+    );
+
+    $totalQuantity = 0;
+    $variationsGroups = isset($merchiCartItemJson['variationsGroups']) ? $merchiCartItemJson['variationsGroups'] : array();
+    $variations = isset($merchiCartItemJson['variations']) ? $merchiCartItemJson['variations'] : array();
+
+    // If no groups, use the main quantity
+    if (empty($variationsGroups)) {
+        $totalQuantity = isset($merchiCartItemJson['quantity']) ? intval($merchiCartItemJson['quantity']) : 1;
+    }
+
+    // Map group variations (variationsGroups)
+    if (!empty($variationsGroups) && is_array($variationsGroups)) {
+        foreach ($variationsGroups as $groupIndex => $group) {
+            $groupObj = array();
+            $groupExtras = array();
+            $varQuant = isset($group['quantity']) ? intval($group['quantity']) : 1;
+
+            // Process variations within this group
+            if (isset($group['variations']) && is_array($group['variations'])) {
+                foreach ($group['variations'] as $variationIndex => $variation) {
+                    $key = $variationIndex;
+                    
+                    // Use variationField.id or variationField.name as key, fallback to index
+                    if (isset($variation['variationField'])) {
+                        if (isset($variation['variationField']['id'])) {
+                            $key = $variation['variationField']['id'];
+                        } elseif (isset($variation['variationField']['name'])) {
+                            $key = $variation['variationField']['name'];
+                        }
+                    }
+
+                    if (isset($variation['value'])) {
+                        // Check if this is a file upload field (array of file objects)
+                        if (is_array($variation['value']) && 
+                            !empty($variation['value']) && 
+                            isset($variation['value'][0]) &&
+                            is_array($variation['value'][0]) &&
+                            isset($variation['value'][0]['id']) &&
+                            isset($variation['value'][0]['name']) &&
+                            isset($variation['value'][0]['downloadUrl'])) {
+                            
+                            // Store array of file objects
+                            $groupObj[$key] = $variation['value'];
+                        } else {
+                            // Store regular value
+                            $groupObj[$key] = $variation['value'];
+                        }
+                    }
+                }
+            }
+
+            $groupExtras['quantity'] = $varQuant;
+            $totalQuantity += $varQuant;
+
+            $woocommerceCartItem['variations'][] = $groupObj;
+            $woocommerceCartItem['objExtras'][] = $groupExtras;
+        }
+    }
+
+    // Map standalone variations (if any)
+    if (!empty($variations) && is_array($variations)) {
+        $obj = array();
+        $objExtras = array();
+        $loopcount = 0;
+
+        foreach ($variations as $variationIndex => $variation) {
+            if (isset($variation['value'])) {
+                $obj[$variationIndex] = $variation['value'];
+            }
+            $loopcount = $variationIndex + 1;
+        }
+        
+        $objExtras[$loopcount] = $totalQuantity;
+        $objExtras['quantity'] = $totalQuantity;
+
+        $woocommerceCartItem['variations'][] = $obj;
+        $woocommerceCartItem['objExtras'][] = $objExtras;
+    }
+
+    // Set the final quantity
+    $woocommerceCartItem['quantity'] = $totalQuantity;
+
+    return $woocommerceCartItem;
+}
+
 function send_id_for_add_cart(){
     if (class_exists('WooCommerce')) {
         try {
@@ -1613,14 +1713,11 @@ function send_id_for_add_cart(){
             
             $products = array();
             $productsAdded = array();
-            foreach( $cartItems as $itemKey => $cartItem ){
-                if (!isset($cartItem['productID'])) {
-                    error_log('Warning: productID not set in cart item: ' . print_r($cartItem, true));
-                    continue;
-                }
+            foreach( $cartItems as $itemKey => $merchiCartItem ){
+                $cartItem = merchi_cart_item_to_woo_cart_item($merchiCartItem);
                     
                 $sku = $cartItem['productID'];
-                if(!in_array($sku, $products)){
+                if (!in_array($sku, $products)) {
                     $params = array(
                         'post_type' => 'product',
                         'meta_query' => array(
@@ -1644,7 +1741,7 @@ function send_id_for_add_cart(){
                 }
 
                 $cart_item_data = array('selection'=>array());
-                $cart_item_data['merchi_cart_item_id'] = $cart_id;
+                $cart_item_data['merchi_cart_item_id'] = $cartItem['merchiCartItemId'];
                 // Build the selection array as in the reference
                 if (isset($cartItem['variations'])) {
                     foreach ($cartItem['variations'] as $i => $variationGroup) {
@@ -1680,7 +1777,7 @@ function send_id_for_add_cart(){
                         $cart_item_data['selection'][] = $group;
                     }
                 }							
-                $quantity = $cartItem['quantity'];
+                $quantity = $merchiCartItem['quantity'];
 
                 $cart_item_key = WC()->cart->find_product_in_cart( WC()->cart->generate_cart_id( $product_id, 0, array(), $cart_item_data ) );
                 $currentCartItem = array();
@@ -1691,18 +1788,18 @@ function send_id_for_add_cart(){
                     WC()->cart->remove_cart_item( $cart_item_key );
                     $cart_item_key = WC()->cart->add_to_cart($product_id, $newQuantity, 0, array(), $cart_item_data);
                     $currentCartItem['quantity'] = $newQuantity;
-                    $currentCartItem['subtotalCost'] = floatval($current_subTotal) + floatval($cartItem['subTotal']);
+                    $currentCartItem['subtotalCost'] = floatval($current_subTotal) + floatval($merchiCartItem['subTotal']);
                     $productsAdded[$cart_item_key] = array( 'subtotal' => $currentCartItem['subtotalCost'], 'quantity' => $newQuantity );
                 }else if( !$cart_item_key ){
                     $cart_item_key = WC()->cart->add_to_cart($product_id, $quantity, 0, array(), $cart_item_data);
                     $currentCartItem['quantity'] = $quantity;
-                    $currentCartItem['subtotalCost'] = $cartItem['subTotal'];
+                    $currentCartItem['subtotalCost'] = $merchiCartItem['subTotal'];
                 }else{
-                    $productsAdded[$cart_item_key] = array( 'subtotal' => $cartItem['subTotal'], 'quantity' => $quantity );
+                    $productsAdded[$cart_item_key] = array( 'subtotal' => $merchiCartItem['subTotal'], 'quantity' => $quantity );
                     continue;
                 }
                 $currentCartItem['product_id'] = $product_id;
-                $currentCartItem['totalCost'] = $cartItem['totalCost'];
+                $currentCartItem['totalCost'] = $merchiCartItem['totalCost'];
                 $currentCartItem['taxAmount'] = $taxAmount;
                 update_option("get_cart_myItems_".$cart_id."_".$cart_item_key, $currentCartItem);
                 $productsAdded[] = $cart_item_key;
@@ -1714,7 +1811,7 @@ function send_id_for_add_cart(){
             }
             echo json_encode([
                 'success'    => true,
-                'merchiCart' => $merchi_cart_item_json
+                'merchiCart' => $merchi_cart_item_json['cart']
             ]);
             wp_die();
         } catch(Exception $e) {
