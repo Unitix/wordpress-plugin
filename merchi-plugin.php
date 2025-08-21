@@ -1964,7 +1964,7 @@ function merchi_sync_session_after_remove( $removed_key, $cart_obj ) {
             if ( count( $cookie_parts ) > 1 ) {
                 $cart_token = trim( $cookie_parts[1] );
             }
-        }
+        }       
         if ( $cart_token ) {
             $delete_result = merchi_cart_item_delete($deleted_merchi_item_id, $cart_token);
             
