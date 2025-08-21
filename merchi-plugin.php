@@ -3543,7 +3543,6 @@ add_action('init', function () {
 
 function merchi_modify_cart_contents_for_blocks( $cart_contents ) {   
     if ( ! isset( $_COOKIE['cstCartId'] ) ) {
-        $logged_once = true;
         return $cart_contents;
     }
     $cart_id = $_COOKIE['cstCartId'];
@@ -3562,35 +3561,20 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
         return $cart_contents;
     }
 
-    // Build Merchi lookup maps and ordered list for final fallback
-    $m_by_fp = array();
-    $m_by_skuqty = array();
-    $m_items_indexed = array();
+    // Build simple lookup by merchi item ID
+    $m_by_id = array();
     if ( $has_merchi_items ) {
-        $m_items_indexed = array_values( $merchi_cart_data['cartItems'] );
-        // keep stable order by id like old behavior for last fallback only
-        usort( $m_items_indexed, fn( $a, $b ) => ( $a['id'] ?? 0 ) <=> ( $b['id'] ?? 0 ) );
-
         foreach ( $merchi_cart_data['cartItems'] as $m_item ) {
-            $sku_m = (string) ( $m_item['product']['id'] ?? $m_item['productID'] ?? '' );
-            $qty_m = intval( $m_item['quantity'] ?? 0 );
-            $fp_m  = merchi_fingerprint( $sku_m, $qty_m, merchi_variation_from_merchi( $m_item ) );
-
-            $m_by_fp[ $fp_m ] = $m_item;
-
-            $key = $sku_m . '|' . $qty_m;
-            if ( ! isset( $m_by_skuqty[ $key ] ) ) {
-                $m_by_skuqty[ $key ] = array();
+            $m_id = $m_item['id'] ?? null;
+            if ( $m_id ) {
+                $m_by_id[ $m_id ] = $m_item;
             }
-            // queue to handle duplicates
-            $m_by_skuqty[ $key ][] = $m_item;
         }
     }
 
-    $idx_fallback = 0;
-
     foreach ( $cart_contents as $cart_item_key => &$cart_item ) {
         $applied = false;
+        
         if ( $has_options_map && ! $applied ) {
             $opt_key = 'get_cart_myItems_' . $cart_id . '_' . $cart_item_key;
 
@@ -3600,53 +3584,23 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
                 $cost_m = floatval( $itemData['totalCost'] ?? ( $itemData['subtotalCost'] ?? 0 ) );
 
                 if ( $cost_m > 0 && $qty_m > 0 ) {
-                    $unit = $cost_m / $qty_m;
+                    $unit = $cost_m;
                     $cart_item['data']->set_price( $unit );
                     $cart_item['data']->set_regular_price( $unit );
                     $cart_item['data']->set_sale_price( '' );
                     $applied = true;
                 }
             }
-        }
-
-        if ( $applied ) {
-            continue;
-        }
-
-        // fingerprint match from merchi session
-        if ( $has_merchi_items && ! $applied ) {
-            $sku  = (string) $cart_item['data']->get_sku();
-            $qty  = intval( $cart_item['quantity'] );
-            $var  = merchi_variation_from_woo( $cart_item );
-            $fp   = merchi_fingerprint( $sku, $qty, $var );
-
-            if ( isset( $m_by_fp[ $fp ] ) ) {
-                $m = $m_by_fp[ $fp ];
-
-                if ( isset( $m['totalCost'], $m['quantity'] ) && intval( $m['quantity'] ) > 0 ) {
-                    $unit = floatval( $m['totalCost'] ) / intval( $m['quantity'] );
-                    $cart_item['data']->set_price( $unit );
-                    $cart_item['data']->set_regular_price( $unit );
-                    $cart_item['data']->set_sale_price( '' );
-                    $applied = true;
-                }
-            }
-        }
-
-        if ( $applied ) {
-            continue;
         }
 
         if ( $has_merchi_items && ! $applied ) {
-            $sku  = (string) $cart_item['data']->get_sku();
-            $qty  = intval( $cart_item['quantity'] );
-            $key  = $sku . '|' . $qty;
-
-            if ( isset( $m_by_skuqty[ $key ] ) && ! empty( $m_by_skuqty[ $key ] ) ) {
-                $m = array_shift( $m_by_skuqty[ $key ] );
+            $merchi_item_id = $cart_item['merchi_cart_item_id'] ?? null;
+            
+            if ( $merchi_item_id && isset( $m_by_id[ $merchi_item_id ] ) ) {
+                $m = $m_by_id[ $merchi_item_id ];
 
                 if ( isset( $m['totalCost'], $m['quantity'] ) && intval( $m['quantity'] ) > 0 ) {
-                    $unit = floatval( $m['totalCost'] ) / intval( $m['quantity'] );
+                    $unit = floatval( $m['totalCost'] );
                     $cart_item['data']->set_price( $unit );
                     $cart_item['data']->set_regular_price( $unit );
                     $cart_item['data']->set_sale_price( '' );
@@ -3654,22 +3608,6 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
                 }
             }
         }
-
-        if ( $applied ) {
-            continue;
-        }
-
-        // // position fallback to preserve initial display
-        // if ( $has_merchi_items && isset( $m_items_indexed[ $idx_fallback ] ) ) {
-        //     $m = $m_items_indexed[ $idx_fallback ];
-        //     $idx_fallback++;
-        //     if ( isset( $m['totalCost'], $m['quantity'] ) && intval( $m['quantity'] ) > 0 ) {
-        //         $unit = floatval( $m['totalCost'] ) / intval( $m['quantity'] );
-        //         $cart_item['data']->set_price( $unit );
-        //         $cart_item['data']->set_regular_price( $unit );
-        //         $cart_item['data']->set_sale_price( '' );
-        //     }
-        // }
     }
     return $cart_contents;
 }
