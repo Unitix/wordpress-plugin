@@ -1152,7 +1152,7 @@ function initializeWhenReady() {
           '.woocommerce-product-gallery__image img, .woocommerce-product-gallery__wrapper img, meta[property="og:image"]'
         )?.src;
 
-        if (pageImg && !formData.product.featureImage) {
+        if (pageImg && !merchiCartItemJson.product.featureImage) {
           merchiCartItemJson.product.featureImage = { viewUrl: pageImg };
         }
 
