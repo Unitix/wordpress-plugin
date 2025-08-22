@@ -1,25 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { patchCart } from '../merchi_public_custom';
+// import { patchCart } from '../merchi_public_custom';
 import CartItems from './CartItems';
 import CartTotals from './CartTotals';
 import { ensureWooNonce, fetchWooNonce, updateWooNonce, getWpApiRoot } from '../utils';
-
-// read cart from local storage
-const readCart = () => {
-  try {
-    const data = JSON.parse(localStorage.getItem('MerchiCart')) || {};
-    return data.cart ?? data;
-  } catch {
-    return {};
-  }
-};
+import { useCart } from '../contexts/CartContext'
 
 export default function WoocommerceCartForm() {
-  const [cart, setCart] = useState(readCart());
-  // const [loading, setLoading] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const {
+    cart,
+    loading,
+    isUpdating,
+    initializeCart,
+    updateCart,
+    refreshCart,
+  } = useCart();
 
+  const [firstPaintDone, setFirstPaintDone] = useState(false);
   const apiRoot = getWpApiRoot();
+
+  useEffect(() => {
+    if (!firstPaintDone && !loading) setFirstPaintDone(true);
+  }, [loading, firstPaintDone]);
 
   const getWooCartList = () => {
     const sd = window.scriptData || {};
@@ -35,6 +36,7 @@ export default function WoocommerceCartForm() {
     }
     return undefined;
   };
+
   console.log('scriptData', window.scriptData.wooCartData);
 
   const handleRemove = useCallback(async (item, idx, wooKeyFromRow) => {
@@ -72,53 +74,48 @@ export default function WoocommerceCartForm() {
     }
 
     updateWooNonce(res);
+    await res.json()
 
-    const wooCart = await res.json();
-    localStorage.storeApiCartData = JSON.stringify(wooCart);
+    // sync the merchicart
+    try {
+      if (!cart?.id || !cart?.token) {
+        await initializeCart();
+      }
+      const merchiItemId = item?.id ?? item?.merchi_cart_item_id;
+      const nextItems = cart.cartItems.filter((ci, i) =>
+        merchiItemId != null ? ci?.id !== merchiItemId : i !== idx
+      );
 
-    const updatedItems = cart.cartItems.filter((_, i) => i !== idx);
+      if (nextItems.length === cart.cartItems.length) {
+        await refreshCart();
+        return;
+      }
+      const nextCartJson = {
+        ...cart,
+        cartItems: nextItems,
+      };
 
-    const subtotalCost = updatedItems.reduce(
-      (sum, i) =>
-        sum +
-        (i.subtotalCost !== undefined
-          ? i.subtotalCost
-          : (i.cost ?? 0) * (i.quantity ?? 1)
-        ),
-      0
-    );
+      await updateCart(
+        nextCartJson,
+        cart?.cartEmbed,
+        {
+          includeShippingFields: false,
+          preserveShippingInLocalStorage: true,
+        }
+      );
 
-    const totalCost = updatedItems.reduce(
-      (sum, i) =>
-        sum +
-        (i.totalCost !== undefined ? i.totalCost : (i.subtotalCost ?? i.cost ?? 0) * (i.quantity ?? 1)),
-      0
-    );
+      if (window?.jQuery?.fn) {
+        window.jQuery(document.body).trigger("wc_fragment_refresh");
+      }
+    } catch (e) {
+      console.warn('[Cart] updateCart remove failed, fallback to refresh:', e?.message || e);
+      await refreshCart();
+    }
+  },
+    [apiRoot, cart?.id, cart?.cartItems, cart?.cartEmbed, updateCart, refreshCart]
+  );
 
-    const taxAmount = Math.max(0, totalCost - subtotalCost);
-
-    const updatedCart = {
-      ...cart,
-      cartItems: updatedItems,
-      cartItemsSubtotalCost: subtotalCost,
-      cartItemsTotalCost: totalCost,
-      cartItemsTaxAmount: taxAmount,
-      subtotalCost,
-      taxAmount,
-      totalCost,
-    };
-
-    localStorage.setItem('MerchiCart', JSON.stringify(updatedCart));
-    setCart(updatedCart);
-
-    patchCart(updatedCart, cart.cartEmbed, { includeShippingFields: true, preserveShippingInLocalStorage: false }).catch(e =>
-      console.warn('[Cart] patchCart error:', e?.response?.status || e)
-    );
-  }, [cart]);
-
-
-
-  if (loading) {
+  if (loading && !firstPaintDone) {
     return (
       <div className="wc-cart-loading" role="status">
         <div className="wc-block-components-spinner is-active"></div>

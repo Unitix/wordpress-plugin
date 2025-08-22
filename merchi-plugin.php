@@ -1628,6 +1628,16 @@ function send_id_for_add_cart(){
                 $quantity = $merchiCartItem['quantity'];
 
                 $cart_item_key = WC()->cart->find_product_in_cart( WC()->cart->generate_cart_id( $product_id, 0, array(), $cart_item_data ) );
+
+                if ( ! $cart_item_key ) {
+                    foreach ( WC()->cart->get_cart() as $key => $existing_item ) {
+                        if ( isset($existing_item['merchi_cart_item_id']) && $existing_item['merchi_cart_item_id'] == $cartItem['merchiCartItemId'] ) {
+                            $cart_item_key = $key;
+                            break;
+                        }
+                    }
+                }
+
                 $currentCartItem = array();
                 if( $cart_item_key && array_key_exists($cart_item_key, $productsAdded) ) {
                     $current_quantity = $productsAdded[$cart_item_key]['quantity'];

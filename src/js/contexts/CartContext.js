@@ -42,7 +42,7 @@ export const CartProvider = ({ children }) => {
   const initializeCart = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const cartEntity = await initOrSyncCart();
       if (cartEntity) {
@@ -125,12 +125,12 @@ export const CartProvider = ({ children }) => {
     subtotal,
     totalCost,
     isEmpty,
-    
+
     // Loading states
     loading,
     isUpdating,
     error,
-    
+
     // Actions
     refreshCart,
     updateCart,

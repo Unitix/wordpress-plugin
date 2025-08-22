@@ -6,37 +6,28 @@ export default function CartTotals({ cart }) {
   const couponPanelRef = useRef(null);
 
   const subtotal = +(cart.cartItemsSubtotalCost ?? cart.subtotalCost ?? 0);
-  const originalTotal = +(cart.cartItemsTotalCost ?? cart.totalCost ?? 0);
+  const tax = +(cart.cartItemsTaxAmount ?? cart.taxAmount ?? 0);
+  const totalCost = +(cart.cartItemsTotalCost ?? cart.totalCost ?? 0);
 
-  const taxRaw =
-    cart.cartItemsTaxAmount ??
-    cart.taxAmount ??
-    (originalTotal > subtotal ? originalTotal - subtotal : 0);
 
-  const tax = (+taxRaw).toFixed(2);
+  const serverDiscount = Array.isArray(cart.discountItems)
+    ? Math.abs(cart.discountItems.reduce((s, i) => s + (Number(i.cost) || 0), 0))
+    : 0;
+
+
   const subtotalFmt = subtotal.toFixed(2);
+  const taxFmt = tax.toFixed(2);
 
-  let displayTotal = originalTotal;
-  const calcDisc = (c) =>
-    Math.abs(
-      Array.isArray(c.discountItems)
-        ? c.discountItems.reduce((s, i) => s + (Number(i.cost) || 0), 0)
-        : 0
-    );
 
-  let displayDiscount = calcDisc(cart);
+  let displayTotal = totalCost;
+  let displayDiscount = serverDiscount;
 
   if (couponData.appliedCodes.length > 0 && couponData.totals && !isNaN(couponData.totals.total)) {
     displayTotal = couponData.totals.total;
     displayDiscount = Math.abs(couponData.totals.discount || 0);
   }
 
-  let finalTotal = displayTotal;
-  // if (cart.shipmentTotalCost && cart.shipmentTotalCost > 0) {
-  //   finalTotal -= cart.shipmentTotalCost;
-  // }
-
-  const totalFmt = finalTotal.toFixed(2);
+  const totalFmt = displayTotal.toFixed(2);
   const discountFmt = displayDiscount.toFixed(2);
 
   const handleTotalsChange = (data) => {
@@ -50,7 +41,6 @@ export default function CartTotals({ cart }) {
     }
   };
 
-  // const { checkoutUrl = '/checkout/' } = window.scriptData || {};
   const { checkoutUrl = '/checkout', cartUrl = '/cart' } = window.scriptData || {};
 
   return (
@@ -74,7 +64,7 @@ export default function CartTotals({ cart }) {
           <div className="wc-block-components-totals-wrapper">
             <div className="wc-block-components-totals-item">
               <span className="wc-block-components-totals-item__label">Tax</span>
-              <span className="wc-block-components-totals-item__value">{`$${tax}`}</span>
+              <span className="wc-block-components-totals-item__value">{`$${taxFmt}`}</span>
             </div>
           </div>
 
