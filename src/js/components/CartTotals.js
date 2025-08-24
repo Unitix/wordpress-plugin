@@ -1,14 +1,11 @@
 import React, { useState, useRef } from 'react';
 import CouponPanel from './CouponPanel';
+import { useCart } from '../contexts/CartContext';
 
-export default function CartTotals({ cart }) {
+export default function CartTotals() {
+  const { cart,subtotal,taxAmount,totalCost } = useCart();
   const [couponData, setCouponData] = useState({ totals: null, appliedCodes: [] });
   const couponPanelRef = useRef(null);
-
-  const subtotal = +(cart.cartItemsSubtotalCost ?? cart.subtotalCost ?? 0);
-  const tax = +(cart.cartItemsTaxAmount ?? cart.taxAmount ?? 0);
-  const totalCost = +(cart.cartItemsTotalCost ?? cart.totalCost ?? 0);
-
 
   const serverDiscount = Array.isArray(cart.discountItems)
     ? Math.abs(cart.discountItems.reduce((s, i) => s + (Number(i.cost) || 0), 0))
@@ -16,8 +13,7 @@ export default function CartTotals({ cart }) {
 
 
   const subtotalFmt = subtotal.toFixed(2);
-  const taxFmt = tax.toFixed(2);
-
+  const taxFmt = taxAmount.toFixed(2);
 
   let displayTotal = totalCost;
   let displayDiscount = serverDiscount;

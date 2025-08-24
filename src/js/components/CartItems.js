@@ -1,7 +1,9 @@
 import React from 'react';
 import VariationGroupsDisplay from './VariationGroupsDisplay'
+import { useCart } from '../contexts/CartContext';
 
-export default function CartItems({ cartItems, onRemove }) {
+export default function CartItems({ onRemove }) {
+  const { cartItems } = useCart();
   if (!cartItems?.length) return null;
 
   const getWooKey = (item, idx) => {

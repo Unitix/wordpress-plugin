@@ -115,6 +115,7 @@ export const CartProvider = ({ children }) => {
   const cartItemsCount = cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
   const subtotal = cart?.cartItemsSubtotalCost || 0;
   const totalCost = cart?.totalCost || 0;
+  const taxAmount = cart?.taxAmount || 0;
   const isEmpty = cartItems.length === 0;
 
   const contextValue = {
@@ -124,6 +125,7 @@ export const CartProvider = ({ children }) => {
     cartItemsCount,
     subtotal,
     totalCost,
+    taxAmount,
     isEmpty,
 
     // Loading states

@@ -155,8 +155,8 @@ export default function WoocommerceCartForm() {
         <div className="wp-block-woocommerce-cart">
           <div className="wc-block-components-notice-snackbar-list" tabIndex="-1" />
           <div className="wc-block-components-sidebar-layout wc-block-cart wp-block-woocommerce-filled-cart-block is-large">
-            <CartItems cartItems={cart.cartItems} onRemove={handleRemove} />
-            <CartTotals cart={cart} />
+            <CartItems onRemove={handleRemove} />
+            <CartTotals />
           </div>
         </div>
       </div>
