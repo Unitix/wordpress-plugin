@@ -3208,6 +3208,7 @@ add_action('wp_footer', function() {
 
 add_action('init', function () {
     add_filter('woocommerce_get_cart_contents', 'merchi_modify_cart_contents_for_blocks', 10, 1);
+    add_filter('woocommerce_cart_subtotal', 'merchi_override_cart_subtotal_display', 10, 3);
 });
 
 function merchi_modify_cart_contents_for_blocks( $cart_contents ) {   
@@ -3241,6 +3242,9 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
         }
     }
 
+    // Calculate total Merchi cost for the entire cart
+    $total_merchi_cost = 0;
+    
     foreach ( $cart_contents as $cart_item_key => &$cart_item ) {
         $applied = false;
         
@@ -3251,34 +3255,36 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
                 $itemData = $options_map[ $opt_key ];
                 $qty_m = max( 1, intval( $itemData['quantity'] ?? ( $cart_item['quantity'] ?? 1 ) ) );
                 $cost_m = floatval( $itemData['totalCost'] ?? ( $itemData['subtotalCost'] ?? 0 ) );
+								error_log('cost_m: ' . $cost_m);
 
                 if ( $cost_m > 0 && $qty_m > 0 ) {
                     $unit = $cost_m;
                     $cart_item['data']->set_price( $unit );
                     $cart_item['data']->set_regular_price( $unit );
                     $cart_item['data']->set_sale_price( '' );
+                    
+                    // Add to total cost
+                    $total_merchi_cost += $cost_m;
                     $applied = true;
                 }
             }
         }
-
-        if ( $has_merchi_items && ! $applied ) {
-            $merchi_item_id = $cart_item['merchi_cart_item_id'] ?? null;
-            
-            if ( $merchi_item_id && isset( $m_by_id[ $merchi_item_id ] ) ) {
-                $m = $m_by_id[ $merchi_item_id ];
-
-                if ( isset( $m['totalCost'], $m['quantity'] ) && intval( $m['quantity'] ) > 0 ) {
-                    $unit = floatval( $m['totalCost'] );
-                    $cart_item['data']->set_price( $unit );
-                    $cart_item['data']->set_regular_price( $unit );
-                    $cart_item['data']->set_sale_price( '' );
-                    $applied = true;
-                }
-            }
-        }
+    } 
+    if (WC()->session && $total_merchi_cost > 0) {
+        WC()->session->set('merchi_cart_total_cost', $total_merchi_cost);
+        error_log('Total Merchi cost stored in session: ' . $total_merchi_cost);
     }
     return $cart_contents;
+}
+
+function merchi_override_cart_subtotal_display($cart_subtotal, $compound, $cart) {
+    if (WC()->session) {
+        $merchi_total_cost = WC()->session->get('merchi_cart_total_cost');
+        if ($merchi_total_cost && $merchi_total_cost > 0) {
+            return wc_price($merchi_total_cost);
+        }
+    }   
+    return $cart_subtotal;
 }
 
 function merchi_convert_variations_to_readable($cart_item) {
