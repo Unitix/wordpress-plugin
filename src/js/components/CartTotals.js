@@ -3,7 +3,7 @@ import CouponPanel from './CouponPanel';
 import { useCart } from '../contexts/CartContext';
 
 export default function CartTotals() {
-  const { cart,subtotal,taxAmount,totalCost } = useCart();
+  const { cart, subtotal, taxAmount, totalCost } = useCart();
   const [couponData, setCouponData] = useState({ totals: null, appliedCodes: [] });
   const couponPanelRef = useRef(null);
 
@@ -15,7 +15,9 @@ export default function CartTotals() {
   const subtotalFmt = subtotal.toFixed(2);
   const taxFmt = taxAmount.toFixed(2);
 
-  let displayTotal = totalCost;
+  const cartPageTotal = cart.shipmentTotalCost > 0 ? totalCost - cart.shipmentTotalCost : totalCost;
+
+  let displayTotal = cartPageTotal;
   let displayDiscount = serverDiscount;
 
   if (couponData.appliedCodes.length > 0 && couponData.totals && !isNaN(couponData.totals.total)) {

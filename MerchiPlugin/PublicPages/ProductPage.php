@@ -13,8 +13,11 @@ class ProductPage extends BaseController {
 	public function register() {
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_grouped_attributes' ], 10 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_independent_attributes' ], 20 );
+		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_new_group_button' ], 25 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_total_price' ], 30 );
+		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_action_buttons_container_start' ], 35 );
 		add_action('woocommerce_after_add_to_cart_button', [ $this, 'display_quote_button' ], 10 );
+		add_action('woocommerce_after_add_to_cart_button', [ $this, 'display_action_buttons_container_end' ], 20 );
 		add_action( 'wp', [ $this, 'remove_product_content' ] );
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_merchi_scripts' ] );
 		add_filter( 'woocommerce_quantity_input_args', [ $this, 'remove_quantity_field' ], 10, 2 );
@@ -197,11 +200,26 @@ class ProductPage extends BaseController {
 		echo '</div>';
 
 		echo '</div>';
+	}
 
-		// Add Group button container
-		echo '<div class="merchi-buttons-container">';
-		echo '<button type="button" class="button wp-element-button add-group-button">+ New Group</button>';
+	public function display_action_buttons_container_start() {
+		echo '<div class="merchi-action-buttons-container">';
+	}
+
+	public function display_action_buttons_container_end() {
 		echo '</div>';
+	}
+
+	public function display_new_group_button() {
+		$product_id = get_the_ID();
+		$group_fields_template = get_post_meta($product_id, '_group_variation_field_template', true);
+		
+		// Only show if there are group variation fields
+		if (!empty($group_fields_template)) {
+			echo '<div class="merchi-new-group-container">';
+			echo '<button type="button" class="button wp-element-button add-group-button">+ NEW GROUP</button>';
+			echo '</div>';
+		}
 	}
 
 	private function get_variation_field_options($field) {
@@ -599,13 +617,11 @@ class ProductPage extends BaseController {
 			return;
 		}
 
-		// Add the Get Quote button
+		// Add the Get Quote button in the same line as Add to Cart
 		echo '<button type="button" ' .
 			'class="button wp-element-button single_get_quote_button" ' .
 			'id="get-quote-button">' .
 			'Get quote' .
 			'</button>';
-		?>
-		<?php
 	}
 }

@@ -4,6 +4,7 @@ import { useCart } from '../contexts/CartContext';
 
 export default function CartItems({ onRemove }) {
   const { cartItems } = useCart();
+
   if (!cartItems?.length) return null;
 
   const getWooKey = (item, idx) => {
@@ -44,6 +45,7 @@ export default function CartItems({ onRemove }) {
 
             return (
               <tr key={item.cartUid ?? item.key ?? product.id} className="wc-block-cart-items__row" tabIndex={-1}>
+
                 <td className="wc-block-cart-item__image" aria-hidden="true">
                   <a href={product.url || '#'} tabIndex={-1}><img src={thumb} alt="" /></a>
                 </td>

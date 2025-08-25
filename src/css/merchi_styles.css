@@ -907,7 +907,7 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   display: flex;
   flex-direction: column;
   margin-bottom: 20px;
-  max-width: 600px;
+  max-width: 800px;
 }
 
 .custom-field label {
@@ -990,12 +990,13 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 /* Form container */
 #custom-variation-options {
   padding: 20px;
-  max-width: 600px;
+  max-width: 800px;
   margin: 0 auto;
 }
 
 /* Price display styling */
 .price-display-container {
+  width: 100%;
   margin-top: 20px;
   padding: 15px;
   background: #f8f8f8;
@@ -1018,7 +1019,9 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 }
 
 /* Group container */
-#grouped-fields-container {}
+#grouped-fields-container {
+  width: 100%;
+}
 
 /* Select field styling */
 .custom-field select {
@@ -1095,24 +1098,71 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   justify-content: flex-start;
 }
 
-.add-group-button {
-  background-color: #0066cc;
-  transition: background-color 0.3s;
-}
-
 .add-group-button:hover {
   background-color: #0052a3;
 }
 
+/* Standalone NEW GROUP button container */
+.merchi-new-group-container {
+  display: block !important;
+  text-align: left;
+  max-width: 800px;
+  width: 100%;
+  clear: both;
+  float: none;
+  position: relative !important;
+  left: 0 !important;
+  right: auto !important;
+}
+
+.merchi-new-group-container .add-group-button {
+  background-color: #0066cc;
+  transition: background-color 0.3s;
+  margin: 0 !important;
+  float: none !important;
+  position: static !important;
+}
+
+/* Action buttons container - for +NEW GROUP, ADD TO CART, GET QUOTE */
+.merchi-action-buttons-container {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+  flex-wrap: wrap;
+  max-width: 800px;
+  justify-content: flex-start;
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+}
+
 .single_add_to_cart_button {
   margin: 0 !important;
+  flex: 0 0 auto;
+  margin-left: 0 !important;
+  margin-right: 15px !important;
 }
+
+.single_get_quote_button {
+  margin: 0 !important;
+  flex: 0 0 auto;
+  margin-left: 15px !important;
+  margin-right: 0 !important;
+}
+
+/* Buy Now button spacing */
+.ts-buy-now-button {
+  margin-left: 15px !important;
+  margin-right: 15px !important;
+}
+
+
 
 .price-display-container {
   margin: 20px 0;
   display: flex;
   align-items: center;
   gap: 10px;
+  max-width: 800px;
 }
 
 .group-quantity-container {
@@ -1127,7 +1177,7 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 }
 
 .group-field-set {
-  margin-bottom: 30px;
+  margin-bottom: 20px;
   padding-bottom: 20px;
   padding-left: 20px;
   padding-right: 38px;
@@ -1136,11 +1186,12 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 }
 
 .delete-group-button {
-  background-color: #dc3545;
+  background-color: #de1010 !important;
+  border-color: #de1010 !important;
 }
 
 .delete-group-button:hover {
-  background-color: #c82333;
+  background-color: #c82333 !important;
 }
 
 .custom-field {
@@ -1195,11 +1246,12 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 
 /* Group cost display styling */
 .group-cost-display {
-  font-size: 0.8em;
+  width: 100%;
+  font-size: 1.2em;
   font-weight: 500;
   color: #222;
   margin-top: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 20px;
   margin-right: 10px;
   background: #f8f8f8;
   padding: 8px 18px;
@@ -1392,21 +1444,24 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   margin-bottom: 24px;
   background-color: #4CAF50;
   color: white;
-  padding: 15px 25px;
-  border-radius: 4px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  padding: 25px 40px 25px 55px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 10;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 20px;
   animation: slideDown 0.5s ease-out;
   transition: opacity 1s ease-out;
+  line-height: 1.8;
+  font-size: 16px;
+  min-height: 60px;
 }
 
 .merchi-success-message a {
   color: white;
   text-decoration: underline;
-  margin-left: 5px;
+  margin-left: 10px;
 }
 
 @keyframes slideDown {
@@ -1423,10 +1478,10 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 
 .merchi-success-close {
   position: absolute;
-  top: 8px;
-  right: 16px;
+  top: 12px;
+  right: 20px;
   color: #fff;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: bold;
   cursor: pointer;
   background: none;
@@ -1435,6 +1490,11 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   line-height: 1;
   opacity: 0.8;
   transition: opacity 0.2s;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .merchi-success-close:hover,
