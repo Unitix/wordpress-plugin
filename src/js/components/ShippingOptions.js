@@ -9,7 +9,7 @@ export default function ShippingOptions({
   errors = {},
   patchCart,
   cart,
-  setCart,
+  updateCart,
   MERCHI,
   setIsUpdatingShipping,
 }) {
@@ -146,11 +146,7 @@ export default function ShippingOptions({
                                       Object.assign(cartJson, MERCHI.toJson(patched2));
                                     }
 
-                                    setCart(cartJson);
-                                    localStorage.setItem(
-                                      'MerchiCart',
-                                      JSON.stringify(cartJson)
-                                    );
+                                    await updateCart(cartJson);
                                   } catch (err) {
                                     console.error('[ShippingOptions] patchCart error:', err);
                                   } finally {

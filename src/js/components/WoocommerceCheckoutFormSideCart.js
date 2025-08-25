@@ -1,18 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useRef } from 'react'
 import CouponPanel from './CouponPanel';
 import VariationGroupsDisplay from './VariationGroupsDisplay';
+import { useCart } from '../contexts/CartContext';
 
-const readCart = () => {
-  try {
-    const data = JSON.parse(localStorage.getItem('MerchiCart')) || {};
-    return data.cart ?? data;
-  } catch {
-    return {};
-  }
-};
-
-export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdatingShipping, allowRemoveCoupon = true }) {
-  const [localCart, setLocalCart] = useState(readCart());
+export default function WoocommerceCheckoutFormSideCart({ isUpdatingShipping, allowRemoveCoupon = true }) {
+  const { cart: contextCart } = useCart();
 
   const [couponData, setCouponData] = useState({
     totals: null,
@@ -20,16 +12,7 @@ export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdat
   });
   const couponPanelRef = useRef(null);
 
-  const cartReady =
-    (cart?.cartItems?.length) ||
-    (localCart.cartItems?.length);
-
-  useEffect(() => {
-    const onStorage = (e) =>
-      e.key === 'MerchiCart' && setLocalCart(readCart());
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
+  const cartReady = contextCart?.cartItems?.length;
 
   const handleTotalsChange = (data) => setCouponData(data);
 
@@ -42,7 +25,7 @@ export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdat
     }
   };
 
-  const showCart = cart?.cartItems?.length && cart.cartItems[0].product?.name ? cart : localCart;
+  const showCart = contextCart;
 
   const subtotal = showCart.cartItemsSubtotalCost ?? 0;
   const tax = showCart.taxAmount ?? 0;
@@ -80,7 +63,7 @@ export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdat
             <div className="wc-block-components-order-summary is-large">
               <div className="wc-block-components-order-summary__content">
                 {(showCart.cartItems || []).map((item, index) => {
-                  const { product = {}, quantity = 1, totalCost = 0 } = item;
+                  const { product = {}, quantity = 1 } = item;
                   const thumb =
                     product.featureImage?.viewUrl ||
                     product.images?.[0]?.viewUrl ||

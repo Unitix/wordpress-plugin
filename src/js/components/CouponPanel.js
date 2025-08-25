@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { MERCHI_SDK } from '../merchi_sdk';
 import { patchCartDiscountItems } from '../merchi_public_custom';
+import { useCart } from '../contexts/CartContext';
 
 const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
+  const { cart } = useCart();
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -43,16 +45,7 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
 
   // get cart ID
   const getCartId = () => {
-    try {
-      const merchiCart = localStorage.getItem('MerchiCart');
-      if (merchiCart) {
-        const cartData = JSON.parse(merchiCart);
-        return cartData.id;
-      }
-    } catch (error) {
-      console.error('Error parsing MerchiCart from localStorage:', error);
-    }
-    return null;
+    return cart?.id || null;
   };
 
   const syncTotalsFromCart = (cart) => {
@@ -89,15 +82,13 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
     setError('');
 
     try {
-      const merchiCart = localStorage.getItem('MerchiCart');
-      if (!merchiCart) {
+      if (!cart?.token) {
         setError('Cart data not found. Please refresh the page.');
         setLoading(false);
         return;
       }
 
-      const cartData = JSON.parse(merchiCart);
-      const cartToken = cartData.token;
+      const cartToken = cart.token;
 
       const apiUrl = window.scriptData?.merchi_url || 'https://api.staging.merchi.co/';
       const url = `${apiUrl}v6/carts/${cartId}/check_discount_code/?cart_token=${cartToken}&codes=${encodeURIComponent(discountCode)}`;
@@ -134,27 +125,21 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
           cost: Number(discountItem.cost ?? 0)
         };
 
-        // Update localStorage cart with discount items
+        // Apply discount to cart
         try {
-          const merchiCart = localStorage.getItem('MerchiCart');
-          if (merchiCart) {
-            const cartData = JSON.parse(merchiCart);
-            const updatedDiscountItems = [...(cartData.discountItems || []), newDiscountItem];
-            cartData.discountItems = updatedDiscountItems;
-            localStorage.setItem('MerchiCart', JSON.stringify(cartData));
+          if (cart) {
+            const updatedDiscountItems = [...(cart.discountItems || []), newDiscountItem];
+            const cartData = { ...cart, discountItems: updatedDiscountItems };
 
             // Sync discount items to server
             try {
-              // const updated = await patchCart(cartData);
               const slimAdd = updatedDiscountItems.map(
                 ({ code, id, description = '', cost }) => ({ code, id, cost, description })
               );
               const patched = await patchCartDiscountItems(cartData, slimAdd);
 
               // refresh the UI using the patched data
-              // convert entity to JSON
               const patchedJson = merchi.toJson(patched);
-              localStorage.setItem('MerchiCart', JSON.stringify(patchedJson));
               syncTotalsFromCart(patchedJson);
               setAppliedCodes(patchedJson.discountItems || []);
 
@@ -163,14 +148,11 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
 
             } catch (patchError) {
               console.error('Failed to sync discount items to server:', patchError);
-              // Revert localStorage changes if server sync fails
-              cartData.discountItems = cartData.discountItems.filter(item => item.code !== newDiscountItem.code);
-              localStorage.setItem('MerchiCart', JSON.stringify(cartData));
               setError('Failed to apply discount code. Please try again.');
             }
           }
         } catch (error) {
-          console.error('Error updating localStorage cart with discount:', error);
+          console.error('Error updating cart with discount:', error);
           setError('Failed to apply discount code. Please try again.');
         }
 
@@ -210,14 +192,12 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
     setError('');
 
     try {
-      const raw = localStorage.getItem('MerchiCart');
-      if (!raw) throw new Error('cart missing');
-      const cartData = JSON.parse(raw);
+      if (!cart) throw new Error('cart missing');
 
-      const remain = cartData.discountItems.filter((_, i) => i !== index);
+      const remain = cart.discountItems.filter((_, i) => i !== index);
 
-      const cartId = cartData.id;
-      const cartToken = cartData.token;
+      const cartId = cart.id;
+      const cartToken = cart.token;
       const apiUrl = window.scriptData?.merchi_url || 'https://api.staging.merchi.co/';
       const codesStr = remain.map(i => i.code).join(',');
 
@@ -239,12 +219,10 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
       const slimRemain = (serverData.items || []).map(
         ({ code, id, cost, description = '' }) => ({ code, id, cost, description })
       );
-      const patched = await patchCartDiscountItems(cartData, slimRemain);
+      const patched = await patchCartDiscountItems(cart, slimRemain);
 
-      // Convert entity to JSON before storing in localStorage
       // refresh the UI using the patched data
       const patchedJson = merchi.toJson(patched);
-      localStorage.setItem('MerchiCart', JSON.stringify(patchedJson));
       syncTotalsFromCart(patchedJson);
       setAppliedCodes(patchedJson.discountItems || []);
     } catch (e) {
@@ -261,16 +239,14 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
   };
 
   useEffect(() => {
-    const merchiCart = localStorage.getItem('MerchiCart');
-    if (merchiCart) {
-      const cartData = JSON.parse(merchiCart);
-      syncTotalsFromCart(cartData);
+    if (cart) {
+      syncTotalsFromCart(cart);
 
-      if (cartData.discountItems && cartData.discountItems.length > 0) {
-        setAppliedCodes(cartData.discountItems);
+      if (cart.discountItems && cart.discountItems.length > 0) {
+        setAppliedCodes(cart.discountItems);
       }
     }
-  }, []);
+  }, [cart]);
 
   useEffect(() => {
     if (open && wrapperRef.current && code.trim()) {

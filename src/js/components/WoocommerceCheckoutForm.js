@@ -7,6 +7,7 @@ import ShippingOptions from './ShippingOptions';
 import StripePaymentForm from './StripePaymentForm';
 import { patchCart } from '../merchi_public_custom';
 import { MERCHI_API_URL, MERCHI_SDK } from '../merchi_sdk';
+import { useCart } from '../contexts/CartContext';
 import 'react-phone-input-2/lib/style.css';
 import { ensureWooNonce, fetchWooNonce, updateWooNonce, getCountryFromBrowser, toIso, cleanShipmentGroups, getWpApiRoot } from '../utils';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
@@ -52,23 +53,20 @@ async function createClient(MERCHI, clientJson, cartJson) {
 }
 
 const WoocommerceCheckoutForm = () => {
-  const localCartJSONString = localStorage.getItem("MerchiCart");
-  const localCart = JSON.parse(localCartJSONString) || {};
-  // save localCart to orderInfo before doing patch cart
-  const [cart, setCart] = useState(localCart);
-
-  const { domain = {} } = cart;
-  const { country = 'AU' } = domain;
+  const { cart, updateCart, clearCart } = useCart();
   const [orderInfo, setOrderInfo] = useState({ cart, client: null, receiverAddress: null });
 
   useEffect(() => {
     setOrderInfo(prev => ({ ...prev, cart }));
   }, [cart]);
 
+  const { domain = {} } = cart;
+  const { country = 'AU' } = domain;
+
   // Shipping address state
   const browserCountry =
     getCountryFromBrowser() ||
-    localCart?.receiverAddress?.country ||
+    cart?.receiverAddress?.country ||
     null;
 
   const [selectedShippingCountry, setSelectedShippingCountry] =
@@ -120,9 +118,6 @@ const WoocommerceCheckoutForm = () => {
     const c = toIso(country);
     const s = toIso(state);
 
-    // keep the original cartItems
-    const originalCartItems = cart.cartItems || [];
-
     const cartJson = {
       ...cart,
       receiverAddress: { ...cart.receiverAddress, country: c, state: s },
@@ -134,11 +129,8 @@ const WoocommerceCheckoutForm = () => {
       const _cartJson = MERCHI.toJson(cartEnt);
 
       const cleanedCartJson = cleanShipmentGroups(_cartJson);
-      // setCart(cleanedCartJson);
-
       const merged = mergeCartProducts(cleanedCartJson, cart);
-      setCart(merged);
-      localStorage.setItem('MerchiCart', JSON.stringify(merged));
+      await updateCart(merged);
       await getShippingGroup();
     } catch (error) {
       console.error('Error updating cart:', error);
@@ -235,17 +227,14 @@ const WoocommerceCheckoutForm = () => {
 
       //convert cartEnt to json
       const cartJson = MERCHI.toJson(cartEnt);
-
-      //reset the cart global state with the new cart json
-      setCart(cartJson);
       //delete the id of cart item from cartItems
 
       // Patch the cart data to Merchi server
       await patchCart(cartJson)
-        .then(response => {
+        .then(async response => {
           //turn merchi entity response to json
           const responseJson = MERCHI.toJson(response);
-          setCart(responseJson);
+          await updateCart(responseJson);
           setOrderInfo(prev => ({
             ...prev,
             cart: responseJson,
@@ -258,13 +247,8 @@ const WoocommerceCheckoutForm = () => {
             },
             orderNote: getValues('order_notes') || ''
           }));
-          // persist to localStorage using the patched cart json
-          localStorage.setItem('MerchiCart', JSON.stringify(responseJson));
         })
         .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
-      // // Update localStorage with the patched cart data
-      // const fullCart = MERCHI.toJson(response)
-      // localStorage.setItem('MerchiCart', JSON.stringify(fullCart));
 
       const merchi_api_url = MERCHI_API_URL();
       const response = await fetch(`${merchi_api_url}v6/stripe/payment_intent/cart/${cartEnt.id()}/?cart_token=${cartEnt.token()}`);
@@ -288,9 +272,8 @@ const WoocommerceCheckoutForm = () => {
         JSON.stringify({ ...orderInfo, cart })
       );
 
-      // clear the cart after successful order placement
-      localStorage.removeItem('MerchiCart');
-      setCart({});
+      // clear the cart after successful order placement  
+      clearCart();
 
       // clear the minicart
       async function clearWooCart() {
@@ -316,10 +299,6 @@ const WoocommerceCheckoutForm = () => {
         }
 
         updateWooNonce(res);
-
-        const emptyWooCart = await res.json();
-
-        localStorage.storeApiCartData = JSON.stringify(emptyWooCart);
         sessionStorage.removeItem('wc/cart');
 
         const wpData = window.wp?.data;
@@ -534,7 +513,7 @@ const WoocommerceCheckoutForm = () => {
                   errors={errors}
                   patchCart={patchCart}
                   cart={cart}
-                  setCart={setCart}
+                  updateCart={updateCart}
                   MERCHI={MERCHI}
                   setIsUpdatingShipping={setIsUpdatingShipping}
                 />
@@ -597,7 +576,6 @@ const WoocommerceCheckoutForm = () => {
             )}
           </div>
           <WoocommerceCheckoutFormSideCart
-            cart={cart}
             loading={shipmentOptionsLoading}
             isUpdatingShipping={isUpdatingShipping}
             allowRemoveCoupon={currentStep === 'details'}
