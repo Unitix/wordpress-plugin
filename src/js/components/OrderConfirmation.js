@@ -54,7 +54,7 @@ const OrderConfirmation = () => {
           })}</strong>
         </li>
         <li className="woocommerce-order-overview__total total">
-          Total: <strong>{cart.totalCost}</strong>
+          Total: <strong>${cart.totalCost.toFixed(2)}</strong>
         </li>
         <li className="woocommerce-order-overview__payment-method method">
           Payment method: <strong>Debit Card</strong>
@@ -86,7 +86,7 @@ const OrderConfirmation = () => {
                   {item.product.name} × {item.quantity}
                 </td>
                 <td className="woocommerce-table__product-total">
-                  <span className="woocommerce-Price-amount amount">${item.totalCost}</span>
+                  <span className="woocommerce-Price-amount amount">${item.totalCost.toFixed(2)}</span>
                 </td>
               </tr>
             ))}
@@ -103,10 +103,26 @@ const OrderConfirmation = () => {
               </th>
               <td className="woocommerce-table__product-total">
                 <span className="woocommerce-Price-amount amount">
-                  ${shippingCost}
+                  ${shippingCost.toFixed(2)}
                 </span>
               </td>
             </tr>
+            {cart.discountItems && cart.discountItems.length > 0 && (
+              <tr>
+                <th
+                  className="woocommerce-table__product-name"
+                  colSpan={2}
+                  style={{ textAlign: 'left' }}
+                >
+                  Discount
+                </th>
+                <td className="woocommerce-table__product-total">
+                  <span className="woocommerce-Price-amount amount">
+                    -${Math.abs(cart.discountItems.reduce((sum, item) => sum + item.cost, 0)).toFixed(2)}
+                  </span>
+                </td>
+              </tr>
+            )}
             <tr>
               <th
                 className="woocommerce-table__product-name"
@@ -117,7 +133,7 @@ const OrderConfirmation = () => {
               </th>
               <td className="woocommerce-table__product-total">
                 <span className="woocommerce-Price-amount amount">
-                  ${cart.totalCost}
+                  ${cart.totalCost.toFixed(2)}
                 </span>
               </td>
             </tr>

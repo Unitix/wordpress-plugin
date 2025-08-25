@@ -133,8 +133,8 @@ export default function WoocommerceCartForm() {
       >
         <div className="entry-content alignwide wp-block-post-content">
           <div className="wp-block-woocommerce-cart">
-            <div className="wp-block-woocommerce-empty-cart-block">
-              <h2 className="wp-block-heading has-text-align-center with-empty-cart-icon wc-block-cart__empty-cart__title">
+            <div className="wp-block-woocommerce-empty-cart-block" style={{ textAlign: 'center' }}>
+              <h2 className="wp-block-heading has-text-align-center with-empty-cart-icon wc-block-cart__empty-cart__title" style={{ marginBottom: '2rem' }}>
                 Your cart is currently empty!
               </h2>
               <p style={{ textAlign: 'center', marginTop: '3rem' }}>
