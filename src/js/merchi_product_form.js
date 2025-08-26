@@ -1096,6 +1096,7 @@ function initializeWhenReady() {
       // Validate form before proceeding
       if (!validateForm()) {
         console.log('Form validation failed');
+        focusFirstFormError();
         return;
       }
       setLoadingState(true);
@@ -1269,6 +1270,46 @@ function validateForm() {
     return true;
   }
 }
+
+function focusFirstFormError() {
+  const $form = jQuery('.merchi-product-form');
+  const $err = $form.find('.field-error, .woocommerce-invalid, [aria-invalid="true"], .error, .has-error').first();
+  if (!$err.length) return false;
+
+  let el = $err[0];
+  const inner = el.matches('input,select,textarea,button,[tabindex]') ? el : el.querySelector('input,select,textarea,button,[tabindex]');
+  if (inner) el = inner;
+
+  const hadTab = el.hasAttribute('tabindex');
+  if (!hadTab) el.setAttribute('tabindex', '-1');
+
+  // foucs first, do not scroll
+  try {
+    el.focus({ preventScroll: true });
+  } catch (e) {
+    try { el.focus(); } catch (_) { }
+  }
+
+  const wpbar = document.getElementById('wpadminbar');
+  const header = document.querySelector('.site-header.is-sticky, .site-header.sticky, .sticky-header');
+  const EXTRA = 30;
+  const offset = (wpbar ? wpbar.offsetHeight : 0) + (header ? header.offsetHeight : 0) + EXTRA;
+
+  const rect = el.getBoundingClientRect();
+  const absTop = rect.top + window.pageYOffset;
+  const visibleH = Math.max(0, window.innerHeight - offset);
+
+  // set the element in the middle of the viewport
+  let desiredScrollY = absTop - (offset + Math.max(0, (visibleH - rect.height) / 2));
+  const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+  desiredScrollY = Math.min(maxScrollY, Math.max(0, desiredScrollY));
+
+  window.scrollTo({ top: desiredScrollY, behavior: 'smooth' });
+
+  if (!hadTab) setTimeout(() => el.removeAttribute('tabindex'), 600);
+  return true;
+}
+
 
 // Function to handle loading state
 function setLoadingState(isLoading) {
