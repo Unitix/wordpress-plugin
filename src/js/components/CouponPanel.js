@@ -4,7 +4,7 @@ import { patchCartDiscountItems } from '../merchi_public_custom';
 import { useCart } from '../contexts/CartContext';
 
 const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
-  const { cart } = useCart();
+  const { cart, updateCart } = useCart();
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -140,6 +140,7 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
 
               // refresh the UI using the patched data
               const patchedJson = merchi.toJson(patched);
+              await updateCart(patchedJson);
               syncTotalsFromCart(patchedJson);
               setAppliedCodes(patchedJson.discountItems || []);
 
@@ -201,8 +202,7 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
       const apiUrl = window.scriptData?.merchi_url || 'https://api.staging.merchi.co/';
       const codesStr = remain.map(i => i.code).join(',');
 
-      const url = `${apiUrl}v6/carts/${cartId}/check_discount_code/` +
-        `?cart_token=${cartToken}&codes=${encodeURIComponent(codesStr)}`;
+      const url = `${apiUrl}v6/carts/${cartId}/check_discount_code/?cart_token=${cartToken}&codes=${encodeURIComponent(codesStr)}`;
 
       const res = await fetch(url, {
         method: 'GET',
@@ -223,6 +223,7 @@ const CouponPanel = forwardRef(({ onTotalsChange }, ref) => {
 
       // refresh the UI using the patched data
       const patchedJson = merchi.toJson(patched);
+      await updateCart(patchedJson);
       syncTotalsFromCart(patchedJson);
       setAppliedCodes(patchedJson.discountItems || []);
     } catch (e) {
