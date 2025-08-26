@@ -434,15 +434,10 @@ const WoocommerceCheckoutForm = () => {
                                 country={(selectedShippingCountry || 'AU').toLowerCase()}
                                 countryCodeEditable={false}
                                 autoFormat={false}
-                                containerStyle={{
-                                  height: '3.125em'
-                                }}
-                                buttonStyle={{
-                                  height: '100%'
-                                }}
-                                className="wc-block-components-text-input__input"
-                                inputStyle={{ height: '100%', paddingLeft: '40px', width: '100%' }}
-                                preferredCountries={['au', 'nz', 'uk', 'us']}
+                                containerClass="merchi-phone"
+                                inputClass="wc-block-components-text-input__input input-text merchi-phone__input"
+                                preferredCountries={['au', 'nz', 'gb', 'us']}
+                                enableSearch={true}
                                 inputProps={{
                                   ref: field.ref,
                                   required: true,

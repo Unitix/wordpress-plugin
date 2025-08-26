@@ -1680,3 +1680,27 @@ body.single-product #cart-count {
 .woocommerce-mini-cart-item .number-button {
   display: none !important;
 }
+
+.merchi-phone .form-control,
+.merchi-phone__input {
+  padding: 2px 0 0 40px !important;
+}
+
+.merchi-phone .selected-flag {
+  background: var(--wc-form-color-background, #fff);
+}
+
+.wc-block-components-text-input .react-tel-input.merchi-phone,
+.wc-block-components-text-input .react-tel-input.merchi-phone * {
+  font: inherit !important;
+  color: inherit !important;
+}
+
+.react-tel-input .search-emoji {
+  display: none !important;
+}
+
+.react-tel-input .search-box {
+  margin-left: 0 !important;
+  width: 95% !important;
+}
