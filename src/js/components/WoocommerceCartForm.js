@@ -37,8 +37,6 @@ export default function WoocommerceCartForm() {
     return undefined;
   };
 
-  console.log('scriptData', window.scriptData.wooCartData);
-
   const handleRemove = useCallback(async (item, idx, wooKeyFromRow) => {
     const wooKey = wooKeyFromRow || findWooKey(item);
     if (!wooKey) {

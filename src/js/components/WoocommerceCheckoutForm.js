@@ -80,12 +80,6 @@ const WoocommerceCheckoutForm = () => {
     }
   });
 
-  const onSubmit = (data) => {
-    console.log(data);
-    // Handle form submission here
-  };
-
-
   const [shipmentGroups, setShipmentGroups] = useState([]);
   const [shipmentOptionsLoading, setShipmentOptionsLoading] = useState(false);
   const [isUpdatingShipping, setIsUpdatingShipping] = useState(false);

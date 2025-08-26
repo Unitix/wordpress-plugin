@@ -256,20 +256,6 @@ export function cleanShipmentGroups(cartJson = {}) {
   };
 }
 
-export function sanitizeCart(raw) {
-  const cleaned = { ...raw };
-
-  cleaned.receiverAddress = null;
-  cleaned.shipmentGroups = [];
-  cleaned.selectedQuote = null;
-
-  cleaned.shipmentSubtotalCost = 0;
-  cleaned.shipmentTaxAmount = 0;
-  cleaned.shipmentTotalCost = 0;
-
-  return cleaned;
-}
-
 export function ciKey(ci) {
   const id = ci?.product?.id ?? ci?.productID ?? ci?.product;
   const vg = JSON.stringify(

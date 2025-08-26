@@ -158,23 +158,6 @@ add_action( 'cst_woocommerce_checkout_order_review', 'woocommerce_order_review',
 
 add_filter( 'woocommerce_billing_fields', 'bbloomer_move_checkout_email_field' );
 
-// add_action( 'template_redirect', function () {
-
-//     if ( ! is_cart() && ! is_checkout() ) {
-//         return;                     
-//     }
-
-//     wp_enqueue_script(
-//         'merchi-react-init',                                           
-//         plugins_url( 'dist/js/woocommerce_cart_checkout.js', dirname( __FILE__, 2 ) ),
-//         [ 'react', 'react-dom' ],
-//         filemtime( plugin_dir_path( dirname( __FILE__, 2 ) ) . 'dist/js/woocommerce_cart_checkout.js' ),
-//         true
-//     );
-// }, 20 );
-
-
- 
 function bbloomer_move_checkout_email_field( $address_fields ) {
     $address_fields['billing_email']['priority'] = 1;
     return $address_fields;
@@ -666,38 +649,6 @@ function merchi_enqueue_wc_block_styles() {
 		wp_enqueue_style(  'woocommerce-checkout' );
 	}
 
-	// $handle = 'wc-blocks-checkout-style';
-	// $rel_path = 'assets/client/blocks/checkout.css';
-
-	// if ( wp_style_is( $handle, 'registered' ) ) {
-	// 		wp_enqueue_style( $handle );
-	// } else if ( class_exists( 'WooCommerce' ) ) {
-	// 		wp_register_style(
-	// 				$handle,
-	// 				trailingslashit( WC()->plugin_url() ) . $rel_path,
-	// 				array( 'wc-blocks-style' ),
-	// 				WC_VERSION
-	// 		);
-	// 		wp_enqueue_style( $handle );
-	// }
-
-	//  if ( is_cart() ) {                         
-  //       $handle   = 'wc-blocks-cart-style';
-  //       $rel_path = 'assets/client/blocks/cart.css';
-
-  //       if ( wp_style_is( $handle, 'registered' ) ) {
-  //           wp_enqueue_style( $handle );
-  //       } elseif ( class_exists( 'WooCommerce' ) ) {
-  //           wp_register_style(
-  //               $handle,
-  //               trailingslashit( WC()->plugin_url() ) . $rel_path,
-  //               array( 'wc-blocks-style' ),
-  //               WC_VERSION
-  //           );
-  //           wp_enqueue_style( $handle );
-  //       }
-  //   }
-
 	if (is_page('thankyou')) {
         wp_enqueue_style('woocommerce-general');
         wp_enqueue_style('woocommerce-layout');
@@ -799,21 +750,6 @@ function enqueue_my_public_script()
 	if (is_wc_endpoint_url('order-received') || is_page('thankyou')) {
 		wp_enqueue_script('custom-order-confirmation-script', plugins_url('/dist/js/order_confirmation.js', __FILE__), array('merchi-init-frontend'), '1.0', true);
 	}
-	
-	// wp_enqueue_script('custom-stripe-script', 'https://js.stripe.com/v3/', array(), '1.0', true);
-	// $stripeSecret = false;
-	// $telephoneInput = false;
-	// if($billing_values){
-	// 	$telephoneInput = $billing_values['billing_phone'];
-	// }
-	// if( isset($_COOKIE['cart-'.MERCHI_DOMAIN]) && !empty($_COOKIE['cart-'.MERCHI_DOMAIN]) && is_checkout() && ( isset($_GET['step']) && $_GET['step'] == 3 ) ){
-	// 	$cart = explode(',', $_COOKIE['cart-'.MERCHI_DOMAIN]);
-	// 	$url = MERCHI_URL.'v6/stripe/payment_intent/cart/'.$cart[0].'/?cart_token='.$cart[1];
-	// 	$response = wp_remote_get( $url, array('timeout'=> 20) );
-
-	// 	$resp = json_decode(wp_remote_retrieve_body($response));
-	// 	$stripeSecret = $resp->stripeClientSecret;
-	// }
 
     $cart_contents = [];
     foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) {
@@ -852,13 +788,6 @@ function enqueue_my_public_script()
 	if (is_wc_endpoint_url('order-received') || is_page('thankyou')) {
 		wp_localize_script('custom-order-confirmation-script', 'scriptData', $script_data);
 	}
-	
-	// wp_localize_script('custom-checkout-scrip', 'scriptData', array(
-	// 	'merchi_domain' => MERCHI_DOMAIN,
-	// 	'merchi_mode' => MERCHI_MODE,
-	// 	'merchi_url' => MERCHI_URL,
-	// 	'merchi_stripe_api_key' => MERCHI_STRIPE_API_KEY,
-	// ));
 }
 add_action('wp_enqueue_scripts', 'enqueue_my_public_script');
 
@@ -1684,25 +1613,17 @@ function send_id_for_add_cart(){
 add_action( 'wp_ajax_cst_cart_item_after_remove', 'cst_cart_item_after_remove', 10, 2);
 add_action( 'wp_ajax_nopriv_cst_cart_item_after_remove', 'cst_cart_item_after_remove', 10, 2);
 
-function cst_cart_item_after_remove() {
-    error_log('=== Merchi Cart Item Removal Process Started ===');
-    
+function cst_cart_item_after_remove() {   
     if (isset($_COOKIE['cstCartId'])) {
         $merchi_cart_item_id = sanitize_text_field($_POST['item_id']);
         $cart_id = sanitize_text_field($_COOKIE['cstCartId']);
         $cart_length = intval($_POST['cart_length']);
-        
-        error_log('Removal parameters:');
-        error_log('- Merchi Cart Item ID: ' . $merchi_cart_item_id);
-        error_log('- Cart ID: ' . $cart_id);
-        error_log('- Cart length: ' . $cart_length);
         
         $cart_token = null;
         if (isset($_COOKIE['cart-'.MERCHI_DOMAIN])) {
             $cookie_parts = explode(',', $_COOKIE['cart-'.MERCHI_DOMAIN]);
             if (count($cookie_parts) > 1) {
                 $cart_token = trim($cookie_parts[1]);
-                error_log('Found cart token: ' . $cart_token);
             } else {
                 error_log('Warning: Invalid cart cookie format');
             }
@@ -1723,10 +1644,8 @@ function cst_cart_item_after_remove() {
         }
 
         if ($cart_length <= 1) {
-            error_log('Cart is empty, clearing cookies');
             setcookie('cart-'.MERCHI_DOMAIN, "", time() - 3600, "/");
             setcookie("cstCartId", "", time() - 3600, "/");
-            error_log('Cart cookies cleared');
         }
         
         wp_send_json_success(array(
@@ -3255,7 +3174,6 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
                 $itemData = $options_map[ $opt_key ];
                 $qty_m = max( 1, intval( $itemData['quantity'] ?? ( $cart_item['quantity'] ?? 1 ) ) );
                 $cost_m = floatval( $itemData['totalCost'] ?? ( $itemData['subtotalCost'] ?? 0 ) );
-								error_log('cost_m: ' . $cost_m);
 
                 if ( $cost_m > 0 && $qty_m > 0 ) {
                     $unit = $cost_m;
@@ -3272,7 +3190,6 @@ function merchi_modify_cart_contents_for_blocks( $cart_contents ) {
     } 
     if (WC()->session && $total_merchi_cost > 0) {
         WC()->session->set('merchi_cart_total_cost', $total_merchi_cost);
-        error_log('Total Merchi cost stored in session: ' . $total_merchi_cost);
     }
     return $cart_contents;
 }
