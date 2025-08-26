@@ -138,17 +138,13 @@ export default function useWooActive() {
 export function getWpApiRoot() {
   const r = window?.wpApiSettings?.root;
   if (r) {
-    console.log('[getWpApiRoot] using wpApiSettings.root =', r);
     return r.endsWith('/') ? r : r + '/';
   }
 
   const link = document.querySelector('link[rel="https://api.w.org/"]')?.href;
   if (link) {
-    console.log('[getWpApiRoot] using <link rel="https://api.w.org/"> =', link);
     return link.endsWith('/') ? link : link + '/';
   }
-
-  console.warn('[getWpApiRoot] fallback to /wp-json/');
   return '/wp-json/';
 }
 

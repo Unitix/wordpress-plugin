@@ -3257,7 +3257,6 @@ add_action('wp_head', function () {
         root: <?php echo json_encode( esc_url_raw( $root ) ); ?>,
         prefix: <?php echo json_encode( $prefix ); ?>,
       });
-      console.log('[merchi] injected wpApiSettings.root =', <?php echo json_encode( $root ); ?>);
     </script>
     <?php
 }, 1);
