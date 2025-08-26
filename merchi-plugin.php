@@ -3246,3 +3246,19 @@ function merchi_convert_variations_to_readable($cart_item) {
     return $result;
 }
 
+add_action('wp_head', function () {
+    $prefix = rest_get_url_prefix();
+
+    $root = home_url( "/{$prefix}/" );
+
+    ?>
+    <script>
+      window.wpApiSettings = Object.assign({}, window.wpApiSettings || {}, {
+        root: <?php echo json_encode( esc_url_raw( $root ) ); ?>,
+        prefix: <?php echo json_encode( $prefix ); ?>,
+      });
+      console.log('[merchi] injected wpApiSettings.root =', <?php echo json_encode( $root ); ?>);
+    </script>
+    <?php
+}, 1);
+

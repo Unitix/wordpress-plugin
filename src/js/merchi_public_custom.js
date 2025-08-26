@@ -312,7 +312,6 @@ export async function initOrSyncCart() {
   // Add a lock to prevent concurrent cart operations
   const cartLockKey = 'merchi_cart_operation_lock';
   if (localStorage.getItem(cartLockKey)) {
-    console.warn("MERCHI_LOG: Another cart operation is in progress. Waiting...");
     // Wait for a short time and try again
     await new Promise(resolve => setTimeout(resolve, 1000));
     return initOrSyncCart();

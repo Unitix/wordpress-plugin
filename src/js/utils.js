@@ -136,17 +136,19 @@ export default function useWooActive() {
 // WordPress API Utilities - Handle WP REST API and WooCommerce Store API
 // ============================================================================
 export function getWpApiRoot() {
-  if (window.wpApiSettings?.root) return wpApiSettings.root;
-  const link = document.querySelector('link[rel="https://api.w.org/"]')?.href;
-  if (link) return link.endsWith('/') ? link : link + '/';
-
-  const path = window.location.pathname;
-  const segments = path.split('/').filter(Boolean);
-
-  if (segments.length > 0 && segments[0] !== 'wp-json') {
-    return `/${segments[0]}/wp-json/`;
+  const r = window?.wpApiSettings?.root;
+  if (r) {
+    console.log('[getWpApiRoot] using wpApiSettings.root =', r);
+    return r.endsWith('/') ? r : r + '/';
   }
 
+  const link = document.querySelector('link[rel="https://api.w.org/"]')?.href;
+  if (link) {
+    console.log('[getWpApiRoot] using <link rel="https://api.w.org/"> =', link);
+    return link.endsWith('/') ? link : link + '/';
+  }
+
+  console.warn('[getWpApiRoot] fallback to /wp-json/');
   return '/wp-json/';
 }
 

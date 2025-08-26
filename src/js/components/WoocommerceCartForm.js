@@ -67,7 +67,7 @@ export default function WoocommerceCartForm() {
       res = await postRemove(fresh);
     }
     if (!res.ok) {
-      console.warn('[Cart] Woo remove-item error:', res.status);
+      console.error('[Cart] Woo remove-item error:', res.status, res.statusText);
       return;
     }
 
