@@ -400,7 +400,6 @@ export async function initOrSyncCart() {
     console.error("MERCHI_LOG: initOrSyncCart unexpected error:", error);
     throw error;
   } finally {
-    console.log("MERCHI_LOG: releasing lock");
     // Always remove the lock when done
     try {
       localStorage.removeItem(cartLockKey);
