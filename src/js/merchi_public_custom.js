@@ -272,6 +272,7 @@ async function createCart() {
         resolve(response);
       },
       (status, data) => {
+        console.error("failed, status =", status, "data =", data);
         reject(data);
       },
       cartEmbed
@@ -338,12 +339,14 @@ export async function initOrSyncCart() {
         // PARSE LOCAL STORAGE CART DATA
         localCartData = JSON.parse(localCartJSONString);
       } catch (e) {
+        console.error("MERCHI_LOG: Failed to parse localCartJSONString, clearing and creating new cart.");
         // IF ERROR PARSING LOCAL STORAGE CART DATA, CLEAR LOCAL STORAGE AND CREATE NEW CART
         localStorage.removeItem("MerchiCart");
         try {
           const newCart = await createCart();
           return newCart;
         } catch (error) {
+          console.error("MERCHI_LOG: Error during createCart after clearing invalid cart data:", error);
           return null;
         }
       }
@@ -393,9 +396,17 @@ export async function initOrSyncCart() {
       }
       return serverCart;
     }
+  } catch (error) {
+    console.error("MERCHI_LOG: initOrSyncCart unexpected error:", error);
+    throw error;
   } finally {
+    console.log("MERCHI_LOG: releasing lock");
     // Always remove the lock when done
-    localStorage.removeItem(cartLockKey);
+    try {
+      localStorage.removeItem(cartLockKey);
+    } catch (finErr) {
+      console.error("MERCHI_LOG: failed to release lock:", finErr);
+    }
   }
 }
 
