@@ -1719,3 +1719,23 @@ body.single-product #cart-count {
   margin-left: 0 !important;
   width: 95% !important;
 }
+
+.d-sm-none {
+  display: none !important;
+}
+
+@media (max-width: 575.98px) {
+  .d-sm-none {
+    display: block !important;
+  }
+}
+
+.d-none.d-sm-flex {
+  display: none !important;
+}
+
+@media (min-width: 576px) {
+  .d-none.d-sm-flex {
+    display: flex !important;
+  }
+}
