@@ -270,20 +270,6 @@ class Admin extends BaseController {
 				],
 			],
 			[
-				'id'       => 'merchi_mount_point_id',
-				'title'    => 'Mount point class',
-				'callback' => [
-					$this->callbacks,
-					'merchiMountPointId',
-				],
-				'page'     => 'merchi_plugin',
-				'section'  => 'merchi_admin_index',
-				'args'     => [
-					'label_for' => 'merchi_mount_point_id',
-					'class'     => 'example-class',
-				],
-			],
-			[
 				'id'       => 'merchi_redirect_url',
 				'title'    => 'Redirect After Success URL',
 				'callback' => [

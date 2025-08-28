@@ -12,6 +12,9 @@ module.exports = {
     'wordpress_merchi_dashboard': './src/js/wordpress_merchi_dashboard.js',
     'order_confirmation': './src/js/components/OrderConfirmation.js'
   },
+  externals: {
+    'merchi_sdk_js': 'MERCHI_INIT.MERCHI_SDK',
+  },
   output: {
     filename: '[name].js',
     path: path.resolve(__dirname, 'dist/js'),

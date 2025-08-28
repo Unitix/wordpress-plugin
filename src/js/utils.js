@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import ct from 'countries-and-timezones';
 
 export const backendUri = 'https://api.merchi.co/';
 export const websocketServer = 'https://websockets.merchi.co/';
@@ -78,6 +79,9 @@ export function getCookieByName(name) {
   return null; // Cookie not found
 }
 
+// ============================================================================
+// WooCommerce Form Input Style Control - Handles input active states
+// ============================================================================
 export default function useWooActive() {
   useEffect(() => {
     const INPUT = '.wc-block-components-text-input__input';
@@ -128,25 +132,60 @@ export default function useWooActive() {
   }, []);
 }
 
-// Woo Store Nonce helper
+// ============================================================================
+// WordPress API Utilities - Handle WP REST API and WooCommerce Store API
+// ============================================================================
+export function getWpApiRoot() {
+  const r = window?.wpApiSettings?.root;
+  if (r) {
+    return r.endsWith('/') ? r : r + '/';
+  }
+
+  const link = document.querySelector('link[rel="https://api.w.org/"]')?.href;
+  if (link) {
+    return link.endsWith('/') ? link : link + '/';
+  }
+  return '/wp-json/';
+}
+
+// WooCommerce Store API Nonce Management
 let wooNonceCache = '';
 
 export async function fetchWooNonce() {
-  const r = await fetch('/wp-json/wc/store/v1/cart', { credentials: 'same-origin' });
-  wooNonceCache = r.headers.get('Nonce') || '';
+  const r = await fetch(
+    `${getWpApiRoot()}wc/store/v1/cart`,
+    { credentials: 'same-origin' }
+  );
+  wooNonceCache =
+    r.headers.get('x-wc-store-api-nonce') ||
+    r.headers.get('nonce') || '';
   return wooNonceCache;
 }
 
 export async function ensureWooNonce() {
   if (wooNonceCache) return wooNonceCache;
+
+  const metaNonce = document
+    .querySelector('meta[name="woocommerce-store-api-nonce"]')
+    ?.content;
+  if (metaNonce) {
+    wooNonceCache = metaNonce;
+    return wooNonceCache;
+  }
+
   return fetchWooNonce();
 }
 
 export function updateWooNonce(res) {
-  const n = res.headers?.get?.('Nonce');
+  const n =
+    res.headers?.get?.('x-wc-store-api-nonce') ||
+    res.headers?.get?.('nonce');
   if (n) wooNonceCache = n;
 }
 
+// ============================================================================
+// Product Variations Utilities - Handle product options and variation groups
+// ============================================================================
 export const shouldShow = (v) => {
   if (Array.isArray(v.selectedOptions) && v.selectedOptions.length) return true;
   if (typeof v.value === 'string' && v.value.trim() !== '') return true;
@@ -165,3 +204,92 @@ export const buildOptionMap = (product = {}) => {
   );
   return map;
 };
+
+// ============================================================================
+// Geographic and Country Utilities - Handle country codes and browser location
+// ============================================================================
+// Convert country name to ISO code
+export const toIso = (val = '') =>
+  typeof val === 'string'
+    ? val.toUpperCase()
+    : (val && val.iso2 ? val.iso2.toUpperCase() : '');
+
+export function getCountryFromBrowser() {
+  if (typeof window === 'undefined') return null;
+
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+
+  if (tz) {
+    const tzInfo = ct.getTimezone(tz);
+    if (tzInfo?.countries?.length) {
+      const locale = navigator.language || '';
+      const locMatch = locale.match(/-([A-Z]{2})$/i)?.[1]?.toUpperCase();
+      const chosen =
+        tzInfo.countries.find(c => c === locMatch) ||
+        tzInfo.countries[0];
+      return chosen;
+    }
+  }
+
+  const locale =
+    Intl.DateTimeFormat().resolvedOptions().locale ||
+    navigator.language || '';
+  const m = locale.match(/-([A-Z]{2})$/i);
+  if (m) return m[1].toUpperCase();
+
+  return null;
+}
+
+// ============================================================================
+// Cart Data Processing Utilities - Handle cart data cleaning and restoration
+// ============================================================================
+export function cleanShipmentGroups(cartJson = {}) {
+  if (!Array.isArray(cartJson.shipmentGroups)) return cartJson;
+
+  return {
+    ...cartJson,
+    shipmentGroups: cartJson.shipmentGroups.filter(
+      (g) => Array.isArray(g.cartItems) && g.cartItems.length > 0
+    ),
+  };
+}
+
+export function ciKey(ci) {
+  const id = ci?.product?.id ?? ci?.productID ?? ci?.product;
+  const vg = JSON.stringify(
+    (ci?.variationsGroups || []).map(g =>
+      (g.variations || []).map(v => [
+        v?.variationField?.id ?? v?.variationField?.name ?? v?.variationField?.label ?? '',
+        v?.value ?? ''
+      ])
+    )
+  );
+  return `${id}::${vg}`;
+}
+
+export function mergeCartProducts(nextCart, prevCart) {
+  if (!prevCart?.cartItems?.length || !nextCart?.cartItems?.length) return nextCart;
+
+  const bucket = new Map();
+  prevCart.cartItems.forEach(oldCI => {
+    const k = ciKey(oldCI);
+    if (!bucket.has(k)) bucket.set(k, []);
+    bucket.get(k).push(oldCI);
+  });
+
+  const mergedItems = nextCart.cartItems.map(newCI => {
+    const k = ciKey(newCI);
+    const arr = bucket.get(k);
+    const oldCI = arr && arr.length ? arr.shift() : null;
+    if (!oldCI) return newCI;
+
+    const p = newCI.product;
+    const onlyId = (typeof p === 'number') || (p && Object.keys(p).length === 1 && 'id' in p);
+
+    return onlyId
+      ? { ...newCI, product: oldCI.product }
+      : { ...newCI, product: { ...oldCI.product, ...p } };
+  });
+
+  return { ...nextCart, cartItems: mergedItems };
+}

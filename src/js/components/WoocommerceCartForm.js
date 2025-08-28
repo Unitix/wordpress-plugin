@@ -1,54 +1,44 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { patchCart } from '../merchi_public_custom';
+// import { patchCart } from '../merchi_public_custom';
 import CartItems from './CartItems';
 import CartTotals from './CartTotals';
-
-import { ensureWooNonce, fetchWooNonce, updateWooNonce } from '../utils';
-
-// read cart from local storage
-const readCart = () => {
-  try {
-    const data = JSON.parse(localStorage.getItem('MerchiCart')) || {};
-    return data.cart ?? data;
-  } catch {
-    return {};
-  }
-};
+import { ensureWooNonce, fetchWooNonce, updateWooNonce, getWpApiRoot } from '../utils';
+import { useCart } from '../contexts/CartContext'
 
 export default function WoocommerceCartForm() {
-  const [cart, setCart] = useState(readCart());
-  const [loading, setLoading] = useState(true);
+  const {
+    cart,
+    loading,
+    isUpdating,
+    initializeCart,
+    updateCart,
+    refreshCart,
+  } = useCart();
+
+  const [firstPaintDone, setFirstPaintDone] = useState(false);
+  const apiRoot = getWpApiRoot();
 
   useEffect(() => {
-    const onStorage = e =>
-      e.key === 'MerchiCart' && setCart(readCart());
-    window.addEventListener('storage', onStorage);
+    if (!firstPaintDone && !loading) setFirstPaintDone(true);
+  }, [loading, firstPaintDone]);
 
-    // sync with the backend
-    (async () => {
-      try {
-        const patched = await patchCart(readCart(), cart.cartEmbed, { includeShippingFields: false });
-        // update the cart in local storage
-        setCart(JSON.parse(localStorage.getItem('MerchiCart')) || patched);
-      } catch (e) {
-        console.warn('[Cart] patchCart error:', e.response?.status || e);
-      } finally {
-        setLoading(false);
-      }
-    })();
-
-    return () => {
-      window.removeEventListener('storage', onStorage);
-    };
-  }, []);
-
-  const findWooKeyBySku = (sku) => {
-    const store = JSON.parse(localStorage.storeApiCartData || '{}');
-    return (store.items || []).find((i) => String(i.sku) === String(sku))?.key;
+  const getWooCartList = () => {
+    const sd = window.scriptData || {};
+    return sd.wooCartDat || sd.wooCartData || [];
   };
 
-  const handleRemove = useCallback(async (item) => {
-    const wooKey = findWooKeyBySku(item.product?.id);
+  const findWooKey = (item) => {
+    const list = getWooCartList();
+    const merchiId = item?.merchi_cart_item_id;
+    if (merchiId != null) {
+      const found = list.find((row) => String(row.merchi_cart_item_id) === String(merchiId));
+      if (found && found.key) return found.key;
+    }
+    return undefined;
+  };
+
+  const handleRemove = useCallback(async (item, idx, wooKeyFromRow) => {
+    const wooKey = wooKeyFromRow || findWooKey(item);
     if (!wooKey) {
       console.warn('Missing Woo item key, cannot sync mini-cart');
       return;
@@ -59,10 +49,14 @@ export default function WoocommerceCartForm() {
 
     // send request to WooCommerce
     async function postRemove(n) {
-      return fetch('/wp-json/wc/store/v1/cart/remove-item', {
+      return fetch(`${apiRoot}wc/store/v1/cart/remove-item`, {
         method: 'POST',
         credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', 'Nonce': n },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-WC-Store-API-Nonce': n,
+          'Nonce': n,
+        },
         body: JSON.stringify({ key: wooKey }),
       });
     }
@@ -73,63 +67,61 @@ export default function WoocommerceCartForm() {
       res = await postRemove(fresh);
     }
     if (!res.ok) {
-      console.warn('[Cart] Woo remove-item error:', res.status);
+      console.error('[Cart] Woo remove-item error:', res.status, res.statusText);
       return;
     }
 
     updateWooNonce(res);
+    await res.json()
 
-    const wooCart = await res.json();
-    localStorage.storeApiCartData = JSON.stringify(wooCart);
+    // sync the merchicart
+    try {
+      if (!cart?.id || !cart?.token) {
+        await initializeCart();
+      }
+      const merchiItemId = item?.id ?? item?.merchi_cart_item_id;
+      const nextItems = cart.cartItems.filter((ci, i) =>
+        merchiItemId != null ? ci?.id !== merchiItemId : i !== idx
+      );
 
-    const updatedItems = cart.cartItems.filter(
-      ci => String(ci.product?.id) !== String(item.product?.id)
-    );
+      if (nextItems.length === cart.cartItems.length) {
+        await refreshCart();
+        return;
+      }
+      const nextCartJson = {
+        ...cart,
+        cartItems: nextItems,
+      };
 
-    // const subtotalCost = updatedItems.reduce((sum, i) =>
-    //   sum + ((i.subtotalCost ?? i.cost ?? i.totalCost ?? 0) * i.quantity), 0);
-    // const totalCost = updatedItems.reduce((sum, i) =>
-    //   sum + ((i.totalCost ?? i.subtotalCost ?? i.cost ?? 0) * i.quantity), 0);
+      await updateCart(
+        nextCartJson,
+        cart?.cartEmbed,
+        {
+          includeShippingFields: false,
+          preserveShippingInLocalStorage: true,
+        }
+      );
 
-    const subtotalCost = updatedItems.reduce(
-      (sum, i) =>
-        sum +
-        (i.subtotalCost !== undefined
-          ? i.subtotalCost
-          : (i.cost ?? 0) * (i.quantity ?? 1)
-        ),
-      0
-    );
+      if (window?.jQuery?.fn) {
+        window.jQuery(document.body).trigger("wc_fragment_refresh");
+      }
+    } catch (e) {
+      console.warn('[Cart] updateCart remove failed, fallback to refresh:', e?.message || e);
+      await refreshCart();
+    }
+  },
+    [apiRoot, cart?.id, cart?.cartItems, cart?.cartEmbed, updateCart, refreshCart]
+  );
 
-    const totalCost = updatedItems.reduce(
-      (sum, i) =>
-        sum +
-        (i.totalCost !== undefined ? i.totalCost : (i.subtotalCost ?? i.cost ?? 0) * (i.quantity ?? 1)),
-      0
-    );
-    const updatedCart = {
-      ...cart,
-      cartItems: updatedItems,
-      cartItemsSubtotalCost: subtotalCost,
-      cartItemsTotalCost: totalCost,
-    };
-
-    localStorage.setItem('MerchiCart', JSON.stringify(updatedCart));
-    setCart(updatedCart);
-
-    patchCart(updatedCart, cart.cartEmbed, { includeShippingFields: false }).catch(e =>
-      console.warn('[Cart] patchCart error:', e?.response?.status || e)
-    );
-  }, [cart]);
-
-
-  if (loading) {
+  if (loading && !firstPaintDone) {
     return (
       <div className="wc-cart-loading" role="status">
         <div className="wc-block-components-spinner is-active"></div>
       </div>
     );
   }
+
+  const shopUrl = window.scriptData?.shopUrl || '/shop';
 
   if (!cart.cartItems?.length) {
     return (
@@ -139,12 +131,12 @@ export default function WoocommerceCartForm() {
       >
         <div className="entry-content alignwide wp-block-post-content">
           <div className="wp-block-woocommerce-cart">
-            <div className="wp-block-woocommerce-empty-cart-block">
-              <h2 className="wp-block-heading has-text-align-center with-empty-cart-icon wc-block-cart__empty-cart__title">
+            <div className="wp-block-woocommerce-empty-cart-block" style={{ textAlign: 'center' }}>
+              <h2 className="wp-block-heading has-text-align-center with-empty-cart-icon wc-block-cart__empty-cart__title" style={{ marginBottom: '2rem' }}>
                 Your cart is currently empty!
               </h2>
               <p style={{ textAlign: 'center', marginTop: '3rem' }}>
-                <a href="/shop" className="wp-element-button">
+                <a href={shopUrl} className="wp-element-button">
                   Return to shop
                 </a>
               </p>
@@ -161,8 +153,8 @@ export default function WoocommerceCartForm() {
         <div className="wp-block-woocommerce-cart">
           <div className="wc-block-components-notice-snackbar-list" tabIndex="-1" />
           <div className="wc-block-components-sidebar-layout wc-block-cart wp-block-woocommerce-filled-cart-block is-large">
-            <CartItems cartItems={cart.cartItems} onRemove={handleRemove} />
-            <CartTotals cart={cart} />
+            <CartItems onRemove={handleRemove} />
+            <CartTotals />
           </div>
         </div>
       </div>

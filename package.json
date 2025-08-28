@@ -9,7 +9,9 @@
   "dependencies": {
     "@stripe/react-stripe-js": "^3.7.0",
     "@stripe/stripe-js": "^7.3.0",
-    "merchi_checkout": "1.0.19",
+    "countries-and-timezones": "^3.8.0",
+    "libphonenumber-js": "^1.12.9",
+    "merchi_checkout": "^1.1.0",
     "merchi_sdk_js": "latest",
     "react": "^18.3.1",
     "react-country-region-selector": "^4.0.2",

@@ -3,26 +3,36 @@ import { createRoot } from 'react-dom/client';
 import WoocommerceCheckoutForm from './components/WoocommerceCheckoutForm';
 import WoocommerceCartForm from './components/WoocommerceCartForm';
 import OrderConfirmation from './components/OrderConfirmation';
+import { CartProvider } from './contexts/CartContext';
 
 // Initialize React component when the document is ready
 document.addEventListener('DOMContentLoaded', function () {
   const checkoutFormContainer = document.getElementById('woocommerce-checkout-form');
   if (checkoutFormContainer) {
     const root = createRoot(checkoutFormContainer);
-    root.render(<WoocommerceCheckoutForm />);
+    root.render(
+      <CartProvider>
+        <WoocommerceCheckoutForm />
+      </CartProvider>
+    );
   }
 
   const cartFormContainer = document.getElementById('woocommerce-cart-form');
   if (cartFormContainer) {
     const root = createRoot(cartFormContainer);
-    root.render(<WoocommerceCartForm />);
+    root.render(
+      <CartProvider>
+        <WoocommerceCartForm />
+      </CartProvider>
+    );
   }
-});
-
-document.addEventListener('DOMContentLoaded', function () {
   const orderConfirmationContainer = document.getElementById('order-confirmation-root');
   if (orderConfirmationContainer) {
     const root = createRoot(orderConfirmationContainer);
-    root.render(<OrderConfirmation />);
+    root.render(
+      <CartProvider>
+        <OrderConfirmation />
+      </CartProvider>
+    );
   }
 });

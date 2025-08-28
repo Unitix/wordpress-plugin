@@ -1,6 +1,5 @@
 // Wait for both jQuery and Merchi SDK to be ready
 import { MERCHI_SDK } from './merchi_sdk';
-import { getCookieByName } from './utils';
 import { initializeCheckout } from './merchi_checkout_init';
 
 function initializeWhenReady() {
@@ -26,6 +25,7 @@ function initializeWhenReady() {
   }
 
   jQuery(document).ready(function ($) {
+
     const merchiProductId = merchiConfig.productId;
     let productJson = {};
     let defaultJobJson = {};
@@ -40,19 +40,6 @@ function initializeWhenReady() {
         return {};
       }
     };
-
-    // Add cart-loader and cart-count elements if not present
-    if ($('#cart-loader').length === 0) {
-      $('body').prepend('<div id="cart-loader" style="display:none;position:fixed;top:20px;right:20px;z-index:9999;"><div style="width:32px;height:32px;border:4px solid #eee;border-top:4px solid #3498db;border-radius:50%;animation:spin 1s linear infinite;"></div></div>');
-    }
-    if ($('#cart-count').length === 0) {
-      // Add to header if exists, else to body
-      if ($('header').length > 0) {
-        $('header').append('<span id="cart-count" style="margin-left:16px;font-weight:bold;">0</span>');
-      } else {
-        $('body').prepend('<span id="cart-count" style="position:fixed;top:20px;left:20px;z-index:9999;font-weight:bold;">0</span>');
-      }
-    }
 
     // Function to fetch product details
     function fetchProductDetails() {
@@ -212,6 +199,37 @@ function initializeWhenReady() {
           $previewArea = jQuery('<div class="multi-file-upload-preview"></div>');
           $wrapper.after($previewArea);
         }
+
+        // drag and drop
+        $wrapper.off('dragover.file-drop dragenter.file-drop dragleave.file-drop drop.file-drop')
+          .on('dragover.file-drop dragenter.file-drop', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $wrapper.addClass('drag-over');
+          })
+          .on('dragleave.file-drop', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!$wrapper[0].contains(e.relatedTarget)) {
+              $wrapper.removeClass('drag-over');
+            }
+          })
+          .on('drop.file-drop', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $wrapper.removeClass('drag-over');
+
+            const files = e.originalEvent.dataTransfer.files;
+            if (files.length > 0) {
+              // Create a new FileList and assign it to the input, then trigger change
+              const dt = new DataTransfer();
+              for (let i = 0; i < files.length; i++) {
+                dt.items.add(files[i]);
+              }
+              $input[0].files = dt.files;
+              $input.trigger('change');
+            }
+          });
 
         $input.off('change.file-input').on('change.file-input', async function (e) {
           var files = Array.from(this.files);
@@ -855,6 +873,10 @@ function initializeWhenReady() {
 
     // Function to process variations from a container
     function processVariations($container, variationsArray) {
+      if (!Array.isArray(variationsArray)) {
+        return;
+      }
+
       $container.find('.custom-field').each(function () {
         const $fieldContainer = jQuery(this);
         const $input = $fieldContainer.find('input, select, textarea').first();
@@ -862,8 +884,9 @@ function initializeWhenReady() {
         const variationFieldId = variationFieldData?.id;
 
         if (!variationFieldId) return;
+
         // Find the index of the variation by matching the variationFieldId
-        const variationIndex = variationsArray.findIndex(v => v.variationField.id === variationFieldId);
+        const variationIndex = variationsArray.findIndex(v => v?.variationField?.id === variationFieldId);
 
         if (variationIndex === -1) return;
 
@@ -884,8 +907,18 @@ function initializeWhenReady() {
             value = null;
           }
         } else if ($input.is('input[type="radio"]')) {
-          const $checked = $fieldContainer.find('input[type="radio"]:checked');
-          value = $checked.length ? $checked.val() : null;
+          // Check if this specific field container has colour-select inputs
+          const $fieldContainer = $input.closest('.custom-field');
+          const $colourSelectInputs = $fieldContainer.find('input[data-field-type="colour-select"]');
+          if ($colourSelectInputs.length > 0) {
+            // This is a colour-select field
+            const $checked = $fieldContainer.find('input[data-field-type="colour-select"]:checked');
+            value = $checked.length ? $checked.val() : null;
+          } else {
+            // Handle regular radio fields
+            const $checked = $fieldContainer.find('input[type="radio"]:checked');
+            value = $checked.length ? $checked.val() : null;
+          }
         } else if ($input.is('input[type="color"]')) {
           value = $input.val();
         } else if ($input.is('input[type="file"]')) {
@@ -915,6 +948,10 @@ function initializeWhenReady() {
 
         // Update the value of the variation
         variationsArray[variationIndex].value = value;
+
+        if (!Array.isArray(variationsArray[variationIndex].variationFiles)) {
+          variationsArray[variationIndex].variationFiles = [];
+        }
       });
     }
 
@@ -935,7 +972,7 @@ function initializeWhenReady() {
       const formData = {
         ...defaultJobJson,
         variationsGroups: [],
-        variations: []
+        variations: Array.isArray(defaultJobJson.variations) ? [...defaultJobJson.variations] : []
       };
 
       // Process group variations
@@ -968,8 +1005,18 @@ function initializeWhenReady() {
                 value = null;
               }
             } else if ($input.is('input[type="radio"]')) {
-              const $checked = $group.find('input[type="radio"]:checked');
-              value = $checked.length ? $checked.val() : null;
+              // Check if this specific field container has colour-select inputs
+              const $fieldContainer = $input.closest('.custom-field');
+              const $colourSelectInputs = $fieldContainer.find('input[data-field-type="colour-select"]');
+              if ($colourSelectInputs.length > 0) {
+                // This is a colour-select field
+                const $checked = $fieldContainer.find('input[data-field-type="colour-select"]:checked');
+                value = $checked.length ? $checked.val() : null;
+              } else {
+                // This is a regular radio field
+                const $checked = $fieldContainer.find('input[type="radio"]:checked');
+                value = $checked.length ? $checked.val() : null;
+              }
             } else if ($input.is('input[type="color"]')) {
               value = $input.val();
             } else if ($input.is('input[type="file"]')) {
@@ -999,7 +1046,8 @@ function initializeWhenReady() {
                 name: variationFieldData.name
               },
               value: value,
-              ...(variationFilesForGroup ? { variationFiles: variationFilesForGroup } : {})
+              // ...(variationFilesForGroup ? { variationFiles: variationFilesForGroup } : {})
+              variationFiles: variationFilesForGroup ?? [],
             });
           });
 
@@ -1048,173 +1096,48 @@ function initializeWhenReady() {
       // Validate form before proceeding
       if (!validateForm()) {
         console.log('Form validation failed');
+        focusFirstFormError();
         return;
       }
       setLoadingState(true);
       try {
         // Gather form data and log it
-        const formData = await gatherFormData();
-        const { quantity, variationsGroups = [], variations = [] } = formData;
+        const merchiCartItemJson = await gatherFormData();
+        const { quantity, variationsGroups = [], variations = [] } = merchiCartItemJson;
 
         let cartId = null;
-        let totalQuantity = variationsGroups.length ? 0 : quantity;
 
         // use querySelector to get the main image and assign it to featureImage
         const pageImg = document.querySelector(
           '.woocommerce-product-gallery__image img, .woocommerce-product-gallery__wrapper img, meta[property="og:image"]'
         )?.src;
 
-        if (pageImg && !formData.product.featureImage) {
-          formData.product.featureImage = { viewUrl: pageImg };
+        if (pageImg && !merchiCartItemJson.product.featureImage) {
+          merchiCartItemJson.product.featureImage = { viewUrl: pageImg };
         }
 
-        // Get the cart in local storage
-        const merchiCart = localStorage.getItem('MerchiCart');
-        let merchiCartJson = null;
-        let updatedCartJson = null;
-
-        // Only try to parse if merchiCart exists and is not null
-        if (merchiCart) {
+        let merchiCartJson = localStorage.getItem('MerchiCart');
+        const cartData = merchiCartJson ? JSON.parse(merchiCartJson) : null;
+        // If no cart exists, create a new one
+        if (!cartData) {
           try {
-            // Convert the cart to JSON
-            merchiCartJson = JSON.parse(merchiCart);
-            cartId = merchiCartJson.id;
+            await initOrSyncCart();
           } catch (error) {
-            console.error('Error parsing MerchiCart:', error);
-            merchiCartJson = null;
+            alert("Failed to initialize cart. Please try again.");
+            setLoadingState(false);
+            return;
           }
+          merchiCartJson = localStorage.getItem('MerchiCart');
+          cartData = merchiCartJson ? JSON.parse(merchiCartJson) : null;
         }
 
-        // Only process existing cart if we have valid cart data
-        if (merchiCartJson && merchiCartJson.id) {
-          // Add the new item to the cart
+        merchiCartItemJson.cart = cartData ? {
+          id: cartData.id,
+          token: cartData.token
+        } : null;
 
-          // fill the basic quantity and price fields to formData
-          formData.quantity = variationsGroups.length ? 0 : quantity;
-          formData.subtotalCost = (formData.cost ?? 0) * formData.quantity;
-          formData.totalCost = (formData.totalCost ?? formData.cost ?? 0) * formData.quantity;
-
-          const cartItems = [...merchiCartJson.cartItems, formData];
-
-          // calculate the subtotal and total cost of the cart items (based on variationsGroups)
-          const cartItemsSubtotalCost = cartItems.reduce((sum, it) => {
-            if (Array.isArray(it.variationsGroups) && it.variationsGroups.length) {
-              return sum + it.variationsGroups.reduce((s, g) => s + (g.groupCost ?? 0), 0);
-            }
-            return sum + (it.subtotalCost ?? (it.cost ?? 0) * (it.quantity ?? 1));
-          }, 0);
-
-          const cartItemsTotalCost = cartItems.reduce((sum, it) => {
-            if (Array.isArray(it.variationsGroups) && it.variationsGroups.length) {
-              return sum + it.variationsGroups.reduce((s, g) => s + (g.groupCost ?? 0), 0);
-            }
-            return sum + (it.totalCost ?? it.subtotalCost ?? (it.cost ?? 0) * (it.quantity ?? 1));
-          }, 0);
-
-          updatedCartJson = {
-            ...merchiCartJson,
-            cartItems: cartItems.map(item => ({
-              ...item,
-              // product: { id: item.product.id },
-              product: {
-                id: item.product?.id,
-                name: item.product?.name,
-                featureImage: item.product?.featureImage
-                  ?? item.product?.images?.[0]
-                  ?? undefined,
-              },
-              subtotalCost: item.subtotalCost,
-              totalCost: item.totalCost,
-              taxType: item.taxType ? { id: item.taxType.id } : undefined,
-              variations: item.variations,
-              variationsGroups: item.variationsGroups,
-            })),
-            cartItemsSubtotalCost,
-            cartItemsTotalCost,
-            domain: { id: merchiCartJson?.domain?.id },
-          };
-          localStorage.setItem('MerchiCart', JSON.stringify(updatedCartJson)); //use the patchcart method here from merchi_public_custom.js
-        }
-
-        let taxAmount = 0;
-        // Build cartItems from formData (detailed version)
-        const cartItems = [];
-        cartItems.push({
-          productID: formData.product?.id || '',
-          subTotal: formData.cost || 0,
-          totalCost: formData.totalCost || 0,
-          variations: [],
-          objExtras: []
-        });
-
-        // Map group variations (variationsGroups)
-        if (variationsGroups?.length) {
-          variationsGroups.forEach((group, gi) => {
-            let groupObj = {};
-            let groupExtras = {};
-            let varQuant = group.quantity || 1;
-
-            // Use variationField.id or variationField.name as key, fallback to index
-            if (Array.isArray(group.variations)) {
-              group.variations.forEach((variation, vi) => {
-                let key = vi;
-                if (variation && variation.variationField) {
-                  key = variation.variationField.id || variation.variationField.name || vi;
-                }
-                if (variation && (variation.value !== undefined)) {
-                  // If this is a file upload field, store the full file object(s)
-                  if (
-                    Array.isArray(variation.value) &&
-                    variation.value.length > 0 &&
-                    variation.value[0] &&
-                    typeof variation.value[0] === 'object' &&
-                    variation.value[0].id &&
-                    variation.value[0].name &&
-                    variation.value[0].downloadUrl
-                  ) {
-                    groupObj[key] = variation.value; // Store array of file objects
-                  } else {
-                    groupObj[key] = variation.value;
-                  }
-                }
-              });
-            }
-            groupExtras['quantity'] = varQuant;
-            totalQuantity += varQuant;
-
-            cartItems[0].variations.push(groupObj);
-            cartItems[0].objExtras.push(groupExtras);
-
-            formData.quantity = totalQuantity;
-            formData.subtotalCost = (formData.cost ?? 0) * totalQuantity;
-            formData.totalCost = (formData.totalCost ?? formData.cost ?? 0) * totalQuantity;
-          });
-        }
-
-        // Map standalone variations (if any)
-        if (variations?.length) {
-          let obj = {};
-          let objExtras = {};
-          let loopcount = 0;
-
-          variations.forEach((variation, vi) => {
-            if (variation && (variation.value !== undefined)) {
-              obj[vi] = variation.value;
-            }
-            loopcount = vi + 1;
-          });
-          objExtras[loopcount] = totalQuantity;
-          objExtras['quantity'] = totalQuantity;
-
-          cartItems[0].variations.push(obj);
-          cartItems[0].objExtras.push(objExtras);
-        }
-        cartItems[0].quantity = totalQuantity;
         const cartPayload = {
-          cartId: cartId,
-          taxAmount: taxAmount,
-          cartItems: cartItems,
-          merchiCartJson: updatedCartJson,
+          merchiCartItemJson,
         };
 
         jQuery.ajax({
@@ -1224,13 +1147,20 @@ function initializeWhenReady() {
             action: "send_id_for_add_cart",
             item: cartPayload,
           },
+          dataType: "json",
           success: function (response) {
             setLoadingState(false);
+
+            if (response.success && response.merchiCart) {
+              localStorage.setItem('MerchiCart', JSON.stringify(response.merchiCart));
+            }
             // Set a flag in sessionStorage to show the success message after reload
             sessionStorage.setItem('merchiCartSuccess', '1');
             // Reload the page and scroll to top
+
             window.scrollTo({ top: 0, behavior: 'smooth' });
             window.location.reload();
+
             // Do NOT show the success message here
             // Do NOT submit the form here
             // Cart fragment refresh will happen on reload
@@ -1341,6 +1271,46 @@ function validateForm() {
   }
 }
 
+function focusFirstFormError() {
+  const $form = jQuery('.merchi-product-form');
+  const $err = $form.find('.field-error, .woocommerce-invalid, [aria-invalid="true"], .error, .has-error').first();
+  if (!$err.length) return false;
+
+  let el = $err[0];
+  const inner = el.matches('input,select,textarea,button,[tabindex]') ? el : el.querySelector('input,select,textarea,button,[tabindex]');
+  if (inner) el = inner;
+
+  const hadTab = el.hasAttribute('tabindex');
+  if (!hadTab) el.setAttribute('tabindex', '-1');
+
+  // foucs first, do not scroll
+  try {
+    el.focus({ preventScroll: true });
+  } catch (e) {
+    try { el.focus(); } catch (_) { }
+  }
+
+  const wpbar = document.getElementById('wpadminbar');
+  const header = document.querySelector('.site-header.is-sticky, .site-header.sticky, .sticky-header');
+  const EXTRA = 30;
+  const offset = (wpbar ? wpbar.offsetHeight : 0) + (header ? header.offsetHeight : 0) + EXTRA;
+
+  const rect = el.getBoundingClientRect();
+  const absTop = rect.top + window.pageYOffset;
+  const visibleH = Math.max(0, window.innerHeight - offset);
+
+  // set the element in the middle of the viewport
+  let desiredScrollY = absTop - (offset + Math.max(0, (visibleH - rect.height) / 2));
+  const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+  desiredScrollY = Math.min(maxScrollY, Math.max(0, desiredScrollY));
+
+  window.scrollTo({ top: desiredScrollY, behavior: 'smooth' });
+
+  if (!hadTab) setTimeout(() => el.removeAttribute('tabindex'), 600);
+  return true;
+}
+
+
 // Function to handle loading state
 function setLoadingState(isLoading) {
   const $button = jQuery('.single_add_to_cart_button');
@@ -1359,13 +1329,15 @@ function showSuccessMessage() {
     existingMessage.remove();
   }
 
+  const cartUrl = (window.scriptData && window.scriptData.cartUrl) || '/cart/';
+
   // Create and show new message
   const message = document.createElement('div');
   message.className = 'merchi-success-message';
   message.innerHTML = `
     <span class="merchi-success-close" tabindex="0" aria-label="Close">&times;</span>
     <span>✓ Product added to cart successfully!</span>
-    <a href="/cart/">Go to cart</a>
+    <a href="${cartUrl}">Go to cart</a>
   `;
 
   // Find the product heading and insert the message before it
@@ -1383,10 +1355,4 @@ function showSuccessMessage() {
   closeBtn.onkeydown = (e) => {
     if (e.key === 'Enter' || e.key === ' ') message.remove();
   };
-
-  // Remove message after 8 seconds with a 1-second fade
-  // setTimeout(() => {
-  //   message.style.opacity = '0';
-  //   setTimeout(() => message.remove(), 1000);
-  // }, 8000);
 }

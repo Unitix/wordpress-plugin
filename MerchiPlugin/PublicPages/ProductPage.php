@@ -13,8 +13,11 @@ class ProductPage extends BaseController {
 	public function register() {
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_grouped_attributes' ], 10 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_independent_attributes' ], 20 );
+		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_new_group_button' ], 25 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_total_price' ], 30 );
+		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_action_buttons_container_start' ], 35 );
 		add_action('woocommerce_after_add_to_cart_button', [ $this, 'display_quote_button' ], 10 );
+		add_action('woocommerce_after_add_to_cart_button', [ $this, 'display_action_buttons_container_end' ], 20 );
 		add_action( 'wp', [ $this, 'remove_product_content' ] );
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_merchi_scripts' ] );
 		add_filter( 'woocommerce_quantity_input_args', [ $this, 'remove_quantity_field' ], 10, 2 );
@@ -23,10 +26,58 @@ class ProductPage extends BaseController {
 	}
 
 	public function enqueue_merchi_scripts() {
+		// Only load on single product pages
+		if (!is_product()) {
+			return;
+		}
+
+		// Check if this is a Merchi product (has product_id meta)
+		$merchi_product_id = get_post_meta(get_the_ID(), 'product_id', true);
+		if (empty($merchi_product_id)) {
+			return;
+		}
+		
+		$staging_mode = get_option('merchi_staging_mode');
+		if ($staging_mode === 'yes') {
+			// $merchi_backend_uri = 'https://staging.merchi.co/static/js/dist/merchi-init.js';
+			wp_enqueue_script(
+				'merchi-init-frontend',
+				'https://staging.merchi.co/static/js/dist/merchi-init.js',
+				array(),
+				null,
+				true
+			);
+
+		} else {
+			wp_enqueue_script(
+				'merchi-init-frontend',
+				'https://merchi.co/static/js/dist/merchi-init.js',
+				array(),
+				null,
+				true
+			);
+		}
+
+
+		// wp_enqueue_script(
+		// 	'stripe-js-cdn',
+		// 	'https://js.stripe.com/v3/',
+		// 	array(),
+		// 	null,
+		// 	true
+		// );
+		// wp_enqueue_script(
+		// 	'react-stripe-js-cdn',
+		// 	'https://unpkg.com/@stripe/react-stripe-js@3.7.0/dist/react-stripe.umd.min.js',
+		// 	array(),
+		// 	null,
+		// 	true
+		// );
+		// load Merchi SDK
 		wp_enqueue_script(
 			'merchi_sdk',
 			plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_sdk.js',
-			array(),
+			array('merchi-init-frontend'),
 			'1.0.0',
 			true
 		);
@@ -57,22 +108,21 @@ class ProductPage extends BaseController {
 		);
 
 		// Get the correct configuration based on staging mode
-		$staging_mode = get_option('merchi_staging_mode');
 		$merchi_domain = $staging_mode === 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
 		$merchi_url = $staging_mode === 'yes' ? 'https://api.staging.merchi.co/' : 'https://api.merchi.co/';
 
-		// Debug logging
+		// Debug logging (only log when actually loading scripts)
 		error_log('Merchi Configuration:');
 		error_log('Environment: ' . ($staging_mode === 'yes' ? 'Staging' : 'Production'));
 		error_log('API URL: ' . $merchi_url);
 		error_log('Domain ID: ' . $merchi_domain);
-		error_log('Product ID: ' . get_post_meta(get_the_ID(), 'product_id', true));
+		error_log('Product ID: ' . $merchi_product_id);
 
 		// Add Merchi configuration data
 		wp_localize_script('merchi_product_form', 'merchiConfig', array(
 			'domainId' => $merchi_domain,
 			'apiUrl' => $merchi_url,
-			'productId' => get_post_meta(get_the_ID(), 'product_id', true),
+			'productId' => $merchi_product_id,
 			'stagingMode' => $staging_mode === 'yes',
 			'backendUri' => $merchi_url
 		));
@@ -80,9 +130,6 @@ class ProductPage extends BaseController {
 		// Verify configuration
 		if (empty($merchi_domain)) {
 			error_log('Warning: Merchi Domain ID is empty');
-		}
-		if (empty(get_post_meta(get_the_ID(), 'product_id', true))) {
-			error_log('Warning: Merchi Product ID is empty');
 		}
 	}
 
@@ -153,11 +200,26 @@ class ProductPage extends BaseController {
 		echo '</div>';
 
 		echo '</div>';
+	}
 
-		// Add Group button container
-		echo '<div class="merchi-buttons-container">';
-		echo '<button type="button" class="button wp-element-button add-group-button">+ New Group</button>';
+	public function display_action_buttons_container_start() {
+		echo '<div class="merchi-action-buttons-container">';
+	}
+
+	public function display_action_buttons_container_end() {
 		echo '</div>';
+	}
+
+	public function display_new_group_button() {
+		$product_id = get_the_ID();
+		$group_fields_template = get_post_meta($product_id, '_group_variation_field_template', true);
+		
+		// Only show if there are group variation fields
+		if (!empty($group_fields_template)) {
+			echo '<div class="merchi-new-group-container">';
+			echo '<button type="button" class="button wp-element-button add-group-button">+ NEW GROUP</button>';
+			echo '</div>';
+		}
 	}
 
 	private function get_variation_field_options($field) {
@@ -407,7 +469,7 @@ class ProductPage extends BaseController {
 							$variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
 							$color = get_term_meta($term->term_id, 'colour', true);
 							$html .= '<label class="color-option">';
-							$html .= '<input type="' . $input_type . '" name="' . $field_name . '" value="' . esc_attr($variation_option_id) . '" ' . ($is_multiple ? '' : $is_checked) . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '"/>';
+							$html .= '<input type="' . $input_type . '" name="' . $field_name . '" value="' . esc_attr($variation_option_id) . '" ' . ($is_multiple ? '' : $is_checked) . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '" data-field-type="colour-select"/>';
 							$html .= '<div class="color-option-inner">';
 							$html .= '<span class="color-indicator" style="background-color: ' . esc_attr($color) . ';"></span>';
 							$html .= '<span class="checkmark">✓</span>';
@@ -555,13 +617,11 @@ class ProductPage extends BaseController {
 			return;
 		}
 
-		// Add the Get Quote button
+		// Add the Get Quote button in the same line as Add to Cart
 		echo '<button type="button" ' .
 			'class="button wp-element-button single_get_quote_button" ' .
 			'id="get-quote-button">' .
 			'Get quote' .
 			'</button>';
-		?>
-		<?php
 	}
 }

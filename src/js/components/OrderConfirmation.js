@@ -19,8 +19,6 @@ const OrderConfirmation = () => {
   let orderInfo;
   try {
     orderInfo = JSON.parse(rawOrderData);
-
-    console.log('orderInfo', orderInfo);
   } catch (err) {
     console.error("Failed to parse order data from localStorage:", err);
     return (
@@ -40,18 +38,11 @@ const OrderConfirmation = () => {
     client,
   } = orderInfo;
 
+  const shippingCost = cart.shipmentTotalCost;
+
   return (
     <div className="woocommerce">
-      {/* <p className="woocommerce-thankyou-order-received">
-        {status === "failed"
-          ? "Unfortunately your order cannot be processed..."
-          : "Thank you. Your order has been received."}
-      </p> */}
-
       <ul className="woocommerce-order-overview woocommerce-thankyou-order-details order_details">
-        {/* <li className="woocommerce-order-overview__order order">
-          Order number: <strong>{orderNumber}</strong>
-        </li> */}
         <li className="woocommerce-order-overview__date date">
           Date: <strong>{new Date().toLocaleString(undefined, {
             hour: '2-digit',
@@ -63,7 +54,7 @@ const OrderConfirmation = () => {
           })}</strong>
         </li>
         <li className="woocommerce-order-overview__total total">
-          Total: <strong>{cart.totalCost}</strong>
+          Total: <strong>${cart.totalCost.toFixed(2)}</strong>
         </li>
         <li className="woocommerce-order-overview__payment-method method">
           Payment method: <strong>Debit Card</strong>
@@ -76,7 +67,13 @@ const OrderConfirmation = () => {
           <thead>
             <tr>
               <th className="woocommerce-table__product-name">Product</th>
-              <th className="woocommerce-table__product-total">Total</th>
+              <th
+                className="woocommerce-table__product-thumbnail"
+                style={{ width: '100%' }}
+              ></th>
+              <th className="woocommerce-table__product-total">
+                Total
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -89,11 +86,58 @@ const OrderConfirmation = () => {
                   {item.product.name} × {item.quantity}
                 </td>
                 <td className="woocommerce-table__product-total">
-                  <span className="woocommerce-Price-amount amount">{item.totalCost}</span>
+                  <span className="woocommerce-Price-amount amount">${item.totalCost.toFixed(2)}</span>
                 </td>
               </tr>
             ))}
           </tbody>
+
+          <tfoot>
+            <tr>
+              <th
+                className="woocommerce-table__product-name"
+                colSpan={2}
+                style={{ textAlign: 'left' }}
+              >
+                Shipping
+              </th>
+              <td className="woocommerce-table__product-total">
+                <span className="woocommerce-Price-amount amount">
+                  ${shippingCost.toFixed(2)}
+                </span>
+              </td>
+            </tr>
+            {cart.discountItems && cart.discountItems.length > 0 && (
+              <tr>
+                <th
+                  className="woocommerce-table__product-name"
+                  colSpan={2}
+                  style={{ textAlign: 'left' }}
+                >
+                  Discount
+                </th>
+                <td className="woocommerce-table__product-total">
+                  <span className="woocommerce-Price-amount amount">
+                    -${Math.abs(cart.discountItems.reduce((sum, item) => sum + item.cost, 0)).toFixed(2)}
+                  </span>
+                </td>
+              </tr>
+            )}
+            <tr>
+              <th
+                className="woocommerce-table__product-name"
+                colSpan={2}
+                style={{ textAlign: 'left' }}
+              >
+                Total
+              </th>
+              <td className="woocommerce-table__product-total">
+                <span className="woocommerce-Price-amount amount">
+                  ${cart.totalCost.toFixed(2)}
+                </span>
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </section>
 
@@ -108,6 +152,14 @@ const OrderConfirmation = () => {
           {receiverAddress.country} <br />
         </address>
       </section>
+
+      {orderInfo.orderNote && (
+        <section className="woocommerce-order-note">
+          <h2 className="woocommerce-column__title">Note</h2>
+          <p>{orderInfo.orderNote}</p>
+        </section>
+      )}
+
     </div>
   );
 };

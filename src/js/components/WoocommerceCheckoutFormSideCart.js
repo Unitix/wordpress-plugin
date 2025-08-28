@@ -1,38 +1,46 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useRef } from 'react'
 import CouponPanel from './CouponPanel';
 import VariationGroupsDisplay from './VariationGroupsDisplay';
+import { useCart } from '../contexts/CartContext';
 
-const readCart = () => {
-  try {
-    const data = JSON.parse(localStorage.getItem('MerchiCart')) || {};
-    return data.cart ?? data;
-  } catch {
-    return {};
-  }
-};
+export default function WoocommerceCheckoutFormSideCart({ isUpdatingShipping, allowRemoveCoupon = true }) {
+  const { cart: contextCart } = useCart();
 
-export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdatingShipping }) {
-  const [localCart, setLocalCart] = useState(readCart());
+  const [couponData, setCouponData] = useState({
+    totals: null,
+    appliedCodes: []
+  });
+  const couponPanelRef = useRef(null);
 
-  const cartReady =
-    (cart?.cartItems?.length && cart.cartItems[0].product?.name) ||
-    (localCart.cartItems?.length && localCart.cartItems[0].product?.name);
+  const cartReady = contextCart?.cartItems?.length;
 
-  useEffect(() => {
-    const onStorage = (e) =>
-      e.key === 'MerchiCart' && setLocalCart(readCart());
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
+  const handleTotalsChange = (data) => setCouponData(data);
 
-  const showCart = cart?.cartItems?.length && cart.cartItems[0].product?.name ? cart : localCart;
+  const handleRemoveCoupon = (idx) => {
+    if (
+      couponPanelRef.current &&
+      typeof couponPanelRef.current.removeDiscountCode === 'function'
+    ) {
+      couponPanelRef.current.removeDiscountCode(idx);
+    }
+  };
+
+  const showCart = contextCart;
 
   const subtotal = showCart.cartItemsSubtotalCost ?? 0;
-  const total = showCart.totalCost ?? 0;
   const tax = showCart.taxAmount ?? 0;
   const shipping = showCart.shipmentTotalCost ?? 0;
   const selectedQuote =
     showCart.shipmentGroups?.find(g => g.selectedQuote)?.selectedQuote ?? null;
+
+  const displayDiscount = Math.abs(
+    couponData.totals?.discount ??
+    (Array.isArray(showCart.discountItems)
+      ? showCart.discountItems.reduce((s, i) => s + (Number(i.cost) || 0), 0)
+      : 0)
+  );
+
+  const displayTotal = subtotal + tax + shipping - displayDiscount;
 
   if (!cartReady) {
     return (
@@ -55,7 +63,7 @@ export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdat
             <div className="wc-block-components-order-summary is-large">
               <div className="wc-block-components-order-summary__content">
                 {(showCart.cartItems || []).map((item, index) => {
-                  const { product = {}, quantity = 1, totalCost = 0 } = item;
+                  const { product = {}, quantity = 1 } = item;
                   const thumb =
                     product.featureImage?.viewUrl ||
                     product.images?.[0]?.viewUrl ||
@@ -110,7 +118,12 @@ export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdat
               </div>
             </div>
           </div>
-          <CouponPanel />
+          {allowRemoveCoupon && (
+            <CouponPanel
+              ref={couponPanelRef}
+              onTotalsChange={handleTotalsChange}
+            />
+          )}
           <div data-block-name="woocommerce/checkout-order-summary-totals-block" className="wp-block-woocommerce-checkout-order-summary-totals-block">
             <div className="wp-block-woocommerce-checkout-order-summary-subtotal-block wc-block-components-totals-wrapper">
               <div className="wc-block-components-totals-item">
@@ -130,6 +143,61 @@ export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdat
                 </span>
               </div>
             </div>
+
+            {(displayDiscount > 0 || couponData.appliedCodes.length > 0) && (
+              <div className="wp-block-woocommerce-checkout-order-summary-discount-block wc-block-components-totals-wrapper">
+                <div className="wc-block-components-totals-item wc-block-components-totals-discount">
+                  <span className="wc-block-components-totals-item__label">
+                    Discount
+                  </span>
+                  <span className="wc-block-formatted-money-amount wc-block-components-formatted-money-amount wc-block-components-totals-item__value">
+                    -${displayDiscount.toFixed(2)}
+                  </span>
+
+                  {/* applied coupon list */}
+                  {allowRemoveCoupon && couponData.appliedCodes.length > 0 && (
+                    <div className="wc-block-components-totals-item__description">
+                      <ul className="wc-block-components-totals-discount__coupon-list">
+                        {couponData.appliedCodes.map((c, idx) => (
+                          <li
+                            key={idx}
+                            className="wc-block-components-totals-discount__coupon-list-item is-removable wc-block-components-chip wc-block-components-chip--radius-large"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="wc-block-components-chip__text"
+                            >
+                              {c.code}
+                            </span>
+                            <span className="screen-reader-text">
+                              Coupon: {c.code}
+                            </span>
+                            <button
+                              className="wc-block-components-chip__remove"
+                              aria-label={`Remove coupon "${c.code}"`}
+                              onClick={() => handleRemoveCoupon(idx)}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                width="16"
+                                height="16"
+                                role="img"
+                                className="wc-block-components-chip__remove-icon"
+                                aria-hidden="true"
+                                focusable="false"
+                              >
+                                <path d="M12 13.06l3.712 3.713 1.061-1.06L13.061 12l3.712-3.712-1.06-1.06L12 10.938 8.288 7.227l-1.061 1.06L10.939 12l-3.712 3.712 1.06 1.061L12 13.061z" />
+                              </svg>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="wp-block-woocommerce-checkout-order-summary-fee-block wc-block-components-totals-wrapper"></div>
             <div className="wp-block-woocommerce-checkout-order-summary-discount-block wc-block-components-totals-wrapper"></div>
@@ -201,7 +269,7 @@ export default function WoocommerceCheckoutFormSideCart({ cart, loading, isUpdat
                       />
                     </span>
                   ) : (
-                    `$${total.toFixed(2)}`
+                    `$${displayTotal.toFixed(2)}`
                   )}
                 </span>
               </div>
