@@ -1,0 +1,9 @@
+{
+  "plugins": [ "." ],
+  "config": {
+    "WP_DEBUG": true,
+    "WP_DEBUG_LOG": "/tmp/debug.log",
+    "WP_DEBUG_DISPLAY": false
+  },
+  "port": 3002
+}

@@ -1,3 +1,8 @@
+/* Helpers */
+.hide {
+  display: none !important;
+}
+
 #custom_value_field {
   width: 100%;
   padding: 8px 30px 8px 8px;
@@ -19,8 +24,8 @@
 .search-icon i {
   font-size: 16px;
   margin-right: 8px;
-  margin-bottom: 45px;
 }
+
 .search-result {
   padding: 10px;
   background-color: #f7f7f7;
@@ -45,11 +50,13 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black overlay */
+  background-color: rgba(0, 0, 0, 0.5);
+  /* Semi-transparent black overlay */
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 9999; /* Make sure the overlay is on top */
+  z-index: 9999;
+  /* Make sure the overlay is on top */
 }
 
 .loader {
@@ -58,7 +65,8 @@
   border-top: 16px solid #3498db;
   width: 50px;
   height: 50px;
-  -webkit-animation: spin 2s linear infinite; /* Safari */
+  -webkit-animation: spin 2s linear infinite;
+  /* Safari */
   animation: spin 2s linear infinite;
   display: none;
   position: fixed;
@@ -76,6 +84,7 @@
   0% {
     -webkit-transform: rotate(0deg);
   }
+
   100% {
     -webkit-transform: rotate(360deg);
   }
@@ -85,6 +94,7 @@
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -97,6 +107,7 @@ d-flex flex-row-reverse product-action-buttons-container {
 .modal-content {
   display: none;
 }
+
 .cst-stripe-payment-button {
   display: none;
 }
@@ -110,9 +121,12 @@ d-flex flex-row-reverse product-action-buttons-container {
 
 .cst-disabled-btn-parent .btn-primary {
   /* Styles to make it visually appear disabled */
-  opacity: 0.65; /* Reduce opacity */
-  cursor: not-allowed; /* Change cursor to 'not-allowed' */
-  pointer-events: none; /* Disable pointer events */
+  opacity: 0.65;
+  /* Reduce opacity */
+  cursor: not-allowed;
+  /* Change cursor to 'not-allowed' */
+  pointer-events: none;
+  /* Disable pointer events */
   /* You can also add more styles to visually indicate it's disabled, like changing colors, etc. */
 }
 
@@ -120,13 +134,16 @@ d-flex flex-row-reverse product-action-buttons-container {
   display: block !important;
   visibility: visible !important;
 }
+
 .woocommerce-mini-cart__total.total {
   display: none;
 }
+
 #mini-cart .cart-items {
   width: auto !important;
   min-width: 16px;
 }
+
 /* Admin CSS */
 
 #search_results {
@@ -158,7 +175,8 @@ d-flex flex-row-reverse product-action-buttons-container {
 }
 
 .checkbox-container {
-  width: 50%; /* Adjust width as needed */
+  width: 50%;
+  /* Adjust width as needed */
   display: inline-block;
   vertical-align: top;
 }
@@ -172,7 +190,8 @@ d-flex flex-row-reverse product-action-buttons-container {
 /* Input[type="checkbox"] styles */
 .checkbox-container input[type="checkbox"] {
   width: auto;
-  margin-top: 3px; /* Adjust margin-top for vertical alignment */
+  margin-top: 3px;
+  /* Adjust margin-top for vertical alignment */
 }
 
 /* Header styles */
@@ -227,6 +246,7 @@ input[type="checkbox"] {
   color: #888;
   cursor: pointer;
 }
+
 #product_meta_box {
   position: relative;
 }
@@ -247,9 +267,11 @@ input[type="checkbox"] {
   left: 84%;
   right: 0;
 }
+
 /* Loader styles */
 .loader {
-  display: none; /* Hide by default */
+  display: none;
+  /* Hide by default */
   text-align: center;
 }
 
@@ -268,4 +290,458 @@ input[type="checkbox"] {
 
 #mini-cart .remove-product {
   display: none !important;
+}
+
+/* -------------------------------
+ Custom product attributes styling
+ ------------------------------- */
+
+/* Price display */
+#custom-price-display {
+  margin-top: 15px;
+  font-size: 20px;
+  font-weight: bold;
+  color: #222;
+  text-align: center;
+  background: #e6f7ff;
+  padding: 12px;
+  border-radius: 6px;
+  display: inline-block;
+  width: 100%;
+}
+
+/* Make price value standout */
+#custom-price {
+  color: #0753d7;
+  font-size: 24px;
+}
+
+
+.custom-attribute-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  flex-direction: row;
+  align-content: flex-start;
+  align-items: flex-start;
+}
+
+label.custom-attribute-option {
+  padding: 10px 9px;
+  border: 1px dashed #ddd;
+}
+
+.wp-block-woocommerce-add-to-cart-form form.cart {
+  display: block !important;
+}
+
+.custom-attribute-option {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 10px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.custom-attribute-option:hover {
+  border-color: #007cba;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.custom-attribute-option img {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.custom-attribute-option input[type="radio"],
+.custom-attribute-option input[type="checkbox"] {
+  display: none;
+}
+
+.custom-attribute-option input[type="radio"]:checked+img,
+.custom-attribute-option input[type="checkbox"]:checked+img {
+  border: 2px solid #007cba;
+  box-shadow: 0 0 0 2px #007cba;
+}
+
+.custom-attribute-option .option-label {
+  font-size: 14px;
+  color: #333;
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* ✅ Checkmark styling */
+.custom-checkmark {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 24px;
+  height: 24px;
+  background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Checkmark_green.svg/1024px-Checkmark_green.svg.png') no-repeat center center / contain;
+  display: none;
+}
+
+/* 🎯 Highlight selected option */
+.custom-attribute-option input:checked+img {
+  border: 3px solid #0073aa;
+}
+
+.custom-attribute-option input:checked~.custom-checkmark {
+  display: block;
+}
+
+/* Color Selector Styles */
+.color-options-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 5px;
+  margin-top: 5px;
+  max-width: 465px;
+}
+
+.color-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  margin-bottom: 5px;
+  width: 45px;
+  /* Fixed width for the entire option */
+  margin: 0 auto;
+  /* Center the option in its grid cell */
+}
+
+.color-option input[type="radio"] {
+  display: none;
+}
+
+.color-option-inner {
+  position: relative;
+  width: 35px;
+  height: 35px;
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: center;
+}
+
+.color-indicator {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid #ddd;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.color-name {
+  font-size: 11px;
+  color: #666;
+  width: 45px;
+  /* Match parent width */
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0;
+}
+
+.checkmark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 14px;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  opacity: 0;
+  /* Hide by default */
+  transition: opacity 0.2s ease;
+  /* Smooth transition */
+}
+
+.color-option input[type="radio"]:checked+.color-option-inner .checkmark {
+  opacity: 1;
+  /* Show when selected */
+}
+
+.color-option input[type="radio"]:checked+.color-option-inner .color-indicator {
+  border-color: #000;
+}
+
+@media (max-width: 768px) {
+  .color-options-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Add to Cart Button Loading State */
+.product-button-add-to-cart {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.product-button-add-to-cart.loading {
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.product-button-add-to-cart .loading-spinner {
+  display: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+}
+
+.product-button-add-to-cart.loading .loading-spinner {
+  display: inline-block;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Form Validation Styles */
+.form-error {
+  color: #dc3545;
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.field-error {
+  border-color: #dc3545 !important;
+}
+
+.field-error-message {
+  color: #dc3545;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Add space after each group in WooCommerce Blocks cart */
+li[class*="wc-block-components-product-details__group-"] {
+  margin-bottom: 18px !important;
+}
+
+/* Hide only the product page price, not the cart/mini-cart price */
+.wc-block-components-product-price.wc-block-grid__product-price {
+  display: none !important;
+}
+
+/* Hide duplicated price in mini-cart: only hide the price inside .wc-block-cart-item__prices */
+.wc-block-cart-item__prices .price.wc-block-components-product-price {
+  display: none !important;
+}
+
+/* Group product details by group number in mini-cart, remove space between fields in a group, add space between groups (works for any group number) */
+.wc-block-components-product-details [class^="wc-block-components-product-details__group-"],
+.wc-block-components-product-details [class*=" wc-block-components-product-details__group-"] {
+  margin-top: 1em;
+}
+
+.wc-block-components-product-details [class^="wc-block-components-product-details__group-"]:first-child,
+.wc-block-components-product-details [class*=" wc-block-components-product-details__group-"]:first-child {
+  margin-top: 0;
+}
+
+.wc-block-components-product-details li {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* Add a little space after the last field in each group for clarity */
+.wc-block-components-product-details__quantity {
+  margin-bottom: 0.75em;
+}
+
+/* Hide cart count on product and cart pages */
+.single-product #cart-count,
+.woocommerce-cart #cart-count,
+.woocommerce-checkout #cart-count,
+.woocommerce-thankyou #cart-count,
+.woocommerce-shop #cart-count,
+.cart #cart-count {
+  display: none !important;
+}
+
+/* Merchi Product Meta Box Styles */
+.merchi-product-meta-box {
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.merchi-product-meta-box .card-header {
+  font-weight: bold;
+  margin: 10px 0 5px 0;
+  color: #23282d;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 5px;
+}
+
+.merchi-product-meta-box .card-body {
+  margin-bottom: 15px;
+}
+
+.merchi-product-meta-box input[type="text"] {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+
+.merchi-product-meta-box .checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.merchi-product-meta-box .checkbox-label {
+  font-weight: normal;
+  margin: 0;
+}
+
+.merchi-product-meta-box input[type="checkbox"] {
+  margin: 0;
+}
+
+/* Search box styles */
+#search_box {
+  position: relative;
+  margin-bottom: 15px;
+}
+
+#custom_value_field {
+  width: 100%;
+  padding: 10px 35px 10px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.search-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+}
+
+#search_results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-top: none;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: none;
+}
+
+#search_results div {
+  padding: 8px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+
+#search_results div:hover {
+  background-color: #f5f5f5;
+}
+
+/* Loader styles */
+.loader {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 20px;
+  border-radius: 5px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.loader::after {
+  content: '';
+  display: block;
+  width: 30px;
+  height: 30px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #0073aa;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Selected value display */
+#selected_value_display h3 {
+  margin: 0;
+  padding: 10px;
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+#remove_selected_value {
+  color: #dc3232;
+  font-size: 20px;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+#remove_selected_value:hover {
+  color: #a00;
+}
+
+/* Ensure no conflicts with WooCommerce */
+.merchi-product-meta-box input[name="woocommerce_meta_nonce"] {
+  display: none !important;
+}
+
+/* Hide any duplicate nonce fields */
+input[name="woocommerce_meta_nonce"]+input[name="woocommerce_meta_nonce"] {
+  display: none !important;
+}
+
+#sync_with_merchi_btn {
+  margin-bottom: 5px;
+  display: inline-block;
+}
+
+#sync_merchi_status {
+  display: inline-block;
+  margin-left: 12px;
+  font-weight: 500;
+  color: #2271b1;
 }

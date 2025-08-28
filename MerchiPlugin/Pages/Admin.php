@@ -227,7 +227,7 @@ class Admin extends BaseController {
 					'class'     => 'example-class',
 				],
 			],
-                        [
+      [
 				'id'       => 'merchi_api_secret',
 				'title'    => 'Merchi Domain API Secret',
 				'callback' => [
@@ -266,20 +266,6 @@ class Admin extends BaseController {
 				'section'  => 'merchi_admin_index',
 				'args'     => [
 					'label_for' => 'staging_merchi_api_secret',
-					'class'     => 'example-class',
-				],
-			],
-			[
-				'id'       => 'merchi_mount_point_id',
-				'title'    => 'Mount point class',
-				'callback' => [
-					$this->callbacks,
-					'merchiMountPointId',
-				],
-				'page'     => 'merchi_plugin',
-				'section'  => 'merchi_admin_index',
-				'args'     => [
-					'label_for' => 'merchi_mount_point_id',
 					'class'     => 'example-class',
 				],
 			],

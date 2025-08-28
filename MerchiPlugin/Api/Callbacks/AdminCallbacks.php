@@ -17,7 +17,7 @@ class AdminCallbacks extends BaseController {
 
 
 	public function adminCpt() {
-		if( get_option( 'merchi_staging_mode' ) == 'yes' ) {
+		if ( get_option( 'merchi_staging_mode' ) == 'yes' ) {
 			$merchi_url = 'https://api.staging.merchi.co/';
 		}
 		else {
@@ -92,11 +92,6 @@ class AdminCallbacks extends BaseController {
 	public function stagingMerchiApiSecret() {
 		$value = esc_attr( get_option( 'staging_merchi_api_secret' ) );
 		echo '<input type="password" class="regular-text" name="staging_merchi_api_secret" value="' . $value . '" placeholder="xxxxx">';
-	}
-
-	public function merchiMountPointId() {
-		$value = esc_attr( get_option( 'merchi_mount_point_id' ) );
-		echo '<input type="text" class="regular-text" name="merchi_mount_point_id" value="' . $value . '" placeholder="example_class">';
 	}
 
 	public function merchiRedirectURL() {
