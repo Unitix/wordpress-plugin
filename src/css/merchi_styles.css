@@ -560,6 +560,10 @@ span.round-tab:hover {
   color: #333;
 }
 
+.image-select-label .option-label {
+  margin-top: 12px;
+}
+
 /*----------------------------------------------------
    D) Image select widget
    -----------------------------------------------------*/
@@ -617,6 +621,9 @@ span.round-tab:hover {
   -webkit-appearance: none;
   -moz-appearance: none;
   background: white;
+  flex-shrink: 0;
+  min-width: 16px;
+  min-height: 16px;
 }
 
 .image-select-option input[type="checkbox"] {
@@ -627,10 +634,16 @@ span.round-tab:hover {
 .image-select-option input[type="checkbox"]:checked {
   background: #007cba;
   border-color: #007cba;
+  flex-shrink: 0;
+  min-width: 16px;
+  min-height: 16px;
 }
 
 .image-select-label {
-  display: block;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
   cursor: pointer;
   text-decoration: none !important;
   height: 100%;
@@ -1142,13 +1155,26 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 .merchi-action-buttons-container {
   display: flex;
   align-items: center;
-  margin: 20px 0;
   flex-wrap: wrap;
   max-width: 800px;
   justify-content: flex-start;
   padding-left: 0 !important;
   margin-left: 0 !important;
+  gap: 15px;
 }
+
+/* Hide WooCommerce default add to cart button if it exists in our container */
+.merchi-action-buttons-container .quantity {
+  display: none !important;
+}
+
+.single_add_to_cart_button,
+.single_get_quote_button,
+.ts-buy-now-button,
+.add-group-button {
+  width: 160px;
+}
+
 
 .single_add_to_cart_button {
   margin: 0 !important;
@@ -1170,14 +1196,21 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   margin-right: 15px !important;
 }
 
-
-
 .price-display-container {
   margin: 20px 0;
   display: flex;
   align-items: center;
   gap: 10px;
   max-width: 800px;
+}
+
+.number-button {
+  width: 100px !important;
+}
+
+.custom-field .quantity .plus,
+.custom-field .quantity .number-button:after {
+  right: 0 !important;
 }
 
 .group-quantity-container {
@@ -1198,6 +1231,10 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   padding-right: 38px;
   border: 1px solid #eee;
   border-radius: 4px;
+}
+
+.group-field-set h4 {
+  margin-top: 10px;
 }
 
 .delete-group-button {
@@ -1477,6 +1514,10 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   color: white;
   text-decoration: underline;
   margin-left: 10px;
+}
+
+.merchi-success-message span:not(.merchi-success-close) {
+  margin-left: 15px;
 }
 
 @keyframes slideDown {

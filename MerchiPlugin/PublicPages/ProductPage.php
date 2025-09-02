@@ -14,6 +14,7 @@ class ProductPage extends BaseController {
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_grouped_attributes' ], 10 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_independent_attributes' ], 20 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_new_group_button' ], 25 );
+		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_default_quantity' ], 27 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_total_price' ], 30 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_action_buttons_container_start' ], 35 );
 		add_action('woocommerce_after_add_to_cart_button', [ $this, 'display_quote_button' ], 10 );
@@ -182,12 +183,6 @@ class ProductPage extends BaseController {
 		echo '<div class="group-field-set" data-group-index="0">';
 		echo '<h4>Group <span class="group-number">1</span></h4>';
 		
-		// Add group quantity field inside the group container
-		echo '<div class="custom-field">';
-		echo '<label>Quantity <span class="group-unit-price"><span class="loading-spinner"></span></span></label>';
-		echo '<input type="number" class="qty group-quantity" name="variationsGroups[0].quantity" value="1" min="1" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="0">';
-		echo '</div>';
-
 		foreach ($group_fields_template as $field_index => $field) {
 			if ($field['type'] === 'attribute') {
 				echo $this->render_attribute_field($field, "variationsGroups[0]", true, $field_index);
@@ -195,6 +190,19 @@ class ProductPage extends BaseController {
 				echo $this->render_meta_field($field, "variationsGroups[0]", $field_index);
 			}
 		}
+		
+		// Add group quantity field after variation fields
+		echo '<div class="custom-field">';
+		echo '<label>Quantity <span class="group-unit-price"><span class="loading-spinner"></span></span></label>';
+		echo '<div class="quantity">';
+		echo '<div class="number-button">';
+		echo '<input type="button" value="-" class="minus" data-group-index="0">';
+		echo '<input type="number" class="qty group-quantity" name="variationsGroups[0].quantity" value="1" min="1" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="0" aria-label="Product quantity" step="1" inputmode="numeric" autocomplete="off">';
+		echo '<input type="button" value="+" class="plus" data-group-index="0">';
+		echo '</div>';
+		echo '</div>';
+		echo '</div>';
+		
 		echo '<div class="group-cost-display" data-group-index="0" data-group-cost="0"><span class="loading-spinner"></span></div>';
 		echo '<button type="button" class="button wp-element-button delete-group-button" style="display: none;">Delete Group</button>';
 		echo '</div>';
@@ -220,6 +228,23 @@ class ProductPage extends BaseController {
 			echo '<button type="button" class="button wp-element-button add-group-button">+ NEW GROUP</button>';
 			echo '</div>';
 		}
+	}
+
+	public function display_default_quantity() {
+		global $product;
+		if (!empty(get_post_meta($product->get_id(), '_group_variation_field_template', true))) return;
+		
+		$unit_price = $product->get_price() ?: '0';
+		echo '<div class="custom-field">
+			<label>Quantity <span class="group-unit-price">($' . esc_html($unit_price) . ' per unit)</span></label>
+			<div class="quantity">
+				<div class="number-button">
+					<input type="button" value="-" class="minus" data-group-index="0">
+					<input type="number" class="qty group-quantity" name="quantity" value="1" min="1" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="0" aria-label="Product quantity" step="1" inputmode="numeric" autocomplete="off">
+					<input type="button" value="+" class="plus" data-group-index="0">
+				</div>
+			</div>
+		</div>';
 	}
 
 	private function get_variation_field_options($field) {
@@ -424,12 +449,13 @@ class ProductPage extends BaseController {
 							$variation_cost = get_term_meta($term->term_id, 'variationCost', true);
 							$variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
 							// Get image URL from term meta
-							$image_url = get_term_meta($term->term_id, 'linkedFile.viewUrl', true);
-							if (!$image_url) {
-									$image_url = get_term_meta($term->term_id, 'linkedFile_viewUrl', true);
-							}
-							if (!$image_url) {
-									$image_url = get_term_meta($term->term_id, 'linkedFileViewUrl', true);
+							// Try taxonomy_image first (for independent fields)
+							$attachment_id = get_term_meta($term->term_id, 'taxonomy_image', true);
+							if ($attachment_id) {
+								$image_url = wp_get_attachment_image_url($attachment_id, 'thumbnail');
+							} else {
+								// Fallback to linkedFile.viewUrl (for grouped fields)
+								$image_url = get_term_meta($term->term_id, 'linkedFile.viewUrl', true);
 							}
 							$html .= '<div class="image-select-option">';
 							$html .= '<input type="' . $input_type . '" 
@@ -468,7 +494,7 @@ class ProductPage extends BaseController {
 							$variation_cost = get_term_meta($term->term_id, 'variationCost', true);
 							$variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
 							$color = get_term_meta($term->term_id, 'colour', true);
-							$html .= '<label class="color-option">';
+							$html .= '<label class="color-option" data-full-name="' . esc_attr($term->name) . '">';
 							$html .= '<input type="' . $input_type . '" name="' . $field_name . '" value="' . esc_attr($variation_option_id) . '" ' . ($is_multiple ? '' : $is_checked) . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '" data-field-type="colour-select"/>';
 							$html .= '<div class="color-option-inner">';
 							$html .= '<span class="color-indicator" style="background-color: ' . esc_attr($color) . ';"></span>';
