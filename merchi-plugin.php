@@ -3025,7 +3025,7 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 						if (!empty($image_url) && !empty($term_id)) {
 							$attachment_id = download_and_attach_image($image_url);
 							if ($attachment_id) {
-								update_term_meta($term_id, 'taxonomy_image', $attachment_id);
+								update_term_meta($term_id, 'linkedFile.viewUrl', $image_url);
 							}
 						}
 

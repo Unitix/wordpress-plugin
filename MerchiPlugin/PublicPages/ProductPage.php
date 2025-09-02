@@ -424,13 +424,12 @@ class ProductPage extends BaseController {
 							$variation_cost = get_term_meta($term->term_id, 'variationCost', true);
 							$variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
 							// Get image URL from term meta
-							$attachment_id = get_term_meta($term->term_id, 'taxonomy_image', true);
-							if ($attachment_id) {
-								// for independent fields
-								$image_url = wp_get_attachment_image_url($attachment_id, 'thumbnail');
-							} else {
-								// for grouped fields
-								$image_url = get_term_meta($term->term_id, 'linkedFile.viewUrl', true);
+							$image_url = get_term_meta($term->term_id, 'linkedFile.viewUrl', true);
+							if (!$image_url) {
+									$image_url = get_term_meta($term->term_id, 'linkedFile_viewUrl', true);
+							}
+							if (!$image_url) {
+									$image_url = get_term_meta($term->term_id, 'linkedFileViewUrl', true);
 							}
 							$html .= '<div class="image-select-option">';
 							$html .= '<input type="' . $input_type . '" 
