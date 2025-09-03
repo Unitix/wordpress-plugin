@@ -537,7 +537,16 @@ class ProductPage extends BaseController {
 		$variation_unit_cost = $field['variationUnitCost'] ?? 0;
 		$variation_cost = $field['variationCost'] ?? 0;
 
-		$html = '<div class="custom-field' . (!empty($field['required']) ? '" data-required="true"' : '"') . '>';
+		$class_attr = 'custom-field';
+		
+		if ($slug === 'delivery_options_do_not') {
+			$class_attr .= ' delivery-description-field';
+		}
+		
+		// Add required attribute if needed
+		$required_attr = !empty($field['required']) ? ' data-required="true"' : '';
+		
+		$html = '<div class="' . $class_attr . '"' . $required_attr . '>';
 		$html .= "<label for='{$slug}'>{$label} {$this->cost_label_content($variation_unit_cost, $variation_cost)}</label>";
 		$field_name = $name_prefix . '.variations[' . $field_index . ']';
 
