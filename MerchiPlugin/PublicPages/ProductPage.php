@@ -178,7 +178,7 @@ class ProductPage extends BaseController {
 		});
 
 		echo '<div id="grouped-fields-container" class="merchi-product-form">';
-		echo '<h3>Grouped Options</h3>';
+		echo '<h3>Grouped Options:</h3>';
 
 		echo '<div class="group-field-set" data-group-index="0">';
 		echo '<h4>Group <span class="group-number">1</span></h4>';
@@ -193,13 +193,14 @@ class ProductPage extends BaseController {
 		
 		// Add group quantity field after variation fields
 		echo '<div class="custom-field">';
-		echo '<label>Quantity <span class="group-unit-price"><span class="loading-spinner"></span></span></label>';
+		echo '<label>Quantity</label>';
 		echo '<div class="quantity">';
 		echo '<div class="number-button">';
 		echo '<input type="button" value="-" class="minus" data-group-index="0">';
 		echo '<input type="number" class="qty group-quantity" name="variationsGroups[0].quantity" value="1" min="1" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="0" aria-label="Product quantity" step="1" inputmode="numeric" autocomplete="off">';
 		echo '<input type="button" value="+" class="plus" data-group-index="0">';
 		echo '</div>';
+		echo '<span class="group-unit-price"><span class="loading-spinner"></span></span>';
 		echo '</div>';
 		echo '</div>';
 		
@@ -236,13 +237,14 @@ class ProductPage extends BaseController {
 		
 		$unit_price = $product->get_price() ?: '0';
 		echo '<div class="custom-field">
-			<label>Quantity <span class="group-unit-price">($' . esc_html($unit_price) . ' per unit)</span></label>
+			<label>Quantity</label>
 			<div class="quantity">
 				<div class="number-button">
 					<input type="button" value="-" class="minus" data-group-index="0">
 					<input type="number" class="qty group-quantity" name="quantity" value="1" min="1" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="0" aria-label="Product quantity" step="1" inputmode="numeric" autocomplete="off">
 					<input type="button" value="+" class="plus" data-group-index="0">
 				</div>
+				<span class="group-unit-price">$' . esc_html($unit_price) . ' per unit</span>
 			</div>
 		</div>';
 	}

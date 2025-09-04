@@ -54,6 +54,13 @@ function initializeWhenReady() {
             // Ensure we have a valid defaultJob structure
             defaultJobJson = productJson.defaultJob;
 
+            // Debug: Log the product data to see what we get
+            console.log('Full productJson:', productJson);
+
+            // Always update price displays and price range after title
+            updatePriceDisplays(productJson.bestPrice, productJson.unitPrice);
+            updatePriceRangeAfterTitle(productJson.bestPrice, productJson.unitPrice);
+
             // Initialize the checkout component
             initializeCheckout(productJson, defaultJobJson);
             resolve(productJson);
@@ -97,6 +104,54 @@ function initializeWhenReady() {
     let lastCalculationTime = 0;
     const DEBOUNCE_DELAY = 300; // 300ms debounce
     const MIN_CALCULATION_INTERVAL = 500; // Minimum 500ms between calculations
+
+    // Function to update price range display after product title
+    function updatePriceRangeAfterTitle(bestPrice, unitPrice) {
+      if (bestPrice && unitPrice) {
+        // Find or create the price range display element
+        let $priceRangeDisplay = $('.merchi-price-range-display');
+        if ($priceRangeDisplay.length === 0) {
+          // Create the element after product title
+          $('.product_title').after('<div class="merchi-price-range-display"></div>');
+          $priceRangeDisplay = $('.merchi-price-range-display');
+        }
+
+        if (bestPrice !== unitPrice) {
+          // Show price range with tooltip
+          $priceRangeDisplay.html(
+            `<span class="price-range-text">$${bestPrice.toFixed(2)} <span class="price-separator">—</span> $${unitPrice.toFixed(2)} per unit</span> ` +
+            `<span class="price-tooltip-icon" data-tooltip="Unit price varies depending on the quantity you choose, with discounts applied at higher quantities.">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="12" cy="17" r="1" fill="currentColor"/>
+              </svg>
+            </span>`
+          );
+        } else {
+          // Show only unit price when no best price
+          $priceRangeDisplay.html(
+            `<span class="price-range-text">$${unitPrice.toFixed(2)} per unit</span>`
+          );
+        }
+      }
+    }
+
+    // Simple function to update price displays with best price
+    function updatePriceDisplays(bestPrice, unitPrice) {
+      // Update all quantity field price displays
+      $('.group-quantity').each(function (index) {
+        const $input = $(this);
+        const $priceSpan = $input.closest('.custom-field').find('.group-unit-price');
+
+        // Use unitPrice from Merchi SDK instead of data attribute
+        const currentUnitPrice = unitPrice || parseFloat($input.attr('data-unit-price'));
+
+        // Show current unit price next to quantity buttons, no parentheses
+        const newText = `$${currentUnitPrice.toFixed(2)} per unit`;
+        $priceSpan.html(newText);
+      });
+    }
 
     // Function to debounce price calculations with rate limiting
     function debouncedCalculatePrice() {
@@ -170,8 +225,9 @@ function initializeWhenReady() {
         const $groupFieldSet = $groupCostDisplay.closest('.group-field-set');
         $groupFieldSet.find('.group-number').text(i + 1);
 
-        // Update the unit price display
-        $groupFieldSet.find('.group-unit-price').text('( $' + costPerUnit.toFixed(2) + ' per unit )');
+        // Update the unit price display - only show current price, no price range
+        const priceDisplay = `$${costPerUnit.toFixed(2)} per unit`;
+        $groupFieldSet.find('.group-unit-price').html(priceDisplay);
       }
 
       jQuery('label[data-update-label="true"][data-group-index="false"]').each(function () {
@@ -604,9 +660,10 @@ function initializeWhenReady() {
           if ($input.hasClass('group-quantity')) {
             $input.attr('data-group-index', index);
 
+            // Update label to show only "Quantity" without price
             $input.closest('.custom-field')
               .find('label')
-              .text('Quantity ($' + costPerUnit.toFixed(2) + ' per unit)');
+              .html('Quantity');
           }
         });
       });

@@ -581,6 +581,7 @@ span.round-tab:hover {
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s ease;
+  overflow: visible;
 }
 
 .image-select-option:hover {
@@ -592,7 +593,7 @@ span.round-tab:hover {
   position: relative;
   border: 2px solid transparent;
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible;
   transition: all 0.2s ease;
   height: 100%;
   display: flex;
@@ -609,35 +610,13 @@ span.round-tab:hover {
 
 .image-select-option input[type="radio"],
 .image-select-option input[type="checkbox"] {
-  position: relative;
-  opacity: 1;
-  height: 16px;
-  width: 16px;
-  margin: 10px;
-  border: 1px solid #ccc;
-  border-radius: 50%;
+  position: absolute;
+  opacity: 0;
+  height: 0;
+  width: 0;
   cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background: white;
-  flex-shrink: 0;
-  min-width: 16px;
-  min-height: 16px;
 }
 
-.image-select-option input[type="checkbox"] {
-  border-radius: 3px;
-}
-
-.image-select-option input[type="radio"]:checked,
-.image-select-option input[type="checkbox"]:checked {
-  background: #007cba;
-  border-color: #007cba;
-  flex-shrink: 0;
-  min-width: 16px;
-  min-height: 16px;
-}
 
 .image-select-label {
   display: flex !important;
@@ -685,26 +664,36 @@ span.round-tab:hover {
 }
 
 .image-select-checkmark {
-  display: none !important;
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 24px;
+  height: 24px;
+  background: #000;
+  border-radius: 50%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
 }
 
 .image-select-checkmark:after {
   content: "✓";
   color: white;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: bold;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  line-height: 1;
 }
 
-.image-select-input:checked+.image-select-label .image-select-checkmark {
-  opacity: 1;
+.image-select-option input:checked+.image-select-label .image-select-checkmark {
+  display: flex;
 }
 
 /* Fallback for browsers that don't support flex */
 @supports not (display: flex) {
   .image-select-checkmark {
     display: block;
-    line-height: 28px;
+    line-height: 24px;
     text-align: center;
   }
 }
@@ -1100,9 +1089,7 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   border-color: #007cba;
 }
 
-.radio-option input[type="radio"]:checked::after,
-.image-select-option input[type="radio"]:checked::after,
-.image-select-option input[type="checkbox"]:checked::after {
+.radio-option input[type="radio"]:checked::after {
   content: "✓";
   position: absolute;
   color: white;
@@ -1779,4 +1766,93 @@ body.single-product #cart-count {
   .d-none.d-sm-flex {
     display: flex !important;
   }
+}
+
+/* Price Tooltip Styles */
+.price-tooltip-icon {
+  margin-left: 4px;
+  margin-top: -3px;
+  color: #666;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  position: relative;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.price-tooltip-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.price-tooltip-icon:hover {
+  color: #333;
+}
+
+.price-tooltip-icon:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #fff;
+  color: #000;
+  padding: 6px 10px;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 1000;
+  margin-bottom: 3px;
+  pointer-events: none;
+  border: 1px solid #ccc;
+}
+
+.price-range {
+  color: #666;
+}
+
+.group-unit-price {
+  line-height: 1.8;
+  margin-left: 12px;
+  display: inline-block !important;
+  vertical-align: middle;
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.merchi-price-range-display {
+  margin: 8px 0 16px 0;
+  font-size: 20px;
+  color: #666;
+}
+
+.price-range-text {
+  font-weight: 500;
+}
+
+.price-separator {
+  display: inline;
+  margin: 0 6px;
+  color: #666;
+  font-weight: 500;
+}
+
+.quantity {
+  display: flex;
+  align-items: center;
+}
+
+.quantity .number-button {
+  display: flex;
+  align-items: center;
+}
+
+.quantity .group-unit-price {
+  margin-left: 12px;
+  margin-top: 0;
 }
