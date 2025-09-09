@@ -54,9 +54,6 @@ function initializeWhenReady() {
             // Ensure we have a valid defaultJob structure
             defaultJobJson = productJson.defaultJob;
 
-            // Debug: Log the product data to see what we get
-            console.log('Full productJson:', productJson);
-
             // Always update price displays and price range after title
             updatePriceDisplays(productJson.bestPrice, productJson.unitPrice);
             updatePriceRangeAfterTitle(productJson.bestPrice, productJson.unitPrice);

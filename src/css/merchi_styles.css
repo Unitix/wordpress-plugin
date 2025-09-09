@@ -34,6 +34,11 @@
   width: 100%;
 }
 
+.merchi-product-form h3 {
+  font-size: 22px !important;
+  margin: 20px 0 0 20px;
+}
+
 .independent-variations .colour-select-option-container,
 .independent-variations .form-check-radio-option {
   display: inline-block;
@@ -556,12 +561,14 @@ span.round-tab:hover {
 }
 
 .checkbox-option .option-label {
-  font-size: 14px;
+  font-size: 13px;
   color: #333;
 }
 
 .image-select-label .option-label {
-  margin-top: 12px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: #333;
 }
 
 /*----------------------------------------------------
@@ -570,30 +577,31 @@ span.round-tab:hover {
 .image-select-options-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
-  margin: 10px 0;
+  gap: 17px;
+  margin: 10px 0 20px;
 }
 
 .image-select-option {
-  flex: 0 0 200px;
+  flex: 0 0 110px;
   position: relative;
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  border: 1px solid #e1e1e1;
   transition: transform 0.2s ease;
   overflow: visible;
 }
 
 .image-select-option:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px);
+  border: 1px solid #28a6e7;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .image-select-wrapper {
   position: relative;
   border: 2px solid transparent;
   border-radius: 8px;
-  overflow: visible;
+  overflow: hidden;
   transition: all 0.2s ease;
   height: 100%;
   display: flex;
@@ -614,9 +622,7 @@ span.round-tab:hover {
   opacity: 0;
   height: 0;
   width: 0;
-  cursor: pointer;
 }
-
 
 .image-select-label {
   display: flex !important;
@@ -631,12 +637,16 @@ span.round-tab:hover {
 .image-container {
   position: relative;
   width: 100%;
-  height: 200px;
+  height: 180px;
   background: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+}
+
+.image-select-label img {
+  border-radius: 6px;
 }
 
 .option-image {
@@ -664,6 +674,7 @@ span.round-tab:hover {
 }
 
 .image-select-checkmark {
+  display: none;
   position: absolute;
   top: -12px;
   right: -12px;
@@ -671,7 +682,6 @@ span.round-tab:hover {
   height: 24px;
   background: #000;
   border-radius: 50%;
-  display: none;
   align-items: center;
   justify-content: center;
   z-index: 10;
@@ -926,10 +936,11 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 }
 
 .custom-field label {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
-  color: #333;
-  margin-bottom: 4px;
+  color: #787878;
+  margin-bottom: 8px;
+  display: block;
 }
 
 .custom-field input[type="text"],
@@ -1010,26 +1021,27 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 }
 
 /* Price display styling */
+
 .price-display-container {
   width: 100%;
-  margin-top: 20px;
-  padding: 15px;
+  margin: 30px 0 40px;
+  padding: 15px 25px;
+  gap: 10px;
   background: #f8f8f8;
-  border-radius: 4px;
+  border-radius: 5px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  align-items: right !important;
 }
 
 .price-label {
   font-size: 16px;
   font-weight: 500;
-  color: #333;
+  color: #676767;
 }
 
 .price-amount {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 19px;
+  font-weight: 700;
   color: #000;
 }
 
@@ -1113,8 +1125,15 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   justify-content: flex-start;
 }
 
+.add-group-button {
+  border: 1px solid #999 !important;
+  background: #ffff !important;
+  color: #C10101 !important;
+  width: 200px;
+}
+
 .add-group-button:hover {
-  background-color: #0052a3;
+  border: 1px solid #C10101 !important;
 }
 
 /* Standalone NEW GROUP button container */
@@ -1131,23 +1150,20 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 }
 
 .merchi-new-group-container .add-group-button {
-  background-color: #0066cc;
-  transition: background-color 0.3s;
   margin: 0 !important;
   float: none !important;
   position: static !important;
 }
 
+
 /* Action buttons container - for +NEW GROUP, ADD TO CART, GET QUOTE */
 .merchi-action-buttons-container {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
   max-width: 800px;
   justify-content: flex-start;
   padding-left: 0 !important;
   margin-left: 0 !important;
-  gap: 15px;
 }
 
 /* Hide WooCommerce default add to cart button if it exists in our container */
@@ -1157,9 +1173,8 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 
 .single_add_to_cart_button,
 .single_get_quote_button,
-.ts-buy-now-button,
-.add-group-button {
-  width: 160px;
+.ts-buy-now-button {
+  width: 180px;
 }
 
 
@@ -1181,14 +1196,6 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 .ts-buy-now-button {
   margin-left: 15px !important;
   margin-right: 15px !important;
-}
-
-.price-display-container {
-  margin: 20px 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  max-width: 800px;
 }
 
 .number-button {
@@ -1215,13 +1222,15 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   margin-bottom: 20px;
   padding-bottom: 20px;
   padding-left: 20px;
-  padding-right: 38px;
+  padding-right: 25px;
   border: 1px solid #eee;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 .group-field-set h4 {
   margin-top: 10px;
+  color: #027bcf !important;
+  font-size: 22px !important;
 }
 
 .delete-group-button {
@@ -1257,6 +1266,13 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 5px;
+}
+
+.delivery-description-field label {
+  font-size: 16px !important;
+  line-height: 24px;
+  font-weight: 500;
+  color: #565656;
 }
 
 /* Loading Spinner Styles */
@@ -1768,7 +1784,6 @@ body.single-product #cart-count {
   }
 }
 
-/* Price Tooltip Styles */
 .price-tooltip-icon {
   margin-left: 4px;
   margin-top: -3px;
@@ -1801,7 +1816,7 @@ body.single-product #cart-count {
   transform: translateX(-50%);
   background-color: #fff;
   color: #000;
-  padding: 6px 10px;
+  padding: 15px 20px;
   font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
@@ -1809,6 +1824,7 @@ body.single-product #cart-count {
   margin-bottom: 3px;
   pointer-events: none;
   border: 1px solid #ccc;
+  border-radius: 6px;
 }
 
 .price-range {
@@ -1827,19 +1843,20 @@ body.single-product #cart-count {
 
 .merchi-price-range-display {
   margin: 8px 0 16px 0;
+  font-family: Poppins, sans-serif;
   font-size: 20px;
-  color: #666;
+  color: #B60303;
 }
 
 .price-range-text {
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .price-separator {
   display: inline;
-  margin: 0 6px;
-  color: #666;
-  font-weight: 500;
+  margin: 0 3px;
+  color: #B60303;
+  font-weight: 600;
 }
 
 .quantity {
