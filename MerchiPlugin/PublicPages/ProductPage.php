@@ -435,7 +435,7 @@ class ProductPage extends BaseController {
 									$variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
 									// Normalize whitespace for comparison
 									$normalized_term_name = preg_replace('/\s+/', ' ', trim($term->name));
-									$normalized_default_value = preg_replace('/\s+/', ' ', trim($default_option_value));
+									$normalized_default_value = $default_option_value ? preg_replace('/\s+/', ' ', trim($default_option_value)) : '';
 									$is_selected = ($normalized_term_name == $normalized_default_value) ? 'selected' : '';
 									$html .= '<option value="' . esc_attr($variation_option_id) . '" ' . $is_selected . ' data-variation-field-value="' . esc_attr($variation_option_id) . '">' 
 											. esc_html($term->name) 
@@ -478,7 +478,7 @@ class ProductPage extends BaseController {
 							$variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
 							// Normalize whitespace for comparison
 							$normalized_term_name = preg_replace('/\s+/', ' ', trim($term->name));
-							$normalized_default_value = preg_replace('/\s+/', ' ', trim($default_option_value));
+							$normalized_default_value = $default_option_value ? preg_replace('/\s+/', ' ', trim($default_option_value)) : '';
 							$is_checked = ($normalized_term_name == $normalized_default_value) ? 'checked' : '';
 							$html .= '<div class="radio-option">';
 							$html .= '<label class="radio-label">';
@@ -522,7 +522,7 @@ class ProductPage extends BaseController {
 													data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"
 													data-update-label="true"
 													data-calculate="' . ($has_cost ? 'true' : 'false') . '"
-													' . ((preg_replace('/\s+/', ' ', trim($term->name)) == preg_replace('/\s+/', ' ', trim($default_option_value))) && !$is_multiple ? 'checked' : '') . ' />';
+													' . ((preg_replace('/\s+/', ' ', trim($term->name)) == ($default_option_value ? preg_replace('/\s+/', ' ', trim($default_option_value)) : '')) && !$is_multiple ? 'checked' : '') . ' />';
 							$html .= '<label class="image-select-label">';
 							$html .= '<span class="image-select-checkmark"></span>';
 							if ($image_url) {
@@ -546,7 +546,7 @@ class ProductPage extends BaseController {
 							$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
 							// Normalize whitespace for comparison
 							$normalized_term_name = preg_replace('/\s+/', ' ', trim($term->name));
-							$normalized_default_value = preg_replace('/\s+/', ' ', trim($default_option_value));
+							$normalized_default_value = $default_option_value ? preg_replace('/\s+/', ' ', trim($default_option_value)) : '';
 							$is_checked = ($normalized_term_name == $normalized_default_value) ? 'checked' : '';
 							$variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
 							$variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
