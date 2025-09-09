@@ -715,6 +715,9 @@ function initializeWhenReady() {
       const defaultGroup = variationsGroups[0];
       const { quantity = 1, variations = [] } = defaultGroup;
 
+      // Get minimum quantity from product data
+      const minimumQuantity = productJson.minimum || 1;
+
       // Always use the first fully structured group as the template
       const $firstGroup = jQuery('.group-field-set').filter(function () {
         return jQuery(this).find('.custom-field').length > 0;
@@ -768,7 +771,8 @@ function initializeWhenReady() {
 
         // Handle group quantity separately
         if ($input.hasClass('group-quantity')) {
-          $input.attr('data-group-index', newGroupIndex).val(quantity);
+          $input.attr('data-group-index', newGroupIndex).val(minimumQuantity);
+          $input.attr('min', minimumQuantity);
           $input
             .closest('.custom-field')
             .find('label')
@@ -907,7 +911,9 @@ function initializeWhenReady() {
         const $quantityInput = jQuery('input.qty');
 
         if ($quantityInput.length > 0) {
-          $quantityInput.val(productJson.defaultJob.quantity);
+          const minimumQuantity = productJson.minimum || 1;
+          $quantityInput.val(minimumQuantity);
+          $quantityInput.attr('min', minimumQuantity);
 
           // Remove any existing handlers
           $quantityInput.off('change');
@@ -1113,7 +1119,8 @@ function initializeWhenReady() {
         });
       } else {
         // if there are no groups then we just use the quantity from the quantity input
-        formData.quantity = parseInt(jQuery('input.qty').val()) || 1;
+        const minimumQuantity = productJson.minimum || 1;
+        formData.quantity = parseInt(jQuery('input.qty').val()) || minimumQuantity;
       }
 
       // Process standalone variations
@@ -1303,8 +1310,9 @@ function validateForm() {
   jQuery('.group-quantity').each(function () {
     const $input = jQuery(this);
     const quantity = parseInt($input.val());
-    if (isNaN(quantity) || quantity < 1) {
-      errors.push('Quantity must be at least 1');
+    const minimumQuantity = parseInt($input.attr('min')) || 1;
+    if (isNaN(quantity) || quantity < minimumQuantity) {
+      errors.push(`Quantity must be at least ${minimumQuantity}`);
       $input.addClass('field-error');
     } else {
       $input.removeClass('field-error');

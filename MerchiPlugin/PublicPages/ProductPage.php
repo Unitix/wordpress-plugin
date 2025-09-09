@@ -169,6 +169,13 @@ class ProductPage extends BaseController {
 		$product_id = $product->get_id();
 		$group_fields_template = get_post_meta($product_id, '_group_variation_field_template', true);
 		$unit_price = $product->get_price() ?: '0';
+		
+		// Get minimum quantity from Merchi product data
+		$merchi_product_data = get_post_meta($product_id, '_merchi_product_data', true);
+		$minimum_quantity = 1; // Default minimum
+		if (!empty($merchi_product_data['product']['minimum'])) {
+			$minimum_quantity = intval($merchi_product_data['product']['minimum']);
+		}
 
 		if (empty($group_fields_template)) return;
 
@@ -197,7 +204,7 @@ class ProductPage extends BaseController {
 		echo '<div class="quantity">';
 		echo '<div class="number-button">';
 		echo '<input type="button" value="-" class="minus" data-group-index="0">';
-		echo '<input type="number" class="qty group-quantity" name="variationsGroups[0].quantity" value="1" min="1" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="0" aria-label="Product quantity" step="1" inputmode="numeric" autocomplete="off">';
+		echo '<input type="number" class="qty group-quantity" name="variationsGroups[0].quantity" value="' . esc_attr($minimum_quantity) . '" min="' . esc_attr($minimum_quantity) . '" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="0" aria-label="Product quantity" step="1" inputmode="numeric" autocomplete="off">';
 		echo '<input type="button" value="+" class="plus" data-group-index="0">';
 		echo '</div>';
 		echo '<span class="group-unit-price"><span class="loading-spinner"></span></span>';
@@ -236,12 +243,21 @@ class ProductPage extends BaseController {
 		if (!empty(get_post_meta($product->get_id(), '_group_variation_field_template', true))) return;
 		
 		$unit_price = $product->get_price() ?: '0';
+		
+		// Get minimum quantity from Merchi product data
+		$product_id = $product->get_id();
+		$merchi_product_data = get_post_meta($product_id, '_merchi_product_data', true);
+		$minimum_quantity = 1; // Default minimum
+		if (!empty($merchi_product_data['product']['minimum'])) {
+			$minimum_quantity = intval($merchi_product_data['product']['minimum']);
+		}
+		
 		echo '<div class="custom-field">
 			<label>Quantity</label>
 			<div class="quantity">
 				<div class="number-button">
 					<input type="button" value="-" class="minus" data-group-index="0">
-					<input type="number" class="qty group-quantity" name="quantity" value="1" min="1" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="0" aria-label="Product quantity" step="1" inputmode="numeric" autocomplete="off">
+					<input type="number" class="qty group-quantity" name="quantity" value="' . esc_attr($minimum_quantity) . '" min="' . esc_attr($minimum_quantity) . '" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="0" aria-label="Product quantity" step="1" inputmode="numeric" autocomplete="off">
 					<input type="button" value="+" class="plus" data-group-index="0">
 				</div>
 				<span class="group-unit-price">$' . esc_html($unit_price) . ' per unit</span>
@@ -307,6 +323,7 @@ class ProductPage extends BaseController {
 		global $product;
 		$product_id = $product->get_id();
 		$merchi_product_data = get_post_meta($product_id, '_merchi_product_data', true);
+		error_log('merchi_product_data: ' . print_r($merchi_product_data, true));
 		
 		if (!empty($merchi_product_data['product'])) {
 			$product_data = $merchi_product_data['product'];
