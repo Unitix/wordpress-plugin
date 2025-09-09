@@ -447,35 +447,43 @@ function initializeWhenReady() {
     // Initialize event handlers
     function initializeHandlers() {
       // Remove any existing handlers
-      jQuery(document).off('change', '.custom-variation-options input, .custom-variation-options select, .group-quantity');
-      jQuery('#add-group-button').off('click');
-      jQuery(document).off('click', '.delete-group-button');
+      jQuery(document).off('change', '.custom-variation-options input, .custom-variation-options select');
+      jQuery(document).off('blur', '.group-quantity');
+      jQuery(document).off('input', '.group-quantity');
 
-      // add loop here
-      jQuery('.custom-field input, .custom-field select, .custom-field textarea, .custom-variation-options input, .custom-variation-options select, .custom-variation-options textarea').each(function () {
+      // initialise event handlers for variations
+      initializeVariations();
+
+      // initialise event handlers for groups
+      const $groups = jQuery('.group-field-set');
+      for (let i = 0; i < $groups.length; i++) {
+        initializeGroupVariationHandlers(jQuery($groups[i]));
+      }
+
+
+      // Enforce minimum quantity on blur
+      jQuery(document).on('blur', '.group-quantity', function () {
         const $input = jQuery(this);
-        if ($input.attr('data-calculate')) {
-          $input.on('change', function () {
-            debouncedCalculatePrice();
-          });
+        const minimumQuantity = parseInt($input.attr('min')) || 1;
+        const currentValue = parseInt($input.val());
+
+        if (!isNaN(currentValue) && currentValue < minimumQuantity) {
+          $input.val(minimumQuantity);
+          calculateAndUpdatePrice();
         }
       });
-
-      // Handle quantity changes immediately without debounce
-      jQuery(document).on('change', '.group-quantity', calculateAndUpdatePrice);
 
       // Handle quantity input events (for when user types)
       jQuery(document).on('input', '.group-quantity', calculateAndUpdatePrice);
 
+      jQuery('.add-group-button').off('click');
+
       // Add group button handler
-      jQuery('#add-group-button').on('click', function (e) {
+      jQuery('.add-group-button').on('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
         addNewGroup();
       });
-
-      // Delete group handler with immediate price update
-      jQuery(document).on('click', '.delete-group-button', actionDeleteGroup);
 
       // Replace the file upload preview handler
       // jQuery(document).off('change', 'input[type="file"]');
@@ -689,7 +697,16 @@ function initializeWhenReady() {
       initializeFileUploadVariations($group);
 
       // Bind group-quantity change for this group
-      $group.find('.group-quantity').off('change.group').on('change.group', calculateAndUpdatePrice);
+      $group.find('.group-quantity').off('change.group').on('change.group', function () {
+        const $input = jQuery(this);
+        const minimumQuantity = parseInt($input.attr('min')) || 1;
+        const currentValue = parseInt($input.val());
+
+        if (!isNaN(currentValue) && currentValue < minimumQuantity) {
+          $input.val(minimumQuantity);
+        }
+        calculateAndUpdatePrice();
+      });
       $group.find('.delete-group-button').off('click.group').on('click.group', actionDeleteGroup);
 
       $group.find('.delete-group-button').off('click');
@@ -883,53 +900,6 @@ function initializeWhenReady() {
       calculateAndUpdatePrice();
     }
 
-    // Initialize event handlers
-    function initializeHandlers() {
-      // Remove any existing handlers
-
-      // initialise event handlers for variations
-      initializeVariations();
-
-      // initialise event handlers for groups
-      const $groups = jQuery('.group-field-set');
-      for (let i = 0; i < $groups.length; i++) {
-        initializeGroupVariationHandlers(jQuery($groups[i]));
-      }
-
-      jQuery('.add-group-button').off('click');
-
-      // Add group button handler
-      jQuery('.add-group-button').on('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        addNewGroup();
-      });
-
-      if (!productJson?.groupVariationFields?.length) {
-        // if the product has no group variation fields then we update the value of the quantity
-        // field to the productJson.defaultJob.quantity and also set event listners to the quantity field
-        const $quantityInput = jQuery('input.qty');
-
-        if ($quantityInput.length > 0) {
-          const minimumQuantity = productJson.minimum || 1;
-          $quantityInput.val(minimumQuantity);
-          $quantityInput.attr('min', minimumQuantity);
-
-          // Remove any existing handlers
-          $quantityInput.off('change');
-
-          // Add the new handler
-          $quantityInput.on('change', function (e) {
-            calculateAndUpdatePrice();
-          });
-
-          // Also bind to input event for immediate feedback
-          $quantityInput.on('input', function (e) {
-            calculateAndUpdatePrice();
-          });
-        }
-      }
-    }
 
     // Function to process variations from a container
     function processVariations($container, variationsArray) {
