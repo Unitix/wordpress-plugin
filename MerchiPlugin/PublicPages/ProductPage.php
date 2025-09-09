@@ -303,6 +303,35 @@ class ProductPage extends BaseController {
 			return $label;
 	}
 
+	private function get_default_option_value($field_id) {
+		global $product;
+		$product_id = $product->get_id();
+		$merchi_product_data = get_post_meta($product_id, '_merchi_product_data', true);
+		
+		if (!empty($merchi_product_data['product'])) {
+			$product_data = $merchi_product_data['product'];
+			$fields_to_check = [];
+			
+			if (!empty($product_data['groupVariationFields'])) {
+				$fields_to_check = array_merge($fields_to_check, $product_data['groupVariationFields']);
+			}
+			if (!empty($product_data['independentVariationFields'])) {
+				$fields_to_check = array_merge($fields_to_check, $product_data['independentVariationFields']);
+			}
+			
+			foreach ($fields_to_check as $field) {
+				if ($field['id'] == $field_id && !empty($field['options'])) {
+					foreach ($field['options'] as $option) {
+						if (!empty($option['default'])) {
+							return $option['value'];
+						}
+					}
+				}
+			}
+		}
+		return null;
+	}
+
 	private function render_attribute_field($field, $name_prefix, $is_group = false, $field_index = 0) {
 			$terms = $this->get_variation_field_options($field);
 			if (empty($terms)) return '';
@@ -313,6 +342,9 @@ class ProductPage extends BaseController {
 			$is_multiple = !empty($field['multipleSelect']);
 			$field_type = intval($field['fieldType']);
 			$field_name = $name_prefix . '.variations[' . $field_index . ']';
+
+			// Get default option value from original JSON data
+			$default_option_value = $this->get_default_option_value($field_id);
 
 			// Check for costs using the new function
 			$has_cost = $this->check_field_costs($field_type, $field, $terms);
@@ -384,7 +416,10 @@ class ProductPage extends BaseController {
 									$variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
 									$variation_cost = get_term_meta($term->term_id, 'variationCost', true);
 									$variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
-									$is_selected = $index === 0 ? 'selected' : '';
+									// Normalize whitespace for comparison
+									$normalized_term_name = preg_replace('/\s+/', ' ', trim($term->name));
+									$normalized_default_value = preg_replace('/\s+/', ' ', trim($default_option_value));
+									$is_selected = ($normalized_term_name == $normalized_default_value) ? 'selected' : '';
 									$html .= '<option value="' . esc_attr($variation_option_id) . '" ' . $is_selected . ' data-variation-field-value="' . esc_attr($variation_option_id) . '">' 
 											. esc_html($term->name) 
 											. $this->cost_label_content($variation_unit_cost, $variation_cost)
@@ -424,7 +459,10 @@ class ProductPage extends BaseController {
 							$variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
 							$variation_cost = get_term_meta($term->term_id, 'variationCost', true);
 							$variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
-							$is_checked = $index === 0 ? 'checked' : '';
+							// Normalize whitespace for comparison
+							$normalized_term_name = preg_replace('/\s+/', ' ', trim($term->name));
+							$normalized_default_value = preg_replace('/\s+/', ' ', trim($default_option_value));
+							$is_checked = ($normalized_term_name == $normalized_default_value) ? 'checked' : '';
 							$html .= '<div class="radio-option">';
 							$html .= '<label class="radio-label">';
 							$html .= '<input type="radio" name="' . $field_name . '" value="' . esc_attr($variation_option_id) . '" ' . $is_checked . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '" class="input-radio" />';
@@ -467,7 +505,7 @@ class ProductPage extends BaseController {
 													data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"
 													data-update-label="true"
 													data-calculate="' . ($has_cost ? 'true' : 'false') . '"
-													' . ($index === 0 && !$is_multiple ? 'checked' : '') . ' />';
+													' . ((preg_replace('/\s+/', ' ', trim($term->name)) == preg_replace('/\s+/', ' ', trim($default_option_value))) && !$is_multiple ? 'checked' : '') . ' />';
 							$html .= '<label class="image-select-label">';
 							$html .= '<span class="image-select-checkmark"></span>';
 							if ($image_url) {
@@ -488,8 +526,11 @@ class ProductPage extends BaseController {
 					$input_type = $is_multiple ? 'checkbox' : 'radio';
 					$html .= '<div class="color-options-grid">';
 					foreach ($terms as $index => $term) {
-							$is_checked = $index === 0 ? 'checked' : '';
 							$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
+							// Normalize whitespace for comparison
+							$normalized_term_name = preg_replace('/\s+/', ' ', trim($term->name));
+							$normalized_default_value = preg_replace('/\s+/', ' ', trim($default_option_value));
+							$is_checked = ($normalized_term_name == $normalized_default_value) ? 'checked' : '';
 							$variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
 							$variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
 							$variation_cost = get_term_meta($term->term_id, 'variationCost', true);
@@ -562,11 +603,13 @@ class ProductPage extends BaseController {
 				if (is_array($option)) {
 					$value = esc_attr($option['value'] ?? $option['id'] ?? '');
 					$label = esc_html($option['label'] ?? $option['value'] ?? $option['id'] ?? '');
+					$is_selected = !empty($option['default']) ? 'selected' : '';
 				} else {
 					$value = esc_attr($option);
 					$label = esc_html($option);
+					$is_selected = '';
 				}
-				$html .= "<option value='{$value}'>{$label}</option>";
+				$html .= "<option value='{$value}' {$is_selected}>{$label}</option>";
 			}
 			$html .= "</select>";
 		} else {
