@@ -852,7 +852,7 @@ function initializeWhenReady() {
           $input
             .closest('.custom-field')
             .find('label')
-            .html('Quantity <span class="group-unit-price"><span class="loading-spinner"></span></span></label>');
+            .html('Quantity');
         } else {
           // For variation fields, try to find and apply the default value
           const variationFieldData = $input.data('variation-field');
