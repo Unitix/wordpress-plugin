@@ -200,7 +200,17 @@ class ProductPage extends BaseController {
 		
 		// Add group quantity field after variation fields
 		echo '<div class="custom-field">';
-		echo '<label>Quantity</label>';
+		if ($minimum_quantity > 1) {
+			echo '<label>Quantity <span class="price-tooltip-icon" data-tooltip="This product requires a minimum order of ' . esc_attr($minimum_quantity) . ' units">
+				<svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+					<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+					<circle cx="12" cy="17" r="1" fill="currentColor"/>
+				</svg>
+			</span></label>';
+		} else {
+			echo '<label>Quantity</label>';
+		}
 		echo '<div class="quantity">';
 		echo '<div class="number-button">';
 		echo '<input type="button" value="-" class="minus" data-group-index="0">';
@@ -252,8 +262,19 @@ class ProductPage extends BaseController {
 			$minimum_quantity = intval($merchi_product_data['product']['minimum']);
 		}
 		
-		echo '<div class="custom-field">
-			<label>Quantity</label>
+		echo '<div class="custom-field">';
+		if ($minimum_quantity > 1) {
+			echo '<label>Quantity <span class="price-tooltip-icon" data-tooltip="This product requires a minimum order of ' . esc_attr($minimum_quantity) . ' units">
+				<svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+					<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+					<circle cx="12" cy="17" r="1" fill="currentColor"/>
+				</svg>
+			</span></label>';
+		} else {
+			echo '<label>Quantity</label>';
+		}
+		echo '
 			<div class="quantity">
 				<div class="number-button">
 					<input type="button" value="-" class="minus" data-group-index="0">
@@ -267,11 +288,9 @@ class ProductPage extends BaseController {
 
 	private function get_variation_field_options($field) {
 			if (!empty($field['taxonomy'])) {
-					// Attribute field: fetch terms from taxonomy
-					return get_terms([
-							'taxonomy' => $field['taxonomy'],
-							'hide_empty' => false
-					]);
+					// Attribute field: fetch terms only for current product
+					$product_id = get_the_ID();
+					return wc_get_product_terms($product_id, $field['taxonomy'], ['fields' => 'all']);
 			} else if (!empty($field['options'])) {
 					// Meta field: return options array if present (customize as needed)
 					return $field['options'];
@@ -323,7 +342,6 @@ class ProductPage extends BaseController {
 		global $product;
 		$product_id = $product->get_id();
 		$merchi_product_data = get_post_meta($product_id, '_merchi_product_data', true);
-		error_log('merchi_product_data: ' . print_r($merchi_product_data, true));
 		
 		if (!empty($merchi_product_data['product'])) {
 			$product_data = $merchi_product_data['product'];
@@ -436,7 +454,7 @@ class ProductPage extends BaseController {
 									// Normalize whitespace for comparison
 									$normalized_term_name = preg_replace('/\s+/', ' ', trim($term->name));
 									$normalized_default_value = $default_option_value ? preg_replace('/\s+/', ' ', trim($default_option_value)) : '';
-									$is_selected = ($normalized_term_name == $normalized_default_value) ? 'selected' : '';
+									$is_selected = (strtolower($normalized_term_name) === strtolower($normalized_default_value)) ? 'selected' : '';
 									$html .= '<option value="' . esc_attr($variation_option_id) . '" ' . $is_selected . ' data-variation-field-value="' . esc_attr($variation_option_id) . '">' 
 											. esc_html($term->name) 
 											. $this->cost_label_content($variation_unit_cost, $variation_cost)
@@ -479,7 +497,7 @@ class ProductPage extends BaseController {
 							// Normalize whitespace for comparison
 							$normalized_term_name = preg_replace('/\s+/', ' ', trim($term->name));
 							$normalized_default_value = $default_option_value ? preg_replace('/\s+/', ' ', trim($default_option_value)) : '';
-							$is_checked = ($normalized_term_name == $normalized_default_value) ? 'checked' : '';
+							$is_checked = (strtolower($normalized_term_name) === strtolower($normalized_default_value)) ? 'checked' : '';
 							$html .= '<div class="radio-option">';
 							$html .= '<label class="radio-label">';
 							$html .= '<input type="radio" name="' . $field_name . '" value="' . esc_attr($variation_option_id) . '" ' . $is_checked . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '" class="input-radio" />';
@@ -514,6 +532,11 @@ class ProductPage extends BaseController {
 									$image_url = get_term_meta($term->term_id, 'linkedFileViewUrl', true);
 							}
 							$html .= '<div class="image-select-option">';
+							$normalized_term_name = preg_replace('/\s+/', ' ', trim($term->name));
+							$normalized_default_value = $default_option_value ? preg_replace('/\s+/', ' ', trim($default_option_value)) : '';
+							$is_match = (strtolower($normalized_term_name) === strtolower($normalized_default_value));
+							$will_be_checked = ($is_match && !$is_multiple);
+							
 							$html .= '<input type="' . $input_type . '" 
 													name="' . $field_name . '" 
 													value="' . esc_attr($variation_option_id) . '"' . 
@@ -522,7 +545,7 @@ class ProductPage extends BaseController {
 													data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"
 													data-update-label="true"
 													data-calculate="' . ($has_cost ? 'true' : 'false') . '"
-													' . ((preg_replace('/\s+/', ' ', trim($term->name)) == ($default_option_value ? preg_replace('/\s+/', ' ', trim($default_option_value)) : '')) && !$is_multiple ? 'checked' : '') . ' />';
+													' . ($will_be_checked ? 'checked' : '') . ' />';
 							$html .= '<label class="image-select-label">';
 							$html .= '<span class="image-select-checkmark"></span>';
 							if ($image_url) {
@@ -547,7 +570,7 @@ class ProductPage extends BaseController {
 							// Normalize whitespace for comparison
 							$normalized_term_name = preg_replace('/\s+/', ' ', trim($term->name));
 							$normalized_default_value = $default_option_value ? preg_replace('/\s+/', ' ', trim($default_option_value)) : '';
-							$is_checked = ($normalized_term_name == $normalized_default_value) ? 'checked' : '';
+							$is_checked = (strtolower($normalized_term_name) === strtolower($normalized_default_value)) ? 'checked' : '';
 							$variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
 							$variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
 							$variation_cost = get_term_meta($term->term_id, 'variationCost', true);
