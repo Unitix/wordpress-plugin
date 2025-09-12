@@ -1067,7 +1067,7 @@ function media_featureimage_attach()
 		$gallery_images_array = explode(',', $gallery_images);
 		$gallery_images_array[] = $attachment_id;
 		set_post_thumbnail($product_id, $attachment_id);
-		update_post_meta($product_id, '_regular_price', $new_regular_price);
+		// update_post_meta($product_id, '_regular_price', $new_regular_price);
 		// Return attachment ID as response
 		echo json_encode($attachment_id);
 	}
@@ -2613,9 +2613,6 @@ function download_and_attach_image($image_url) {
     require_once ABSPATH . 'wp-admin/includes/media.php';
     require_once ABSPATH . 'wp-admin/includes/image.php';
 
-    // Debug log
-    error_log('Attempting to download and attach image from URL: ' . $image_url);
-
     $upload_dir = wp_upload_dir();
     if (is_wp_error($upload_dir)) {
         error_log('Error getting upload directory: ' . $upload_dir->get_error_message());
@@ -3097,12 +3094,23 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 	update_post_meta($woo_product_id, '_merchi_ordered_fields', $merchi_ordered_fields);
 	update_post_meta($woo_product_id, '_group_variation_field_template', $grouped_field_template);
 
-	$default_price = floatval($merchi_product['defaultJob']['totalCost']);
-	error_log('create_variations_for_product: Setting default price: ' . $default_price);
+	$default_price = null;
+	
+	if (isset($merchi_product['bestPrice'])) {
+		$default_price = floatval($merchi_product['bestPrice']);
+	} elseif (isset($merchi_product['unitPrice'])) {
+		$default_price = floatval($merchi_product['unitPrice']);
+	} else {
+		$default_price = 0;
+	}
 
 	$product = wc_get_product($woo_product_id);
 	$product->set_regular_price($default_price);
+	$product->set_price($default_price);
 	$product->save();
+	
+	// Ensure _price field is set for shop display
+	update_post_meta($woo_product_id, '_price', $default_price);
 
 	update_post_meta($woo_product_id, '_merchi_default_price', $default_price);
 	
@@ -3246,6 +3254,23 @@ function merchi_convert_variations_to_readable($cart_item) {
         if ($row) $result[] = $row;
     }
     return $result;
+}
+
+add_filter('woocommerce_get_price_html', 'merchi_price_range_display', 10, 2);
+
+function merchi_price_range_display($price, $product) {
+    $merchi_data = get_post_meta($product->get_id(), '_merchi_product_data', true);
+    
+    if ($merchi_data && isset($merchi_data['product'])) {
+        $best_price = $merchi_data['product']['bestPrice'] ?? null;
+        $unit_price = $merchi_data['product']['unitPrice'] ?? null;
+        
+        if ($best_price && $unit_price && $best_price != $unit_price) {
+            return wc_price($best_price) . ' - ' . wc_price($unit_price);
+        }
+    }
+    
+    return $price;
 }
 
 add_action('wp_head', function () {
