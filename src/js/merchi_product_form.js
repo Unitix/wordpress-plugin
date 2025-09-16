@@ -1494,3 +1494,67 @@ function showSuccessMessage() {
     if (e.key === 'Enter' || e.key === ' ') message.remove();
   };
 }
+
+jQuery(function ($) {
+  var $container = $('.single-product div.product').first();
+  var $gallery = $container.find('.woocommerce-product-gallery').first();
+  var $summary = $container.find('.summary.entry-summary').first();
+  if (!$container.length || !$gallery.length || !$summary.length) return;
+
+  var $placeholder = $gallery.next('.wc-gallery-placeholder');
+  if (!$placeholder.length) {
+    $gallery.after('<div class="wc-gallery-placeholder" aria-hidden="true"></div>');
+  }
+
+  function topOffset() {
+    var o = 16;
+    var $admin = $('#wpadminbar'); if ($admin.length) o += $admin.outerHeight();
+    var $hdr = $('.site-header.is-sticky, .site-header.sticky, .sticky-header, .navbar, #masthead, .elementor-sticky--active').first();
+    if ($hdr.length) o += $hdr.outerHeight();
+    document.documentElement.style.setProperty('--gallery-pin-top', o + 'px');
+    return o;
+  }
+
+  function update() {
+    var off = topOffset();
+    var EXTRA = 100;
+    var gTop = $gallery.offset().top;
+    var gLeft = $gallery.offset().left;
+    var gW = $gallery.outerWidth();
+    var gH = $gallery.outerHeight();
+    var sTop = $summary.offset().top;
+    var sH = $summary.outerHeight();
+    var cTop = $container.offset().top;
+    var y = window.pageYOffset || document.documentElement.scrollTop;
+
+    var doc = document.documentElement.style;
+    doc.setProperty('--gallery-pin-width', gW + 'px');
+    doc.setProperty('--gallery-pin-height', gH + 'px');
+    doc.setProperty('--gallery-pin-left', (gLeft - (window.pageXOffset || 0)) + 'px');
+
+    var MIN = 20;
+    var startFix = Math.max(gTop - (off + EXTRA), cTop + MIN);
+    var stopAt = (sTop + sH) - gH - (off + EXTRA);
+
+    if (y < startFix) {
+      $gallery.removeClass('wc-gallery--fixed wc-gallery--stuck');
+      return;
+    }
+    if (y >= stopAt) {
+      $gallery.removeClass('wc-gallery--fixed').addClass('wc-gallery--stuck');
+      doc.setProperty('--gallery-abs-top', ((sTop + sH) - gH - cTop) + 'px');
+      doc.setProperty('--gallery-abs-left', (gLeft - $container.offset().left) + 'px');
+      return;
+    }
+    $gallery.removeClass('wc-gallery--stuck').addClass('wc-gallery--fixed');
+    doc.setProperty('--gallery-pin-left', (gLeft - (window.pageXOffset || 0)) + 'px');
+  }
+
+  $(window).on('scroll resize load', update);
+  if (window.ResizeObserver) {
+    var ro = new ResizeObserver(update);
+    ro.observe($summary[0]);
+    ro.observe($gallery[0]);
+  }
+  update();
+});

@@ -1873,3 +1873,35 @@ body.single-product #cart-count {
   margin-left: 12px;
   margin-top: 0;
 }
+
+.wc-gallery--fixed {
+  position: fixed !important;
+  top: calc(var(--gallery-pin-top, 84px) + 100px);
+  left: var(--gallery-pin-left, 0);
+  width: var(--gallery-pin-width, auto);
+  z-index: 3;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.wc-gallery--stuck {
+  position: absolute !important;
+  top: var(--gallery-abs-top, 0);
+  left: var(--gallery-abs-left, 0);
+  width: var(--gallery-pin-width, auto);
+}
+
+.wc-gallery-placeholder {
+  width: var(--gallery-pin-width, auto);
+  height: 0;
+  float: left;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: block;
+}
+
+.wc-gallery--fixed+.wc-gallery-placeholder,
+.wc-gallery--stuck+.wc-gallery-placeholder {
+  height: var(--gallery-pin-height, 0);
+}
