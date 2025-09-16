@@ -14,6 +14,7 @@ class ProductPage extends BaseController {
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_grouped_attributes' ], 10 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_independent_attributes' ], 20 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_new_group_button' ], 25 );
+		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_default_quantity' ], 27 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_total_price' ], 30 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_action_buttons_container_start' ], 35 );
 		add_action('woocommerce_after_add_to_cart_button', [ $this, 'display_quote_button' ], 10 );
@@ -168,6 +169,13 @@ class ProductPage extends BaseController {
 		$product_id = $product->get_id();
 		$group_fields_template = get_post_meta($product_id, '_group_variation_field_template', true);
 		$unit_price = $product->get_price() ?: '0';
+		
+		// Get minimum quantity from Merchi product data
+		$merchi_product_data = get_post_meta($product_id, '_merchi_product_data', true);
+		$minimum_quantity = 1; // Default minimum
+		if (!empty($merchi_product_data['product']['minimum'])) {
+			$minimum_quantity = intval($merchi_product_data['product']['minimum']);
+		}
 
 		if (empty($group_fields_template)) return;
 
@@ -177,17 +185,11 @@ class ProductPage extends BaseController {
 		});
 
 		echo '<div id="grouped-fields-container" class="merchi-product-form">';
-		echo '<h3>Grouped Options</h3>';
+		echo '<h3>Grouped Options:</h3>';
 
 		echo '<div class="group-field-set" data-group-index="0">';
 		echo '<h4>Group <span class="group-number">1</span></h4>';
 		
-		// Add group quantity field inside the group container
-		echo '<div class="custom-field">';
-		echo '<label>Quantity <span class="group-unit-price"><span class="loading-spinner"></span></span></label>';
-		echo '<input type="number" class="qty group-quantity" name="variationsGroups[0].quantity" value="1" min="1" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="0">';
-		echo '</div>';
-
 		foreach ($group_fields_template as $field_index => $field) {
 			if ($field['type'] === 'attribute') {
 				echo $this->render_attribute_field($field, "variationsGroups[0]", true, $field_index);
@@ -195,6 +197,30 @@ class ProductPage extends BaseController {
 				echo $this->render_meta_field($field, "variationsGroups[0]", $field_index);
 			}
 		}
+		
+		// Add group quantity field after variation fields
+		echo '<div class="custom-field">';
+		if ($minimum_quantity > 1) {
+			echo '<label>Quantity <span class="price-tooltip-icon" data-tooltip="This product requires a minimum order of ' . esc_attr($minimum_quantity) . ' units">
+				<svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+					<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+					<circle cx="12" cy="17" r="1" fill="currentColor"/>
+				</svg>
+			</span></label>';
+		} else {
+			echo '<label>Quantity</label>';
+		}
+		echo '<div class="quantity">';
+		echo '<div class="number-button">';
+		echo '<input type="button" value="-" class="minus" data-group-index="0">';
+		echo '<input type="number" class="qty group-quantity" name="variationsGroups[0].quantity" value="' . esc_attr($minimum_quantity) . '" min="' . esc_attr($minimum_quantity) . '" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="0" aria-label="Product quantity" step="1" inputmode="numeric" autocomplete="off">';
+		echo '<input type="button" value="+" class="plus" data-group-index="0">';
+		echo '</div>';
+		echo '<span class="group-unit-price"><span class="loading-spinner"></span></span>';
+		echo '</div>';
+		echo '</div>';
+		
 		echo '<div class="group-cost-display" data-group-index="0" data-group-cost="0"><span class="loading-spinner"></span></div>';
 		echo '<button type="button" class="button wp-element-button delete-group-button" style="display: none;">Delete Group</button>';
 		echo '</div>';
@@ -222,13 +248,49 @@ class ProductPage extends BaseController {
 		}
 	}
 
+	public function display_default_quantity() {
+		global $product;
+		if (!empty(get_post_meta($product->get_id(), '_group_variation_field_template', true))) return;
+		
+		$unit_price = $product->get_price() ?: '0';
+		
+		// Get minimum quantity from Merchi product data
+		$product_id = $product->get_id();
+		$merchi_product_data = get_post_meta($product_id, '_merchi_product_data', true);
+		$minimum_quantity = 1; // Default minimum
+		if (!empty($merchi_product_data['product']['minimum'])) {
+			$minimum_quantity = intval($merchi_product_data['product']['minimum']);
+		}
+		
+		echo '<div class="custom-field">';
+		if ($minimum_quantity > 1) {
+			echo '<label>Quantity <span class="price-tooltip-icon" data-tooltip="This product requires a minimum order of ' . esc_attr($minimum_quantity) . ' units">
+				<svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+					<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+					<circle cx="12" cy="17" r="1" fill="currentColor"/>
+				</svg>
+			</span></label>';
+		} else {
+			echo '<label>Quantity</label>';
+		}
+		echo '
+			<div class="quantity">
+				<div class="number-button">
+					<input type="button" value="-" class="minus" data-group-index="0">
+					<input type="number" class="qty group-quantity" name="quantity" value="' . esc_attr($minimum_quantity) . '" min="' . esc_attr($minimum_quantity) . '" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="0" aria-label="Product quantity" step="1" inputmode="numeric" autocomplete="off">
+					<input type="button" value="+" class="plus" data-group-index="0">
+				</div>
+				<span class="group-unit-price">$' . esc_html($unit_price) . ' per unit</span>
+			</div>
+		</div>';
+	}
+
 	private function get_variation_field_options($field) {
 			if (!empty($field['taxonomy'])) {
-					// Attribute field: fetch terms from taxonomy
-					return get_terms([
-							'taxonomy' => $field['taxonomy'],
-							'hide_empty' => false
-					]);
+					// Attribute field: fetch terms only for current product
+					$product_id = get_the_ID();
+					return wc_get_product_terms($product_id, $field['taxonomy'], ['fields' => 'all']);
 			} else if (!empty($field['options'])) {
 					// Meta field: return options array if present (customize as needed)
 					return $field['options'];
@@ -276,6 +338,35 @@ class ProductPage extends BaseController {
 			return $label;
 	}
 
+	private function get_default_option_value($field_id) {
+		global $product;
+		$product_id = $product->get_id();
+		$merchi_product_data = get_post_meta($product_id, '_merchi_product_data', true);
+		
+		if (!empty($merchi_product_data['product'])) {
+			$product_data = $merchi_product_data['product'];
+			$fields_to_check = [];
+			
+			if (!empty($product_data['groupVariationFields'])) {
+				$fields_to_check = array_merge($fields_to_check, $product_data['groupVariationFields']);
+			}
+			if (!empty($product_data['independentVariationFields'])) {
+				$fields_to_check = array_merge($fields_to_check, $product_data['independentVariationFields']);
+			}
+			
+			foreach ($fields_to_check as $field) {
+				if ($field['id'] == $field_id && !empty($field['options'])) {
+					foreach ($field['options'] as $option) {
+						if (!empty($option['default'])) {
+							return $option['value'];
+						}
+					}
+				}
+			}
+		}
+		return null;
+	}
+
 	private function render_attribute_field($field, $name_prefix, $is_group = false, $field_index = 0) {
 			$terms = $this->get_variation_field_options($field);
 			if (empty($terms)) return '';
@@ -286,6 +377,9 @@ class ProductPage extends BaseController {
 			$is_multiple = !empty($field['multipleSelect']);
 			$field_type = intval($field['fieldType']);
 			$field_name = $name_prefix . '.variations[' . $field_index . ']';
+
+			// Get default option value from original JSON data
+			$default_option_value = $this->get_default_option_value($field_id);
 
 			// Check for costs using the new function
 			$has_cost = $this->check_field_costs($field_type, $field, $terms);
@@ -357,7 +451,10 @@ class ProductPage extends BaseController {
 									$variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
 									$variation_cost = get_term_meta($term->term_id, 'variationCost', true);
 									$variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
-									$is_selected = $index === 0 ? 'selected' : '';
+									// Normalize whitespace for comparison
+									$normalized_term_name = preg_replace('/\s+/', ' ', trim($term->name));
+									$normalized_default_value = $default_option_value ? preg_replace('/\s+/', ' ', trim($default_option_value)) : '';
+									$is_selected = (strtolower($normalized_term_name) === strtolower($normalized_default_value)) ? 'selected' : '';
 									$html .= '<option value="' . esc_attr($variation_option_id) . '" ' . $is_selected . ' data-variation-field-value="' . esc_attr($variation_option_id) . '">' 
 											. esc_html($term->name) 
 											. $this->cost_label_content($variation_unit_cost, $variation_cost)
@@ -397,7 +494,10 @@ class ProductPage extends BaseController {
 							$variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
 							$variation_cost = get_term_meta($term->term_id, 'variationCost', true);
 							$variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
-							$is_checked = $index === 0 ? 'checked' : '';
+							// Normalize whitespace for comparison
+							$normalized_term_name = preg_replace('/\s+/', ' ', trim($term->name));
+							$normalized_default_value = $default_option_value ? preg_replace('/\s+/', ' ', trim($default_option_value)) : '';
+							$is_checked = (strtolower($normalized_term_name) === strtolower($normalized_default_value)) ? 'checked' : '';
 							$html .= '<div class="radio-option">';
 							$html .= '<label class="radio-label">';
 							$html .= '<input type="radio" name="' . $field_name . '" value="' . esc_attr($variation_option_id) . '" ' . $is_checked . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '" class="input-radio" />';
@@ -432,6 +532,11 @@ class ProductPage extends BaseController {
 									$image_url = get_term_meta($term->term_id, 'linkedFileViewUrl', true);
 							}
 							$html .= '<div class="image-select-option">';
+							$normalized_term_name = preg_replace('/\s+/', ' ', trim($term->name));
+							$normalized_default_value = $default_option_value ? preg_replace('/\s+/', ' ', trim($default_option_value)) : '';
+							$is_match = (strtolower($normalized_term_name) === strtolower($normalized_default_value));
+							$will_be_checked = ($is_match && !$is_multiple);
+							
 							$html .= '<input type="' . $input_type . '" 
 													name="' . $field_name . '" 
 													value="' . esc_attr($variation_option_id) . '"' . 
@@ -440,7 +545,7 @@ class ProductPage extends BaseController {
 													data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"
 													data-update-label="true"
 													data-calculate="' . ($has_cost ? 'true' : 'false') . '"
-													' . ($index === 0 && !$is_multiple ? 'checked' : '') . ' />';
+													' . ($will_be_checked ? 'checked' : '') . ' />';
 							$html .= '<label class="image-select-label">';
 							$html .= '<span class="image-select-checkmark"></span>';
 							if ($image_url) {
@@ -461,14 +566,17 @@ class ProductPage extends BaseController {
 					$input_type = $is_multiple ? 'checkbox' : 'radio';
 					$html .= '<div class="color-options-grid">';
 					foreach ($terms as $index => $term) {
-							$is_checked = $index === 0 ? 'checked' : '';
 							$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
+							// Normalize whitespace for comparison
+							$normalized_term_name = preg_replace('/\s+/', ' ', trim($term->name));
+							$normalized_default_value = $default_option_value ? preg_replace('/\s+/', ' ', trim($default_option_value)) : '';
+							$is_checked = (strtolower($normalized_term_name) === strtolower($normalized_default_value)) ? 'checked' : '';
 							$variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
 							$variation_unit_cost = is_numeric($variation_unit_cost) ? floatval($variation_unit_cost) : 0.0;
 							$variation_cost = get_term_meta($term->term_id, 'variationCost', true);
 							$variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
 							$color = get_term_meta($term->term_id, 'colour', true);
-							$html .= '<label class="color-option">';
+							$html .= '<label class="color-option" data-full-name="' . esc_attr($term->name) . '">';
 							$html .= '<input type="' . $input_type . '" name="' . $field_name . '" value="' . esc_attr($variation_option_id) . '" ' . ($is_multiple ? '' : $is_checked) . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '" data-field-type="colour-select"/>';
 							$html .= '<div class="color-option-inner">';
 							$html .= '<span class="color-indicator" style="background-color: ' . esc_attr($color) . ';"></span>';
@@ -512,7 +620,16 @@ class ProductPage extends BaseController {
 		$variation_unit_cost = $field['variationUnitCost'] ?? 0;
 		$variation_cost = $field['variationCost'] ?? 0;
 
-		$html = '<div class="custom-field' . (!empty($field['required']) ? '" data-required="true"' : '"') . '>';
+		$class_attr = 'custom-field';
+		
+		if ($slug === 'delivery_options_do_not') {
+			$class_attr .= ' delivery-description-field';
+		}
+		
+		// Add required attribute if needed
+		$required_attr = !empty($field['required']) ? ' data-required="true"' : '';
+		
+		$html = '<div class="' . $class_attr . '"' . $required_attr . '>';
 		$html .= "<label for='{$slug}'>{$label} {$this->cost_label_content($variation_unit_cost, $variation_cost)}</label>";
 		$field_name = $name_prefix . '.variations[' . $field_index . ']';
 
@@ -526,11 +643,13 @@ class ProductPage extends BaseController {
 				if (is_array($option)) {
 					$value = esc_attr($option['value'] ?? $option['id'] ?? '');
 					$label = esc_html($option['label'] ?? $option['value'] ?? $option['id'] ?? '');
+					$is_selected = !empty($option['default']) ? 'selected' : '';
 				} else {
 					$value = esc_attr($option);
 					$label = esc_html($option);
+					$is_selected = '';
 				}
-				$html .= "<option value='{$value}'>{$label}</option>";
+				$html .= "<option value='{$value}' {$is_selected}>{$label}</option>";
 			}
 			$html .= "</select>";
 		} else {
