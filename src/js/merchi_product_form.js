@@ -54,6 +54,10 @@ function initializeWhenReady() {
             // Ensure we have a valid defaultJob structure
             defaultJobJson = productJson.defaultJob;
 
+            // Always update price displays and price range after title
+            updatePriceDisplays(productJson.bestPrice, productJson.unitPrice);
+            updatePriceRangeAfterTitle(productJson.bestPrice, productJson.unitPrice);
+
             // Initialize the checkout component
             initializeCheckout(productJson, defaultJobJson);
             resolve(productJson);
@@ -97,6 +101,54 @@ function initializeWhenReady() {
     let lastCalculationTime = 0;
     const DEBOUNCE_DELAY = 300; // 300ms debounce
     const MIN_CALCULATION_INTERVAL = 500; // Minimum 500ms between calculations
+
+    // Function to update price range display after product title
+    function updatePriceRangeAfterTitle(bestPrice, unitPrice) {
+      if (bestPrice && unitPrice) {
+        // Find or create the price range display element
+        let $priceRangeDisplay = $('.merchi-price-range-display');
+        if ($priceRangeDisplay.length === 0) {
+          // Create the element after product title
+          $('.product_title').after('<div class="merchi-price-range-display"></div>');
+          $priceRangeDisplay = $('.merchi-price-range-display');
+        }
+
+        if (bestPrice !== unitPrice) {
+          // Show price range with tooltip
+          $priceRangeDisplay.html(
+            `<span class="price-range-text">$${bestPrice.toFixed(2)} <span class="price-separator">—</span> $${unitPrice.toFixed(2)} per unit</span> ` +
+            `<span class="price-tooltip-icon" data-tooltip="Unit price varies depending on the quantity you choose, with discounts applied at higher quantities.">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="12" cy="17" r="1" fill="currentColor"/>
+              </svg>
+            </span>`
+          );
+        } else {
+          // Show only unit price when no best price
+          $priceRangeDisplay.html(
+            `<span class="price-range-text">$${unitPrice.toFixed(2)} per unit</span>`
+          );
+        }
+      }
+    }
+
+    // Simple function to update price displays with best price
+    function updatePriceDisplays(bestPrice, unitPrice) {
+      // Update all quantity field price displays
+      $('.group-quantity').each(function (index) {
+        const $input = $(this);
+        const $priceSpan = $input.closest('.custom-field').find('.group-unit-price');
+
+        // Use unitPrice from Merchi SDK instead of data attribute
+        const currentUnitPrice = unitPrice || parseFloat($input.attr('data-unit-price'));
+
+        // Show current unit price next to quantity buttons, no parentheses
+        const newText = `$${currentUnitPrice.toFixed(2)} per unit`;
+        $priceSpan.html(newText);
+      });
+    }
 
     // Function to debounce price calculations with rate limiting
     function debouncedCalculatePrice() {
@@ -600,8 +652,9 @@ function initializeWhenReady() {
         const $groupFieldSet = $groupCostDisplay.closest('.group-field-set');
         $groupFieldSet.find('.group-number').text(i + 1);
 
-        // Update the unit price display
-        $groupFieldSet.find('.group-unit-price').text('( $' + costPerUnit.toFixed(2) + ' per unit )');
+        // Update the unit price display - only show current price, no price range
+        const priceDisplay = `$${costPerUnit.toFixed(2)} per unit`;
+        $groupFieldSet.find('.group-unit-price').html(priceDisplay);
       }
 
       jQuery('label[data-update-label="true"][data-group-index="false"]').each(function () {
@@ -821,29 +874,108 @@ function initializeWhenReady() {
       calculateAndUpdatePrice();
     }
 
+    // Helper function to get MOQ settings
+    function getMOQSettings() {
+      const $groupedContainer = jQuery('#grouped-fields-container');
+      const minimumPerGroup = $groupedContainer.length > 0 ? $groupedContainer.attr('data-minimum-per-group') === 'true' : false;
+      const groupCount = jQuery('.group-quantity').length;
+      return { minimumPerGroup, groupCount };
+    }
+
+    // Helper function to validate and correct quantity for a single input
+    function validateAndCorrectQuantity($input, context = 'change') {
+      const { minimumPerGroup, groupCount } = getMOQSettings();
+
+      if (minimumPerGroup) {
+        // Each group must meet minimum quantity
+        const minimumQuantity = parseInt($input.attr('min')) || 1;
+        const currentValue = parseInt($input.val());
+
+        if (!isNaN(currentValue) && currentValue < minimumQuantity) {
+          $input.val(minimumQuantity);
+          if (context === 'blur') {
+            calculateAndUpdatePrice();
+          }
+        }
+      } else {
+        // Accumulative mode: different logic based on group count
+        if (groupCount === 1) {
+          // Case A: Only one group - this group must meet MOQ
+          const minimumQuantity = productJson.minimum || 1;
+          const currentValue = parseInt($input.val());
+
+          if (!isNaN(currentValue) && currentValue < minimumQuantity) {
+            $input.val(minimumQuantity);
+            if (context === 'blur') {
+              calculateAndUpdatePrice();
+            }
+          }
+        } else {
+          // Case B: Multiple groups - only enforce minimum of 1 per group
+          const currentValue = parseInt($input.val());
+          if (!isNaN(currentValue) && currentValue < 1) {
+            $input.val(1);
+            if (context === 'blur') {
+              calculateAndUpdatePrice();
+            }
+          }
+        }
+      }
+    }
+
+    // Helper function to get initial quantity for new group
+    function getInitialQuantityForNewGroup() {
+      const { minimumPerGroup } = getMOQSettings();
+      const currentGroupCount = jQuery('.group-quantity').length;
+      const minimumQuantity = productJson.minimum || 1;
+
+      if (minimumPerGroup) {
+        return { val: minimumQuantity, min: minimumQuantity };
+      } else {
+        if (currentGroupCount === 0) {
+          return { val: minimumQuantity, min: minimumQuantity };
+        } else {
+          return { val: 1, min: 1 };
+        }
+      }
+    }
+
     // Initialize event handlers
     function initializeHandlers() {
       // Remove any existing handlers
-      jQuery(document).off('change', '.custom-variation-options input, .custom-variation-options select, .group-quantity');
-      jQuery('#add-group-button').off('click');
-      jQuery(document).off('click', '.delete-group-button');
+      jQuery(document).off('change', '.custom-variation-options input, .custom-variation-options select');
+      jQuery(document).off('blur', '.group-quantity');
+      jQuery(document).off('input', '.group-quantity');
 
-      // add loop here
-      jQuery('.custom-field input, .custom-field select, .custom-field textarea, .custom-variation-options input, .custom-variation-options select, .custom-variation-options textarea').each(function () {
+      // initialise event handlers for variations
+      initializeVariations();
+
+      // initialise event handlers for groups
+      const $groups = jQuery('.group-field-set');
+      for (let i = 0; i < $groups.length; i++) {
+        initializeGroupVariationHandlers(jQuery($groups[i]));
+      }
+
+
+      // Enforce minimum quantity on blur
+      jQuery(document).on('blur', '.group-quantity', function () {
         const $input = jQuery(this);
+
         if ($input.attr('data-calculate')) {
           $input.on('change', debouncedCalculatePrice);
         }
-      });
 
-      // Handle quantity changes immediately without debounce
-      jQuery(document).on('change', '.group-quantity', calculateAndUpdatePrice);
+        validateAndCorrectQuantity($input, 'blur');
+
+      });
 
       // Handle quantity input events (for when user types)
       jQuery(document).on('input', '.group-quantity', calculateAndUpdatePrice);
 
+      jQuery('.add-group-button').off('click');
+
       // Add group button handler
-      jQuery('#add-group-button').on('click', function (e) {
+      jQuery('.add-group-button').on('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
         addNewGroup();
@@ -927,9 +1059,10 @@ function initializeWhenReady() {
           if ($input.hasClass('group-quantity')) {
             $input.attr('data-group-index', index);
 
+            // Update label to show only "Quantity" without price
             $input.closest('.custom-field')
               .find('label')
-              .text('Quantity ($' + costPerUnit.toFixed(2) + ' per unit)');
+              .html('Quantity');
           }
         });
       });
@@ -958,7 +1091,11 @@ function initializeWhenReady() {
       initializeFileUploadVariations($group);
 
       // Bind group-quantity change for this group
-      $group.find('.group-quantity').off('change.group').on('change.group', calculateAndUpdatePrice);
+      $group.find('.group-quantity').off('change.group').on('change.group', function () {
+        const $input = jQuery(this);
+        validateAndCorrectQuantity($input, 'change');
+        calculateAndUpdatePrice();
+      });
       $group.find('.delete-group-button').off('click.group').on('click.group', actionDeleteGroup);
 
       $group.find('.delete-group-button').off('click');
@@ -1037,11 +1174,16 @@ function initializeWhenReady() {
 
         // Handle group quantity separately
         if ($input.hasClass('group-quantity')) {
-          $input.attr('data-group-index', newGroupIndex).val(quantity);
+          $input.attr('data-group-index', newGroupIndex);
+
+          const initialQuantity = getInitialQuantityForNewGroup();
+          $input.val(initialQuantity.val);
+          $input.attr('min', initialQuantity.min);
+
           $input
             .closest('.custom-field')
             .find('label')
-            .html('Quantity <span class="group-unit-price"><span class="loading-spinner"></span></span></label>');
+            .html('Quantity');
         } else {
           // For variation fields, try to find and apply the default value
           const variationFieldData = $input.data('variation-field');
@@ -1148,51 +1290,6 @@ function initializeWhenReady() {
       calculateAndUpdatePrice();
     }
 
-    // Initialize event handlers
-    function initializeHandlers() {
-      // Remove any existing handlers
-
-      // initialise event handlers for variations
-      initializeVariations();
-
-      // initialise event handlers for groups
-      const $groups = jQuery('.group-field-set');
-      for (let i = 0; i < $groups.length; i++) {
-        initializeGroupVariationHandlers(jQuery($groups[i]));
-      }
-
-      jQuery('.add-group-button').off('click');
-
-      // Add group button handler
-      jQuery('.add-group-button').on('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        addNewGroup();
-      });
-
-      if (!productJson?.groupVariationFields?.length) {
-        // if the product has no group variation fields then we update the value of the quantity
-        // field to the productJson.defaultJob.quantity and also set event listners to the quantity field
-        const $quantityInput = jQuery('input.qty');
-
-        if ($quantityInput.length > 0) {
-          $quantityInput.val(productJson.defaultJob.quantity);
-
-          // Remove any existing handlers
-          $quantityInput.off('change');
-
-          // Add the new handler
-          $quantityInput.on('change', function (e) {
-            calculateAndUpdatePrice();
-          });
-
-          // Also bind to input event for immediate feedback
-          $quantityInput.on('input', function (e) {
-            calculateAndUpdatePrice();
-          });
-        }
-      }
-    }
 
     // Function to process variations from a container
     function processVariations($container, variationsArray) {
@@ -1382,7 +1479,8 @@ function initializeWhenReady() {
         });
       } else {
         // if there are no groups then we just use the quantity from the quantity input
-        formData.quantity = parseInt(jQuery('input.qty').val()) || 1;
+        const minimumQuantity = productJson.minimum || 1;
+        formData.quantity = parseInt(jQuery('input.qty').val()) || minimumQuantity;
       }
 
       // Process standalone variations
@@ -1568,17 +1666,63 @@ function validateForm() {
     }
   });
 
-  // Validate quantities
-  jQuery('.group-quantity').each(function () {
-    const $input = jQuery(this);
-    const quantity = parseInt($input.val());
-    if (isNaN(quantity) || quantity < 1) {
-      errors.push('Quantity must be at least 1');
-      $input.addClass('field-error');
-    } else {
-      $input.removeClass('field-error');
+  // Validate quantities based on minimumPerGroup setting
+  const $groupedContainer = jQuery('#grouped-fields-container');
+  const minimumPerGroup = $groupedContainer.length > 0 ? $groupedContainer.attr('data-minimum-per-group') === 'true' : false;
+  const groupCount = jQuery('.group-quantity').length;
+
+  if (minimumPerGroup) {
+    // Each group must meet minimum quantity
+    jQuery('.group-quantity').each(function () {
+      const $input = jQuery(this);
+      const quantity = parseInt($input.val());
+      const minimumQuantity = parseInt($input.attr('min')) || 1;
+      if (isNaN(quantity) || quantity < minimumQuantity) {
+        errors.push(`Each group quantity must be at least ${minimumQuantity}`);
+        $input.addClass('field-error');
+      } else {
+        $input.removeClass('field-error');
+      }
+    });
+  } else {
+    if (groupCount === 1) {
+      const $input = jQuery('.group-quantity').first();
+      const quantity = parseInt($input.val());
+      // Get minimum from the input's min attribute or default to 1
+      const minimumQuantity = parseInt($input.attr('min')) || 1;
+      if (isNaN(quantity) || quantity < minimumQuantity) {
+        errors.push(`Quantity must be at least ${minimumQuantity}`);
+        $input.addClass('field-error');
+      } else {
+        $input.removeClass('field-error');
+      }
+    } else if (groupCount > 1) {
+      let totalQuantity = 0;
+      jQuery('.group-quantity').each(function () {
+        const $input = jQuery(this);
+        const quantity = parseInt($input.val()) || 0;
+        totalQuantity += quantity;
+        $input.removeClass('field-error');
+      });
+
+      const minimumQuantity = parseInt(jQuery('.group-quantity').first().attr('min')) || 1;
+      if (totalQuantity < minimumQuantity) {
+        errors.push(`Total quantity across all groups must be at least ${minimumQuantity} (currently ${totalQuantity})`);
+        jQuery('.group-quantity').addClass('field-error');
+
+        // Check if error message already exists, if not add it
+        if (jQuery('.moq-error-message').length === 0) {
+          jQuery('.group-quantity').each(function () {
+            const $input = jQuery(this);
+            const $quantityContainer = $input.closest('.quantity');
+            $quantityContainer.after(`<div class="moq-error-message" style="color: #d00; font-size: 12px; margin-top: 4px;">The total quantity of all groups must be at least ${minimumQuantity}</div>`);
+          });
+        }
+      } else {
+        jQuery('.moq-error-message').remove();
+      }
     }
-  });
+  }
 
   // Display errors if any
   const $errorContainer = jQuery('.form-error-container');
@@ -1590,6 +1734,8 @@ function validateForm() {
     return false;
   } else {
     $errorContainer.remove();
+    // Clear all MOQ error messages when validation passes
+    jQuery('.moq-error-message').remove();
     return true;
   }
 }
@@ -1679,3 +1825,67 @@ function showSuccessMessage() {
     if (e.key === 'Enter' || e.key === ' ') message.remove();
   };
 }
+
+jQuery(function ($) {
+  var $container = $('.single-product div.product').first();
+  var $gallery = $container.find('.woocommerce-product-gallery').first();
+  var $summary = $container.find('.summary.entry-summary').first();
+  if (!$container.length || !$gallery.length || !$summary.length) return;
+
+  var $placeholder = $gallery.next('.wc-gallery-placeholder');
+  if (!$placeholder.length) {
+    $gallery.after('<div class="wc-gallery-placeholder" aria-hidden="true"></div>');
+  }
+
+  function topOffset() {
+    var o = 16;
+    var $admin = $('#wpadminbar'); if ($admin.length) o += $admin.outerHeight();
+    var $hdr = $('.site-header.is-sticky, .site-header.sticky, .sticky-header, .navbar, #masthead, .elementor-sticky--active').first();
+    if ($hdr.length) o += $hdr.outerHeight();
+    document.documentElement.style.setProperty('--gallery-pin-top', o + 'px');
+    return o;
+  }
+
+  function update() {
+    var off = topOffset();
+    var EXTRA = 100;
+    var gTop = $gallery.offset().top;
+    var gLeft = $gallery.offset().left;
+    var gW = $gallery.outerWidth();
+    var gH = $gallery.outerHeight();
+    var sTop = $summary.offset().top;
+    var sH = $summary.outerHeight();
+    var cTop = $container.offset().top;
+    var y = window.pageYOffset || document.documentElement.scrollTop;
+
+    var doc = document.documentElement.style;
+    doc.setProperty('--gallery-pin-width', gW + 'px');
+    doc.setProperty('--gallery-pin-height', gH + 'px');
+    doc.setProperty('--gallery-pin-left', (gLeft - (window.pageXOffset || 0)) + 'px');
+
+    var MIN = 20;
+    var startFix = Math.max(gTop - (off + EXTRA), cTop + MIN);
+    var stopAt = (sTop + sH) - gH - (off + EXTRA);
+
+    if (y < startFix) {
+      $gallery.removeClass('wc-gallery--fixed wc-gallery--stuck');
+      return;
+    }
+    if (y >= stopAt) {
+      $gallery.removeClass('wc-gallery--fixed').addClass('wc-gallery--stuck');
+      doc.setProperty('--gallery-abs-top', ((sTop + sH) - gH - cTop) + 'px');
+      doc.setProperty('--gallery-abs-left', (gLeft - $container.offset().left) + 'px');
+      return;
+    }
+    $gallery.removeClass('wc-gallery--stuck').addClass('wc-gallery--fixed');
+    doc.setProperty('--gallery-pin-left', (gLeft - (window.pageXOffset || 0)) + 'px');
+  }
+
+  $(window).on('scroll resize load', update);
+  if (window.ResizeObserver) {
+    var ro = new ResizeObserver(update);
+    ro.observe($summary[0]);
+    ro.observe($gallery[0]);
+  }
+  update();
+});
