@@ -2519,9 +2519,21 @@ function import_merchi_product_data($woo_product_id) {
         ],
         'draftTemplates' => ['file' => new stdClass()],
         'groupBuyStatus' => new stdClass(),
-        'groupVariationFields' => ['options' => ['linkedFile' => new stdClass()]],
+        'groupVariationFields' => [
+					  'options' => [
+							  'linkedFile' => new stdClass(),
+								'selectedBy' => new stdClass()
+							],
+							'selectedBy' => new stdClass()
+				],
         'images' => new stdClass(),
-        'independentVariationFields' => ['options' => ['linkedFile' => new stdClass()]],
+        'independentVariationFields' => [
+					  'options' => [
+							  'linkedFile' => new stdClass(),
+								'selectedBy' => new stdClass()
+						],
+						'selectedBy' => new stdClass()
+				],
         'publicFiles' => new stdClass(),
     ];
     $embed_json = json_encode($productEmbed);
