@@ -15,7 +15,7 @@ jQuery(document).ready(function ($) {
   
   function downloadMerchiImageReturnData(file) {
     var mimetype = file.mimetype() ? file.mimetype() : null,
-      downloadSrc = $('#merchi_base_url').length ? $('#merchi_base_url').val() + "v6/product-public-file/download/" : "https://api.merchi.co/v6/product-public-file/download/",
+      downloadSrc = $('#merchi_base_url').length ? $('#merchi_base_url').val() + "v6/product-public-file/download/" : "http://dev.localhost:5000/v6/product-public-file/download/",
       extension = mimetype ? allowedExtensions[mimetype] : null;
     return extension
       ? { src: `${downloadSrc}${file.id()}.${extension}` }

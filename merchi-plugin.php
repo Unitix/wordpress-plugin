@@ -20,7 +20,7 @@ if (! defined( 'ABSPATH' )) {
 $merchi_mode = get_option('merchi_staging_mode');
 
 if($merchi_mode){
-	$merchi_url = $merchi_mode == 'yes' ? 'https://api.staging.merchi.co/' : 'https://api.merchi.co/';
+	$merchi_url = $merchi_mode == 'yes' ? 'https://api.staging.merchi.co/' : 'http://dev.localhost:5000/';
 	$merchi_base_url = $merchi_mode == 'yes' ? 'https://staging.merchi.co' : 'https://merchi.co';
 	$merchi_domain = $merchi_mode == 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
 	$merchiMode = $merchi_mode == 'yes' ? 'staging' : 'live';
@@ -2500,7 +2500,7 @@ function import_merchi_product_data($woo_product_id) {
     $merchi_api_secret = defined('MERCHI_API_SECRET') ? MERCHI_API_SECRET : '';
     $merchi_api_url = defined('MERCHI_URL') ? MERCHI_URL : '';
     if (empty($merchi_api_url)) {
-        $merchi_api_url = 'https://api.merchi.co/';
+        $merchi_api_url = 'http://dev.localhost:5000/';
         error_log('import_merchi_product_data: Using default Merchi API URL: ' . $merchi_api_url);
     }
     if (empty($merchi_domain_id) || empty($merchi_api_secret) || empty($merchi_api_url)) {

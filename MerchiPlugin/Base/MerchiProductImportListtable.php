@@ -35,7 +35,7 @@ class MerchiProductImportListtable extends \WP_List_Table
             throw new Exception('Merchi mode not configured');
         }
 
-        $this->api_url = $merchi_mode == 'yes' ? 'https://api.staging.merchi.co/v6/products/' : 'https://api.merchi.co/v6/products/';
+        $this->api_url = $merchi_mode == 'yes' ? 'https://api.staging.merchi.co/v6/products/' : 'http://dev.localhost:5000/v6/products/';
         $this->domain_id = $merchi_mode == 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
         $this->apiKey = $merchi_mode == 'yes' ? get_option('staging_merchi_api_secret') : get_option('merchi_api_secret');
 

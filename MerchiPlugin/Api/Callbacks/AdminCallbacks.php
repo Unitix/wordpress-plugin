@@ -21,7 +21,7 @@ class AdminCallbacks extends BaseController {
 			$merchi_url = 'https://api.staging.merchi.co/';
 		}
 		else {
-			$merchi_url = 'https://api.merchi.co/';
+			$merchi_url = 'http://dev.localhost:5000/';
 		}
 		return require_once( "$this->plugin_path/templates/cpt.php" );
 	}
