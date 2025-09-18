@@ -12,6 +12,5 @@ export const MERCHI_API_URL = () => {
   const isStaging =
     window.merchiConfig?.stagingMode || 
     (window.scriptData && window.scriptData.merchi_mode === 'staging');
-  console.log('isStaging', isStaging, stagingBackendUri, backendUri);
   return isStaging ? stagingBackendUri : backendUri;
 }

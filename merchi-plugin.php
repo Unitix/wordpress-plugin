@@ -20,7 +20,7 @@ if (! defined( 'ABSPATH' )) {
 $merchi_mode = get_option('merchi_staging_mode');
 
 if($merchi_mode){
-	$merchi_url = $merchi_mode == 'yes' ? 'https://api.staging.merchi.co/' : 'http://dev.localhost:5000/';
+	$merchi_url = $merchi_mode == 'yes' ? 'https://api.staging.merchi.co/' : 'http://host.docker.internal:5000/';
 	$merchi_base_url = $merchi_mode == 'yes' ? 'https://staging.merchi.co' : 'https://merchi.co';
 	$merchi_domain = $merchi_mode == 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
 	$merchiMode = $merchi_mode == 'yes' ? 'staging' : 'live';
@@ -2408,11 +2408,18 @@ function fetch_products_from_merchi() {
 
 
     // Make the external API request
-    $response = wp_remote_get($api_url);
+    // Add Host header for dev.localhost routing through proxy
+    $headers = array();
+    if (strpos($api_url, 'host.docker.internal:5000') !== false) {
+        $headers['Host'] = 'dev.localhost';
+        error_log('fetch_products_from_merchi: Adding Host header: dev.localhost for URL: ' . $api_url);
+    }
+    
+    $response = wp_remote_get($api_url, array('headers' => $headers));
 
     // Check if the request was successful
     if (is_wp_error($response)) {
-        wp_send_json_error(['message' => 'Error fetching products']);
+        wp_send_json_error(['message' => $response]);
         wp_die();
     }
 
@@ -2434,13 +2441,44 @@ function fetch_products_from_merchi() {
         unset($item);
         wp_send_json_success($products);
     } else {
-        wp_send_json_error(['message' => 'No products found']);
+        wp_send_json_error(['message' => $response]);
     }
 
     wp_die(); // Terminate to ensure no further output
 }
 
 add_action('wp_ajax_save_product_meta', 'save_product_meta_callback');
+add_action('wp_ajax_fetch_single_product', 'fetch_single_product_from_merchi');
+add_action('wp_ajax_nopriv_fetch_single_product', 'fetch_single_product_from_merchi');
+
+function fetch_single_product_from_merchi() {
+    $product_id = sanitize_text_field($_POST['productId']);
+    $api_key = sanitize_text_field($_POST['apiKey']);
+    $domain_id = sanitize_text_field($_POST['domainId']);
+    $api_url_base = sanitize_url($_POST['apiUrl']);
+    
+    $api_url = esc_url_raw($api_url_base . "v6/products/$product_id/?apiKey=$api_key&inDomain=$domain_id&embed=" . urlencode('{"featureImage":{},"images":{}}') . "&skip_rights=y");
+    
+    // Add Host header for dev.localhost routing through proxy
+    $headers = array();
+    if (strpos($api_url, 'host.docker.internal:5000') !== false) {
+        $headers['Host'] = 'dev.localhost';
+        error_log('fetch_single_product_from_merchi: Adding Host header: dev.localhost for URL: ' . $api_url);
+    }
+    
+    $response = wp_remote_get($api_url, array('headers' => $headers));
+    
+    if (is_wp_error($response)) {
+        wp_send_json_error(['message' => $response->get_error_message()]);
+        wp_die();
+    }
+    
+    $body = wp_remote_retrieve_body($response);
+    $data = json_decode($body, true);
+    
+    wp_send_json_success($data);
+    wp_die();
+}
 
 function save_product_meta_callback() {
     $product_id = intval($_POST['wooProductId']);
@@ -2497,7 +2535,7 @@ function import_merchi_product_data($woo_product_id) {
     $merchi_api_secret = defined('MERCHI_API_SECRET') ? MERCHI_API_SECRET : '';
     $merchi_api_url = defined('MERCHI_URL') ? MERCHI_URL : '';
     if (empty($merchi_api_url)) {
-        $merchi_api_url = 'http://dev.localhost:5000/';
+        $merchi_api_url = 'http://host.docker.internal:5000/';
         error_log('import_merchi_product_data: Using default Merchi API URL: ' . $merchi_api_url);
     }
     if (empty($merchi_domain_id) || empty($merchi_api_secret) || empty($merchi_api_url)) {
@@ -2540,13 +2578,36 @@ function import_merchi_product_data($woo_product_id) {
 
     // Debug: Log the actual API request
     error_log('import_merchi_product_data: Making API request to: ' . $api_url);
-    $response = wp_remote_get($api_url);
+    
+    // Add Host header for dev.localhost routing through proxy
+    $headers = array();
+    if (strpos($api_url, 'host.docker.internal:5000') !== false) {
+        $headers['Host'] = 'dev.localhost';
+        error_log('import_merchi_product_data: Adding Host header: dev.localhost');
+    }
+    
+    $response = wp_remote_get($api_url, array('headers' => $headers));
 
     // Debug: Log the raw response
     if (is_wp_error($response)) {
         error_log('import_merchi_product_data: Failed to fetch Merchi product data. ' . $response->get_error_message());
         return ['success' => false, 'message' => 'Failed to fetch Merchi product data.'];
     }
+    
+    // Log HTTP status code to help debug 404 errors
+    $http_code = wp_remote_retrieve_response_code($response);
+    error_log('import_merchi_product_data: HTTP Status Code: ' . $http_code);
+    
+    if ($http_code == 404) {
+        error_log('import_merchi_product_data: 404 Not Found - Check if backend API server is running and endpoint exists');
+        return ['success' => false, 'message' => '404 Not Found: Backend API endpoint not accessible. Check if your API server is running on host.docker.internal:5000'];
+    }
+    
+    if ($http_code >= 400) {
+        error_log('import_merchi_product_data: HTTP Error ' . $http_code . ' - ' . wp_remote_retrieve_response_message($response));
+        return ['success' => false, 'message' => 'API Error: HTTP ' . $http_code . ' - ' . wp_remote_retrieve_response_message($response)];
+    }
+    
     error_log('import_merchi_product_data: Raw API response: ' . print_r($response, true));
 
     $body = wp_remote_retrieve_body($response);

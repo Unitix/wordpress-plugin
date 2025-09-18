@@ -58,22 +58,6 @@ class ProductPage extends BaseController {
 				true
 			);
 		}
-
-
-		// wp_enqueue_script(
-		// 	'stripe-js-cdn',
-		// 	'https://js.stripe.com/v3/',
-		// 	array(),
-		// 	null,
-		// 	true
-		// );
-		// wp_enqueue_script(
-		// 	'react-stripe-js-cdn',
-		// 	'https://unpkg.com/@stripe/react-stripe-js@3.7.0/dist/react-stripe.umd.min.js',
-		// 	array(),
-		// 	null,
-		// 	true
-		// );
 		// load Merchi SDK
 		wp_enqueue_script(
 			'merchi_sdk',
@@ -110,7 +94,7 @@ class ProductPage extends BaseController {
 
 		// Get the correct configuration based on staging mode
 		$merchi_domain = $staging_mode === 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
-		$merchi_url = $staging_mode === 'yes' ? 'https://api.staging.merchi.co/' : 'http://dev.localhost:5000/';
+		$merchi_url = $staging_mode === 'yes' ? 'https://api.staging.merchi.co/' : 'http://api.merchi.co/';
 
 		// Debug logging (only log when actually loading scripts)
 		error_log('Merchi Configuration:');
@@ -545,6 +529,7 @@ class ProductPage extends BaseController {
 													data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"
 													data-update-label="true"
 													data-calculate="' . ($has_cost ? 'true' : 'false') . '"
+													data-field-type="image-select"
 													' . ($will_be_checked ? 'checked' : '') . ' />';
 							$html .= '<label class="image-select-label">';
 							$html .= '<span class="image-select-checkmark"></span>';

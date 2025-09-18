@@ -2,6 +2,10 @@
 import { MERCHI_SDK } from './merchi_sdk';
 import { initializeCheckout } from './merchi_checkout_init';
 
+function isSelectableVariation(variationField) {
+  return [2, 6, 7, 9, 11].includes(variationField.fieldType);
+}
+
 function initializeWhenReady() {
   const merchiSdk = MERCHI_SDK();
 
@@ -189,7 +193,14 @@ function initializeWhenReady() {
     }
 
     // Helper function to render field HTML in JavaScript (mirrors PHP rendering logic)
-    function renderFieldHtml(variationField, namePrefix, fieldIndex, isGroup = false, groupIndex = 0) {
+    function renderFieldHtml(newVariation, namePrefix, fieldIndex, isGroup = false, groupIndex = 0) {
+      const {
+        selectableOptions = [],
+        value,
+        variationField = {},
+        variationFiles = [],
+       } = newVariation;
+
       const {
         id: fieldId,
         name: label,
@@ -198,7 +209,6 @@ function initializeWhenReady() {
         placeholder = '',
         instructions = '',
         multipleSelect = false,
-        options = [],
         variationCost = 0,
         variationUnitCost = 0
       } = variationField;
@@ -207,10 +217,15 @@ function initializeWhenReady() {
       const fieldName = namePrefix + '.variations[' + fieldIndex + ']';
       const requiredAttr = required ? 'required' : '';
       const requiredClass = required ? ' data-required="true"' : '';
+      function isOptionSelected(option) {
+        const valueArray = value.split(',');
+        return valueArray.includes(option.optionId);
+      }
 
       // Create variation field data for JavaScript
       const variationFieldJson = JSON.stringify(variationField).replace(/"/g, '&quot;');
-      const commonDataAttrs = ` data-variation-field='${variationFieldJson}' data-calculate="true"`;
+      const calculateAttr = isSelectableVariation(variationField) ? ' data-calculate="true"' : '';
+      const commonDataAttrs = ` data-variation-field='${variationFieldJson}'${calculateAttr}`;
 
       // Cost label helper
       const costLabel = () => {
@@ -224,79 +239,211 @@ function initializeWhenReady() {
         return label;
       };
 
+      // Cost label helper
+      const costLabelForOption = (option) => {
+        let label = '';
+        const { onceOffCost, unitCost } = option;
+        if (unitCost > 0) {
+          label += ` + ( $${unitCost.toFixed(2)} per unit )`;
+        }
+        if (onceOffCost > 0) {
+          label += ` + ( $${onceOffCost.toFixed(2)} once off )`;
+        }
+        return label;
+      };
       let html = `<div class="custom-field"${requiredClass}>`;
 
       switch (fieldType) {
         case 1: // TEXT
-          html += `<label for="${slug}">${label}${costLabel()}</label>`;
-          html += `<input type="text" name="${fieldName}" placeholder="${placeholder}" ${requiredAttr}${commonDataAttrs} class="input-text"/>`;
+          html += `<label for="${fieldName}">${label}${costLabel()}</label>`;
+          html += `
+            <input
+              type="text"
+              name="${fieldName}"
+              placeholder="${placeholder}" 
+              ${requiredAttr}${commonDataAttrs}
+              class="input-text"
+            />`;
           break;
 
         case 2: // SELECT
-          html += `<label for="${slug}">${label}</label>`;
+          html += `<label for="${fieldName}">${label}</label>`;
           if (multipleSelect) {
             html += `<select multiple name="${fieldName}"${commonDataAttrs} class="select">`;
           } else {
             html += `<select name="${fieldName}"${commonDataAttrs} class="select">`;
           }
-          options.forEach((option, index) => {
+          selectableOptions.forEach((option, index) => {
             const selected = index === 0 && !multipleSelect ? 'selected' : '';
-            const optionCost = costLabel();
-            html += `<option value="${option.id}" ${selected} data-variation-field-value="${option.id}">${option.value}${optionCost}</option>`;
+            const isEnabled = option.isVisible && option.available;
+            const optionCost = costLabelForOption(option);
+            const disabledAttr = !isEnabled ? 'disabled' : '';
+            html += `
+              <option
+                value="${option.optionId}"
+                ${selected}
+                ${disabledAttr}
+                data-variation-field-value="${option.optionId}"
+              >
+                ${option.value}${optionCost}
+              </option>`;
           });
           html += '</select>';
           break;
 
         case 3: // FILE
-          html += `<label for="${slug}">${label}${costLabel()}</label>`;
+          html += `<label for="${fieldName}">${label}${costLabel()}</label>`;
           html += `<label class="custom-upload-wrapper">
             <div class="upload-icon">📎</div>
             <div class="upload-instruction">Drop file here or click to browse</div>
             <div class="upload-types">.jpeg, .jpg, .gif, .png, .pdf</div>
             <input type="file" name="${fieldName}" multiple ${requiredAttr} accept=".jpeg,.jpg,.gif,.png,.pdf"${commonDataAttrs} class="input-file"/>
           </label>`;
+          // Render existing files if any
+          if (Array.isArray(variationFiles) && variationFiles.length > 0) {
+            html += '<div class="multi-file-upload-preview">';
+            variationFiles.forEach(function(merchiFile) {
+              const merchiFileJson = typeof merchiFile === 'string' ? JSON.parse(merchiFile) : merchiFile;
+              const fileName = merchiFileJson.originalFilename || merchiFileJson.name || 'Unknown file';
+              const isImage = merchiFileJson.mimetype && merchiFileJson.mimetype.startsWith('image/');
+              const downloadUrl = merchiFileJson.downloadUrl || merchiFileJson.viewUrl;
+              
+              html += `
+                <div class="multi-file-box" style="
+                  display: flex; 
+                  align-items: center; 
+                  margin-bottom: 8px; 
+                  background: #fff; 
+                  border-radius: 6px; 
+                  box-shadow: 0 1px 4px rgba(0,0,0,0.06); 
+                  padding: 8px;
+                " 
+                data-merchi-file='${JSON.stringify(merchiFileJson)}'
+                data-download-url="${downloadUrl}"
+                data-view-url="${merchiFileJson.viewUrl}"
+                data-mimetype="${merchiFileJson.mimetype}"
+              >`;
+              
+              if (isImage && merchiFileJson.viewUrl) {
+                html += `
+                  <img src="${merchiFileJson.viewUrl}" style="
+                    max-width: 60px; 
+                    max-height: 60px; 
+                    object-fit: contain; 
+                    margin-right: 10px; 
+                    border-radius: 4px; 
+                    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+                  " />`;
+              } else {
+                html += '<span style="font-size: 32px; margin-right: 10px;">📄</span>';
+              }
+              
+                html += `
+                  <span style="
+                    font-weight: bold; 
+                    font-size: 0.9em; 
+                    color: #333; 
+                    flex-grow: 1;
+                  ">
+                    ${fileName}
+                  </span>`;
+                
+                if (downloadUrl) {
+                  html += `
+                    <a href="${downloadUrl}" 
+                       download="${fileName}"
+                       style="
+                         margin-left: 10px; 
+                         font-size: 18px; 
+                         text-decoration: none; 
+                         color: #0073aa;
+                       "
+                       title="Download file"
+                    >
+                      ⬇️
+                    </a>
+                  `;
+                }
+                
+                // Add remove button
+                html += `
+                  <span class="file-upload-remove" style="
+                    margin-left: 10px; 
+                    cursor: pointer; 
+                    font-size: 20px; 
+                    color: #d00;
+                  " 
+                  title="Remove file"
+                  data-file-id="${merchiFileJson.id}">
+                    &times;
+                  </span>
+                `;
+              
+              html += '</div>';
+            });
+            html += '</div>';
+          }
           break;
 
         case 4: // TEXTAREA
-          html += `<label for="${slug}">${label}${costLabel()}</label>`;
+          html += `<label for="${fieldName}">${label}${costLabel()}</label>`;
           html += `<textarea name="${fieldName}" placeholder="${placeholder}" ${requiredAttr}${commonDataAttrs} class="input-textarea"></textarea>`;
           break;
 
         case 5: // NUMBER
-          html += `<label for="${slug}">${label}${costLabel()}</label>`;
+          html += `<label for="${fieldName}">${label}${costLabel()}</label>`;
           html += `<input type="number" name="${fieldName}" placeholder="${placeholder}" ${requiredAttr}${commonDataAttrs} class="input-number"/>`;
           break;
 
         case 6: // CHECKBOX
-          html += `<label for="${slug}">${label}</label>`;
+          html += `<label for="${fieldName}">${label}</label>`;
           html += '<div class="checkbox-options-container">';
-          options.forEach(option => {
-            const optionCost = costLabel();
-            html += `
-              <div class="checkbox-option">
-                <label class="checkbox-label">
-                  <input type="checkbox" name="${fieldName}" value="${option.id}"${commonDataAttrs} data-variation-field-value="${option.id}" class="input-checkbox"/>
-                  <span class="option-label">${option.value}${optionCost}</span>
-                </label>
-              </div>`;
-          });
+            selectableOptions.forEach(option => {
+              const isEnabled = option.isVisible && option.available;
+              const optionCost = costLabelForOption(option);
+              const disabledAttr = !isEnabled ? 'disabled' : '';
+              html += `
+                <div class="checkbox-option">
+                  <label for="${fieldName} class="checkbox-label">
+                    <input
+                      type="checkbox"
+                      name="${fieldName}"
+                      value="${option.optionId}"${commonDataAttrs}
+                      data-variation-field-value="${option.optionId}"
+                      class="input-checkbox"
+                      ${disabledAttr}
+                    />
+                    <span class="option-label">${option.value}${optionCost}</span>
+                  </label>
+                </div>`;
+            });
           html += '</div>';
           break;
 
         case 7: // RADIO
-          html += `<label for="${slug}">${label}</label>`;
+          html += `<label for="${fieldName}">${label}</label>`;
           html += '<div class="radio-options-container">';
-          options.forEach((option, index) => {
-            const checked = index === 0 ? 'checked' : '';
-            const optionCost = costLabel();
-            html += `
-              <div class="radio-option">
-                <label class="radio-label">
-                  <input type="radio" name="${fieldName}" value="${option.id}" ${checked}${commonDataAttrs} data-variation-field-value="${option.id}" class="input-radio"/>
-                  <span class="option-label">${option.value}${optionCost}</span>
-                </label>
-              </div>`;
-          });
+            selectableOptions.forEach((option) => {
+              const isEnabled = option.isVisible && option.available;
+              const checked = isOptionSelected(option) ? 'checked' : '';
+              const optionCost = costLabelForOption(option);
+              const disabledAttr = !isEnabled ? 'disabled' : '';
+              html += `
+                <div class="radio-option">
+                  <label class="radio-label" for="${fieldName}">
+                    <input
+                      type="radio"
+                      name="${fieldName}"
+                      value="${option.optionId}"
+                      ${checked}${commonDataAttrs}
+                      data-variation-field-value="${option.optionId}"
+                      class="input-radio"
+                      ${disabledAttr}
+                    />
+                    <span class="option-label">${option.value}${optionCost}</span>
+                  </label>
+                </div>`;
+            });
           html += '</div>';
           break;
 
@@ -306,40 +453,77 @@ function initializeWhenReady() {
 
         case 9: // IMAGE_SELECT
           const labelGroupIndex = isGroup ? groupIndex : 'false';
-          html += `<label for="${slug}" data-group-index="${labelGroupIndex}" data-update-label="true" data-variation-field-id="${fieldId}">${label}</label>`;
           const inputType = multipleSelect ? 'checkbox' : 'radio';
+          html += `
+            <label
+              for="${slug}"
+              data-group-index="${labelGroupIndex}"
+              data-update-label="true"
+              data-variation-field-id="${fieldId}"
+            >
+              ${label} ${costLabel()}
+            </label>`;
           html += `<div class="group-variation-container" name="${fieldName}"${commonDataAttrs}>`;
           html += '<div class="image-select-options-container">';
-          options.forEach((option, index) => {
-            const checked = index === 0 && !multipleSelect ? 'checked' : '';
-            html += `
-              <div class="image-select-option">
-                <input type="${inputType}" name="${fieldName}" value="${option.id}" ${checked}${commonDataAttrs} data-variation-field-value="${option.id}" data-update-label="true"/>
-                <label class="image-select-label">
-                  <span class="image-select-checkmark"></span>
-                  ${option.image ? `<img src="${option.image}" alt="${option.value}" />` : ''}
-                  <span class="option-label">${option.value}</span>
-                </label>
-              </div>`;
-          });
+            selectableOptions.forEach((option) => {
+              const checked = isOptionSelected(option) ? 'checked' : '';
+              const isEnabled = option.isVisible && option.available;
+              const disabledAttr = !isEnabled ? 'disabled' : '';
+              html += `
+                <div class="image-select-option">
+                  <input
+                    ${disabledAttr}
+                    type="${inputType}"
+                    name="${fieldName}"
+                    value="${option.optionId}"
+                    ${checked}${commonDataAttrs}
+                    data-variation-field-value="${option.optionId}"
+                    data-update-label="true"
+                    data-field-type="image-select"
+                  />
+                  <label class="image-select-label" for="${fieldName}">
+                    <span class="image-select-checkmark"></span>
+                    ${option.linkedFile ? `<img src="${option.linkedFile.viewUrl}" alt="${option.value}" />` : ''}
+                    <span class="option-label">${option.value}</span>
+                  </label>
+                </div>`;
+            });
           html += '</div>';
           html += '</div>';
           break;
 
         case 10: // COLOR
-          html += `<label for="${slug}">${label}${costLabel()}</label>`;
+          html += `<label for="${fieldName}">${label}${costLabel()}</label>`;
           html += `<input type="color" name="${fieldName}" ${requiredAttr}${commonDataAttrs} class="input-color"/>`;
           break;
 
         case 11: // COLOR_SELECT
-          html += `<label for="${slug}" data-group-index="${isGroup ? groupIndex : 'false'}" data-update-label="true" data-variation-field-id="${fieldId}">${label}</label>`;
           const colorInputType = multipleSelect ? 'checkbox' : 'radio';
+          html += `
+            <label
+              for="${fieldName}"
+              data-group-index="${isGroup ? groupIndex : 'false'}"
+              data-update-label="true"
+              data-variation-field-id="${fieldId}"
+            >
+              ${label} ${costLabel()}
+            </label>`;
           html += '<div class="color-options-grid">';
-          options.forEach((option, index) => {
-            const checked = index === 0 && !multipleSelect ? 'checked' : '';
+          selectableOptions.forEach((option) => {
+            const isEnabled = option.isVisible && option.available;
+            const checked = isOptionSelected(option) ? 'checked' : '';
+            const disabledAttr = !isEnabled ? 'disabled' : '';
             html += `
-              <label class="color-option">
-                <input type="${colorInputType}" name="${fieldName}" value="${option.id}" ${checked}${commonDataAttrs} data-variation-field-value="${option.id}" data-field-type="colour-select"/>
+              <label class="color-option" for="${fieldName}">
+                <input
+                  type="${colorInputType}"
+                  name="${fieldName}"
+                  value="${option.optionId}"
+                  ${checked}${commonDataAttrs}
+                  data-variation-field-value="${option.optionId}"
+                  data-field-type="colour-select"
+                  ${disabledAttr}
+                />
                 <div class="color-option-inner">
                   <span class="color-indicator" style="background-color: ${option.colour || '#000000'};"></span>
                   <span class="checkmark">✓</span>
@@ -351,8 +535,15 @@ function initializeWhenReady() {
           break;
 
         default:
-          html += `<label for="${slug}">${label}${costLabel()}</label>`;
-          html += `<input type="text" name="${fieldName}" placeholder="${placeholder}" ${requiredAttr}${commonDataAttrs} class="input-text"/>`;
+          html += `<label for="${fieldName}">${label}${costLabel()}</label>`;
+          html += `
+            <input
+              type="text"
+              name="${fieldName}"
+              placeholder="${placeholder}" 
+              ${requiredAttr}${commonDataAttrs}
+              class="input-text"
+            />`;
           break;
       }
 
@@ -361,20 +552,29 @@ function initializeWhenReady() {
     }
 
     // Helper function to check if variation fields have changed
-    function hasVariationFieldsChanged(currentFields, responseFields) {
-      if (currentFields.length !== responseFields.length) {
+    function hasVariationsChanged(currentVariations, responseVariations) {
+      if (currentVariations.length !== responseVariations.length) {
         return true;
       }
 
-      for (let i = 0; i < currentFields.length; i++) {
-        const current = currentFields[i];
-        const response = responseFields[i];
+      for (let i = 0; i < currentVariations.length; i++) {
+        const current = currentVariations[i];
+        const response = responseVariations[i];
+        
+        // Compare variation field properties
+        const currentField = current.variationField || current;
+        const responseField = response.variationField || response;
         
         // Compare key properties that would affect rendering
-        if (current.id !== response.id || 
-            current.fieldType !== response.fieldType ||
-            current.options?.length !== response.options?.length ||
-            current.required !== response.required) {
+        if (currentField.id !== responseField.id || 
+            currentField.fieldType !== responseField.fieldType ||
+            currentField.options?.length !== responseField.options?.length ||
+            currentField.required !== responseField.required) {
+          return true;
+        }
+        
+        // Compare variation values
+        if (current.value !== response.value) {
           return true;
         }
       }
@@ -382,7 +582,9 @@ function initializeWhenReady() {
     }
 
     // Helper function to apply variation values to rendered fields
-    function applyVariationValue($container, variationFieldId, value) {
+    function applyVariationValue($container, variation) {
+      const { value, variationField, variationFiles = [] } = variation;
+      const variationFieldId = variationField.id;
       // Find the field with matching variation field ID
       const $field = $container.find('[data-variation-field]').filter(function() {
         const fieldData = jQuery(this).data('variation-field');
@@ -457,9 +659,7 @@ function initializeWhenReady() {
           break;
 
         case 3: // FILE
-          // For file fields, we can't set the value directly, but we can show existing files
-          // This would require more complex logic to recreate file previews
-          console.log('File field value application not implemented in reRenderForm');
+          // We skip file render because they've already been rendered by renderFieldHtml
           break;
 
         case 8: // INSTRUCTIONS
@@ -475,7 +675,7 @@ function initializeWhenReady() {
       $field.trigger('change');
     }
 
-    function reRenderForm(response) {
+    async function reRenderForm(response) {
       // This function takes the response from the price calculation, checks the variations to see
       // if any dynamic fields have changed and if we need to render a different set of fields
       // and then re-renders the form.
@@ -489,22 +689,16 @@ function initializeWhenReady() {
       // Check independent variations for changes
       const $independentContainer = jQuery('.custom-variation-options');
       if ($independentContainer.length > 0) {
-        const currentFields = [];
-        $independentContainer.find('[data-variation-field]').each(function() {
-          const fieldData = jQuery(this).data('variation-field');
-          if (fieldData) currentFields.push(fieldData);
-        });
-
-        const responseFields = variations.map(v => v.variationField).filter(Boolean);
+        const currentVariations = await processVariations($independentContainer);
         
-        if (hasVariationFieldsChanged(currentFields, responseFields)) {
+        if (hasVariationsChanged(currentVariations, variations)) {
           hasChanges = true;
           
           // Re-render independent variations
           let independentHtml = '';
           variations.forEach((variation, index) => {
             if (variation.variationField) {
-              independentHtml += renderFieldHtml(variation.variationField, 'custom_fields', index);
+              independentHtml += renderFieldHtml(variation, 'custom_fields', index);
             }
           });
           
@@ -512,9 +706,9 @@ function initializeWhenReady() {
             $independentContainer.html(independentHtml);
             
             // Apply current values from response to newly rendered fields
-            variations.forEach((variation, index) => {
+            variations.forEach((variation) => {
               if (variation.variationField && variation.value !== undefined && variation.value !== null) {
-                applyVariationValue($independentContainer, variation.variationField.id, variation.value);
+                applyVariationValue($independentContainer, variation);
               }
             });
           }
@@ -524,98 +718,91 @@ function initializeWhenReady() {
       // Check group variations for changes  
       const $groupsContainer = jQuery('#grouped-fields-container');
       if ($groupsContainer.length > 0 && variationsGroups.length > 0) {
-        const currentGroupFields = [];
-        $groupsContainer.find('.group-field-set').each(function(groupIndex) {
-          const groupFields = [];
-          jQuery(this).find('[data-variation-field]').each(function() {
-            const fieldData = jQuery(this).data('variation-field');
-            if (fieldData) groupFields.push(fieldData);
+        const currentGroupVariations = [];
+        const $groups = $groupsContainer.find('.group-field-set');
+        
+        for (let i = 0; i < $groups.length; i++) {
+          const $group = jQuery($groups[i]);
+          const groupVariations = await processVariations($group);
+          currentGroupVariations.push(groupVariations);
+        }
+
+        hasChanges = true;
+        
+        // Re-render group variations
+        let groupsHtml = '<h3>Grouped Options</h3>';
+        
+        variationsGroups.forEach((group, groupIndex) => {
+          const { variations: groupVariations = [], quantity = 1, groupCost = 0 } = group;
+          
+          groupsHtml += `<div class="group-field-set" data-group-index="${groupIndex}">`;
+          groupsHtml += `<h4>Group <span class="group-number">${groupIndex + 1}</span></h4>`;
+          
+          // Add group quantity field
+          const { costPerUnit = 0 } = defaultJobJson;
+          groupsHtml += `
+            <div class="custom-field">
+              <label>Quantity <span class="group-unit-price">( $${costPerUnit.toFixed(2)} per unit )</span></label>
+              <input type="number" class="qty group-quantity" name="variationsGroups[${groupIndex}].quantity" value="${quantity}" min="1" data-group-index="${groupIndex}">
+            </div>`;
+          
+          // Add variation fields for this group
+          groupVariations.forEach((variation, variationIndex) => {
+            const currentVariation = groupVariations.find(v => v.variationField?.id === variation.variationField.id);
+            if (variation.variationField) {
+              groupsHtml += renderFieldHtml(
+                variation,
+                currentVariation?.variationFiles || [],
+                `variationsGroups[${groupIndex}]`, 
+                variationIndex, 
+                true, 
+                groupIndex
+              );
+            }
           });
-          currentGroupFields.push(groupFields);
+          
+          groupsHtml += `
+            <div
+              class="group-cost-display"
+              data-group-index="${groupIndex}"
+              data-group-cost="${groupCost}"
+            >
+              Group Cost: $${groupCost.toFixed(2)}
+            </div>`;
+          groupsHtml += `
+            <button
+              type="button"
+              class="button wp-element-button delete-group-button"
+              ${variationsGroups.length === 1 ? 'style="display: none;"' : ''}
+            >
+              Delete Group
+            </button>`;
+          groupsHtml += '</div>';
+        });
+        
+        $groupsContainer.html(groupsHtml);
+        
+        // Apply current values from response to newly rendered group fields
+        variationsGroups.forEach((group, groupIndex) => {
+          const { variations: groupVariations = [] } = group;
+          const $groupContainer = $groupsContainer.find(`.group-field-set[data-group-index="${groupIndex}"]`);
+          
+          groupVariations.forEach((variation) => {
+            if (variation.variationField && variation.value !== undefined && variation.value !== null) {
+              applyVariationValue($groupContainer, variation);
+            }
+          });
         });
 
-        // Check if group structure has changed
-        let groupsChanged = false;
-        if (currentGroupFields.length !== variationsGroups.length) {
-          groupsChanged = true;
-        } else {
-          for (let i = 0; i < variationsGroups.length; i++) {
-            const responseGroupFields = variationsGroups[i].variations.map(v => v.variationField).filter(Boolean);
-            if (hasVariationFieldsChanged(currentGroupFields[i] || [], responseGroupFields)) {
-              groupsChanged = true;
-              break;
-            }
-          }
-        }
-
-        if (groupsChanged) {
-          hasChanges = true;
-          
-          // Re-render group variations
-          let groupsHtml = '<h3>Grouped Options</h3>';
-          
-          variationsGroups.forEach((group, groupIndex) => {
-            const { variations: groupVariations = [], quantity = 1, groupCost = 0 } = group;
-            
-            groupsHtml += `<div class="group-field-set" data-group-index="${groupIndex}">`;
-            groupsHtml += `<h4>Group <span class="group-number">${groupIndex + 1}</span></h4>`;
-            
-            // Add group quantity field
-            const { costPerUnit = 0 } = defaultJobJson;
-            groupsHtml += `
-              <div class="custom-field">
-                <label>Quantity <span class="group-unit-price">( $${costPerUnit.toFixed(2)} per unit )</span></label>
-                <input type="number" class="qty group-quantity" name="variationsGroups[${groupIndex}].quantity" value="${quantity}" min="1" data-group-index="${groupIndex}">
-              </div>`;
-            
-            // Add variation fields for this group
-            groupVariations.forEach((variation, variationIndex) => {
-              if (variation.variationField) {
-                groupsHtml += renderFieldHtml(
-                  variation.variationField, 
-                  `variationsGroups[${groupIndex}]`, 
-                  variationIndex, 
-                  true, 
-                  groupIndex
-                );
-              }
-            });
-            
-            groupsHtml += `<div class="group-cost-display" data-group-index="${groupIndex}" data-group-cost="${groupCost}">Group Cost: $${groupCost.toFixed(2)}</div>`;
-            groupsHtml += `<button type="button" class="button wp-element-button delete-group-button" ${variationsGroups.length === 1 ? 'style="display: none;"' : ''}>Delete Group</button>`;
-            groupsHtml += '</div>';
-          });
-          
-          $groupsContainer.html(groupsHtml);
-          
-          // Apply current values from response to newly rendered group fields
-          variationsGroups.forEach((group, groupIndex) => {
-            const { variations: groupVariations = [] } = group;
-            const $groupContainer = $groupsContainer.find(`.group-field-set[data-group-index="${groupIndex}"]`);
-            
-            groupVariations.forEach((variation) => {
-              if (variation.variationField && variation.value !== undefined && variation.value !== null) {
-                applyVariationValue($groupContainer, variation.variationField.id, variation.value);
-              }
-            });
-          });
-        }
       }
-
       // If we made changes, reinitialize handlers
       if (hasChanges) {
         // Reinitialize all handlers for the updated form
         initializeHandlers();
-        
-        // Trigger a price calculation to update costs
-        setTimeout(() => {
-          calculateAndUpdatePrice();
-        }, 100);
       }
     }
 
-
-    function onGetJobQuoteSuccess(response) {
+    async function onGetJobQuoteSuccess(response) {
       // Use the quote price if available, otherwise fallback to local calculation
       // add loop here
       const {
@@ -627,7 +814,7 @@ function initializeWhenReady() {
       } = response;
 
       // Check if we need to re-render the form due to dynamic field changes
-      reRenderForm(response);
+      await reRenderForm(response);
 
       // loop over the variationsGroups
       for (let i = 0; i < variationsGroups.length; i++) {
@@ -865,6 +1052,131 @@ function initializeWhenReady() {
       });
     }
 
+    function renderUploadedFiles(files, $previewArea, $input = null) {
+      if (!Array.isArray(files) || files.length === 0) {
+        return;
+      }
+
+      $previewArea.empty();
+
+      files.forEach(function(merchiFile) {
+        const merchiFileJson = typeof merchiFile === 'string' ? JSON.parse(merchiFile) : merchiFile;
+        
+        const $fileBox = jQuery(`
+          <div class="multi-file-box" style="
+            display: flex; 
+            align-items: center; 
+            margin-bottom: 8px; 
+            background: #fff; 
+            border-radius: 6px; 
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06); 
+            padding: 8px;
+          "></div>
+        `);
+
+        $fileBox.attr({
+          'data-merchi-file': JSON.stringify(merchiFileJson),
+          'data-download-url': merchiFileJson.downloadUrl || merchiFileJson.viewUrl,
+          'data-view-url': merchiFileJson.viewUrl,
+          'data-mimetype': merchiFileJson.mimetype
+        });
+
+        // Add remove button if input is provided (for interactive file management)
+        if ($input) {
+          const $removeBtn = jQuery(`
+            <span class="file-upload-remove" style="
+              margin-left: 10px; 
+              cursor: pointer; 
+              font-size: 20px; 
+              color: #d00;
+            ">&times;</span>
+          `);
+
+          $removeBtn.on('click', function(e) {
+            e.stopPropagation();
+            
+            // Remove from DataTransfer if it exists
+            if ($input[0]._dt) {
+              const newDT = new DataTransfer();
+              Array.from($input[0]._dt.files).forEach(function(f) {
+                const fMerchiData = f._merchiFileJson;
+                if (!fMerchiData || fMerchiData.id !== merchiFileJson.id) {
+                  newDT.items.add(f);
+                }
+              });
+              $input[0]._dt = newDT;
+              $input[0].files = newDT.files;
+            }
+
+            // Remove the file box from display
+            $fileBox.remove();
+            updateFileCount($previewArea);
+            
+            // Trigger change event
+            if ($input) {
+              $input.trigger('change');
+            }
+          });
+
+          $fileBox.append($removeBtn);
+        }
+
+        // Determine if it's an image file
+        const isImage = merchiFileJson.mimetype && merchiFileJson.mimetype.startsWith('image/');
+
+        if (isImage && merchiFileJson.viewUrl) {
+          const $img = jQuery(`
+            <img src="${merchiFileJson.viewUrl}" style="
+              max-width: 60px; 
+              max-height: 60px; 
+              object-fit: contain; 
+              margin-right: 10px; 
+              border-radius: 4px; 
+              box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            " />
+          `);
+          $fileBox.prepend($img);
+        } else {
+          const $fileIcon = jQuery('<span style="font-size: 32px; margin-right: 10px;">📄</span>');
+          $fileBox.prepend($fileIcon);
+        }
+
+        // Add file name
+        const fileName = merchiFileJson.originalFilename || merchiFileJson.name || 'Unknown file';
+        const $fileName = jQuery(`
+          <span style="
+            font-weight: bold; 
+            font-size: 0.9em; 
+            color: #333; 
+            flex-grow: 1;
+          ">${fileName}</span>
+        `);
+        $fileBox.append($fileName);
+
+        // Add download button
+        const downloadUrl = merchiFileJson.downloadUrl || merchiFileJson.viewUrl;
+        if (downloadUrl) {
+          const $downloadBtn = jQuery(`
+            <a href="${downloadUrl}" 
+               download="${fileName}"
+               style="
+                 margin-left: 10px; 
+                 font-size: 18px; 
+                 text-decoration: none; 
+                 color: #0073aa;
+               "
+               title="Download file"
+            >⬇️</a>
+          `);
+          $fileBox.append($downloadBtn);
+        }
+
+        $previewArea.append($fileBox);
+      });
+
+      updateFileCount($previewArea);
+    }
+
     function actionDeleteGroup(e) {
       e.preventDefault();
       const $group = jQuery(this).closest(".group-field-set");
@@ -961,12 +1273,11 @@ function initializeWhenReady() {
       jQuery(document).on('blur', '.group-quantity', function () {
         const $input = jQuery(this);
 
-        if ($input.attr('data-calculate')) {
+        if ($input.attr('data-calculate') === 'true') {
           $input.on('change', debouncedCalculatePrice);
         }
 
         validateAndCorrectQuantity($input, 'blur');
-
       });
 
       // Handle quantity input events (for when user types)
@@ -1000,11 +1311,30 @@ function initializeWhenReady() {
       });
     }
 
+    function initializeColorSelectVariations($container) {
+      $container.find('.color-option').each(function () {
+        const $option = jQuery(this);
+        const $input = $option.find('input');
+        $option.off('click.color-select').on('click.color-select', function (e) {
+          e.preventDefault();
+          if ($input.is(':radio')) {
+            $input.prop('checked', true).trigger('change');
+          } else if ($input.is(':checkbox')) {
+            $input.prop('checked', !$input.prop('checked')).trigger('change');
+          }
+        });
+      });
+    }
+
     function initializeVariationFields($container) {
       $container.find('input[data-calculate], select[data-calculate], textarea[data-calculate]').each(function () {
         const $input = jQuery(this);
         $input.off('change.calculate'); // Remove previous handler
-        $input.on('change.calculate', debouncedCalculatePrice);
+        
+        // Only attach handler if data-calculate is explicitly true
+        if ($input.attr('data-calculate') === 'true') {
+          $input.on('change.calculate', debouncedCalculatePrice);
+        }
       });
     }
 
@@ -1016,6 +1346,7 @@ function initializeWhenReady() {
         jQuery('.price-amount').html("<span class='loading-spinner'></span>" + $price);
       }
       const formData = await gatherFormData();
+
       const jobEntity = merchiSdk.fromJson(new merchiSdk.Job(), formData);
 
       // Make the API call to get the quote
@@ -1079,13 +1410,29 @@ function initializeWhenReady() {
       calculateAndUpdatePrice();
     }
 
-    // Function to initialize handlers for a specific group
+    // Sets all the event listeners for the variations
+    function initializeVariations() {
+      const $variationsContainer = jQuery('.custom-variation-options');
+      // Initialize calculate inputs
+      initializeVariationFields($variationsContainer);
+      // Initialize file inputs
+      initializeFileUploadVariations($variationsContainer);
+      // Initialize image select options
+      initializeImageSelectVariations($variationsContainer);
+      // Initialize color select options
+      initializeColorSelectVariations($variationsContainer);
+    }
+
+    // Sets all the event listeners for the group variations
     function initializeGroupVariationHandlers($group) {
       // Initialize calculate inputs
       initializeVariationFields($group);
 
       // Initialize image select options
       initializeImageSelectVariations($group);
+
+      // Initialize color select options
+      initializeColorSelectVariations($group);
 
       // Initialize file inputs
       initializeFileUploadVariations($group);
@@ -1103,23 +1450,13 @@ function initializeWhenReady() {
       $group.find('.delete-group-button').on('click', actionDeleteGroup);
     }
 
-    function initializeVariations() {
-      const $variationsContainer = jQuery('.custom-variation-options');
-      // Initialize calculate inputs
-      initializeVariationFields($variationsContainer);
-      // Initialize file inputs
-      initializeFileUploadVariations($variationsContainer);
-      // Initialize image select options
-      initializeImageSelectVariations($variationsContainer);
-    }
-
     // Function to add a new group
     const addNewGroup = () => {
       // Use the cloned default values
       const { defaultJob = {} } = productClone;
       const { variationsGroups = [] } = defaultJob;
       const defaultGroup = variationsGroups[0];
-      const { quantity = 1, variations = [] } = defaultGroup;
+      const { variations = [] } = defaultGroup;
 
       // Always use the first fully structured group as the template
       const $firstGroup = jQuery('.group-field-set').filter(function () {
@@ -1292,87 +1629,94 @@ function initializeWhenReady() {
 
 
     // Function to process variations from a container
-    function processVariations($container, variationsArray) {
-      if (!Array.isArray(variationsArray)) {
-        return;
-      }
-
+    async function processVariations($container) {
+      const variations = [];
       $container.find('.custom-field').each(function () {
         const $fieldContainer = jQuery(this);
         const $input = $fieldContainer.find('input, select, textarea').first();
-        const variationFieldData = $input.data('variation-field');
-        const variationFieldId = variationFieldData?.id;
+        const variationField = $input.data('variation-field');
 
-        if (!variationFieldId) return;
+        // if there is no variation field then we skip
+        if (!variationField) return;
 
-        // Find the index of the variation by matching the variationFieldId
-        const variationIndex = variationsArray.findIndex(v => v?.variationField?.id === variationFieldId);
+        const variation = { variationField };
 
-        if (variationIndex === -1) return;
+        switch (variationField.fieldType) {
+          case 1: // TEXT
+          case 4: // TEXTAREA  
+          case 5: // NUMBER
+            variation.value = $input.val();
+            break;
 
-        // Get the value based on input type
-        let value = null;
-        if ($input.is('select')) {
-          value = $input.val();
-        } else if ($input.is('input[type="text"], input[type="number"], textarea')) {
-          value = $input.val();
-        } else if ($input.is('input[type="checkbox"]')) {
-          // Collect all checked values as an array
-          const $checked = $fieldContainer.find('input[type="checkbox"]:checked');
-          if ($checked.length > 1) {
-            value = $checked.map(function () { return $(this).val(); }).get();
-          } else if ($checked.length === 1) {
-            value = $checked.val();
-          } else {
-            value = null;
-          }
-        } else if ($input.is('input[type="radio"]')) {
-          // Check if this specific field container has colour-select inputs
-          const $fieldContainer = $input.closest('.custom-field');
-          const $colourSelectInputs = $fieldContainer.find('input[data-field-type="colour-select"]');
-          if ($colourSelectInputs.length > 0) {
-            // This is a colour-select field
-            const $checked = $fieldContainer.find('input[data-field-type="colour-select"]:checked');
-            value = $checked.length ? $checked.val() : null;
-          } else {
-            // Handle regular radio fields
-            const $checked = $fieldContainer.find('input[type="radio"]:checked');
-            value = $checked.length ? $checked.val() : null;
-          }
-        } else if ($input.is('input[type="color"]')) {
-          value = $input.val();
-        } else if ($input.is('input[type="file"]')) {
-          // Find the preview area next to the file input wrapper
-          const $previewArea = $input.closest('.custom-upload-wrapper').next('.multi-file-upload-preview');
-          const variationFiles = [];
+          case 2: // SELECT
+            variation.value = $input.val();
+            break;
 
-          // Process each file box in the preview area
-          $previewArea.find('.multi-file-box').each(function () {
-            const $fileBox = jQuery(this);
-            const merchiFileData = $fileBox.attr('data-merchi-file');
+          case 3: // FILE
+            // Find the preview area next to the file input wrapper
+            const $previewArea = $input.closest('.custom-upload-wrapper').next('.multi-file-upload-preview');
+            const variationFiles = [];
 
-            if (merchiFileData) {
-              try {
-                const merchiFile = JSON.parse(merchiFileData);
-                variationFiles.push(merchiFile);
-              } catch (e) {
-                console.error('Error parsing Merchi file data:', e);
+            // Process each file box in the preview area
+            $previewArea.find('.multi-file-box').each(function () {
+              const $fileBox = jQuery(this);
+              const merchiFileData = $fileBox.attr('data-merchi-file');
+
+              if (merchiFileData) {
+                try {
+                  const merchiFile = JSON.parse(merchiFileData);
+                  variationFiles.push(merchiFile);
+                } catch (e) {
+                  console.error('Error parsing Merchi file data:', e);
+                }
               }
+            });
+
+            // Store the full file objects for cart and API
+            variation.value = variationFiles.map(file => file.id).join(',');
+            variation.variationFiles = variationFiles;
+            break;
+            
+          case 6: // CHECKBOX
+            // Collect all checked values as an array
+            const $checked = $fieldContainer.find('input[type="checkbox"]:checked');
+            if ($checked.length > 1) {
+              variation.value = $checked.map(function () { return $(this).val(); }).get();
+            } else if ($checked.length === 1) {
+              variation.value = $checked.val();
+            } else {
+              variation.value = null;
             }
-          });
-
-          // Store the full file objects for cart and API
-          value = variationFiles;
-          variationsArray[variationIndex].variationFiles = variationFiles;
+            break;
+            
+          case 7: // RADIO
+            const $checkedRadio = $fieldContainer.find('input[type="radio"]:checked');
+            variation.value = $checkedRadio.length ? $checkedRadio.val() : null;
+            break;
+            
+          case 9: // IMAGE_SELECT
+            const $checkedImage = $fieldContainer.find('input[data-field-type="image-select"]:checked');
+            variation.value = $checkedImage.length ? $checkedImage.val() : null;
+            break;
+            
+          case 10: // COLOR
+            variation.value = $input.val();
+            break;
+            
+          case 11: // COLOR_SELECT
+            const $checkedColor = $fieldContainer.find('input[data-field-type="colour-select"]:checked');
+            variation.value = $checkedColor.length ? $checkedColor.val() : null;
+            break;
+            
+          default:
+            // Fallback to input value
+            variation.value = $input.val();
+            break;
         }
 
-        // Update the value of the variation
-        variationsArray[variationIndex].value = value;
-
-        if (!Array.isArray(variationsArray[variationIndex].variationFiles)) {
-          variationsArray[variationIndex].variationFiles = [];
-        }
+        variations.push(variation);
       });
+      return variations;
     }
 
     // Function to gather form data with proper group handling
@@ -1392,91 +1736,24 @@ function initializeWhenReady() {
       const formData = {
         ...defaultJobJson,
         variationsGroups: [],
-        variations: Array.isArray(defaultJobJson.variations) ? [...defaultJobJson.variations] : []
+        variations: [],
       };
 
       // Process group variations
       if (groupVariationFields && groupVariationFields.length > 0) {
-        jQuery('.group-field-set').each(function (groupIndex) {
-          const $group = jQuery(this);
-          const groupVariations = [];
+        const $groups = jQuery('.group-field-set');
+        for (let groupIndex = 0; groupIndex < $groups.length; groupIndex++) {
+          const $group = jQuery($groups[groupIndex]);
 
-          // For each field in this group, get the field ID and value
-          $group.find('.custom-field').each(function () {
-            const $input = jQuery(this).find('input, select, textarea').first();
-            const variationFieldData = $input.data('variation-field');
-            if (!variationFieldData) return;
-
-            let value = $input.val();
-            let variationFilesForGroup = undefined; // Initialize here
-            // Handle checkboxes, radios, files, etc. as in your processVariations
-            if ($input.is('select')) {
-              value = $input.val();
-            } else if ($input.is('input[type="text"], input[type="number"], textarea')) {
-              value = $input.val();
-            } else if ($input.is('input[type="checkbox"]')) {
-              // Collect all checked values as an array
-              const $checked = $group.find('input[type="checkbox"]:checked');
-              if ($checked.length > 1) {
-                value = $checked.map(function () { return $(this).val(); }).get();
-              } else if ($checked.length === 1) {
-                value = $checked.val();
-              } else {
-                value = null;
-              }
-            } else if ($input.is('input[type="radio"]')) {
-              // Check if this specific field container has colour-select inputs
-              const $fieldContainer = $input.closest('.custom-field');
-              const $colourSelectInputs = $fieldContainer.find('input[data-field-type="colour-select"]');
-              if ($colourSelectInputs.length > 0) {
-                // This is a colour-select field
-                const $checked = $fieldContainer.find('input[data-field-type="colour-select"]:checked');
-                value = $checked.length ? $checked.val() : null;
-              } else {
-                // This is a regular radio field
-                const $checked = $fieldContainer.find('input[type="radio"]:checked');
-                value = $checked.length ? $checked.val() : null;
-              }
-            } else if ($input.is('input[type="color"]')) {
-              value = $input.val();
-            } else if ($input.is('input[type="file"]')) {
-              // Find the preview area next to the file input wrapper
-              const $previewArea = $input.closest('.custom-upload-wrapper').next('.multi-file-upload-preview');
-              const variationFiles = [];
-              $previewArea.find('.multi-file-box').each(function () {
-                const $fileBox = jQuery(this);
-                const merchiFileData = $fileBox.attr('data-merchi-file');
-                if (merchiFileData) {
-                  try {
-                    const merchiFile = JSON.parse(merchiFileData);
-                    variationFiles.push(merchiFile);
-                  } catch (e) {
-                    console.error('Error parsing Merchi file data:', e);
-                  }
-                }
-              });
-              // Store the full file objects for cart and API
-              value = variationFiles;
-              variationFilesForGroup = variationFiles;
-            }
-
-            groupVariations.push({
-              variationField: {
-                id: variationFieldData.id,
-                name: variationFieldData.name
-              },
-              value: value,
-              // ...(variationFilesForGroup ? { variationFiles: variationFilesForGroup } : {})
-              variationFiles: variationFilesForGroup ?? [],
-            });
-          });
+          // Use processVariations to handle the group fields consistently
+          const groupVariations = await processVariations($group);
 
           formData.variationsGroups.push({
             groupCost: parseFloat($group.find('[data-group-cost]').attr('data-group-cost')) || 0,
-            quantity: parseInt($group.find('.group-quantity').val()) || 1,
+            quantity: parseInt($group.find('.group-quantity').val) || 1,
             variations: groupVariations
           });
-        });
+        }
       } else {
         // if there are no groups then we just use the quantity from the quantity input
         const minimumQuantity = productJson.minimum || 1;
@@ -1484,7 +1761,7 @@ function initializeWhenReady() {
       }
 
       // Process standalone variations
-      processVariations(jQuery('.custom-variation-options'), formData.variations);
+      formData.variations = await processVariations(jQuery('.custom-variation-options'));
 
       return formData;
     }
@@ -1524,10 +1801,6 @@ function initializeWhenReady() {
       try {
         // Gather form data and log it
         const merchiCartItemJson = await gatherFormData();
-        const { quantity, variationsGroups = [], variations = [] } = merchiCartItemJson;
-
-        let cartId = null;
-
         // use querySelector to get the main image and assign it to featureImage
         const pageImg = document.querySelector(
           '.woocommerce-product-gallery__image img, .woocommerce-product-gallery__wrapper img, meta[property="og:image"]'

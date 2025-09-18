@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import ct from 'countries-and-timezones';
 
-export const backendUri = 'http://dev.localhost:5000/';
+export const backendUri = 'http://api.merchi.co/';
 export const websocketServer = 'https://websockets.merchi.co/';
 
 export const stagingBackendUri = 'https://api.staging.merchi.co/';
