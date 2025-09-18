@@ -94,7 +94,7 @@ class ProductPage extends BaseController {
 
 		// Get the correct configuration based on staging mode
 		$merchi_domain = $staging_mode === 'yes' ? get_option('staging_merchi_url') : get_option('merchi_url');
-		$merchi_url = $staging_mode === 'yes' ? 'https://api.staging.merchi.co/' : 'http://api.merchi.co/';
+		$merchi_url = $staging_mode === 'yes' ? 'https://api.staging.merchi.co/' : 'https://api.merchi.co/';
 
 		// Debug logging (only log when actually loading scripts)
 		error_log('Merchi Configuration:');

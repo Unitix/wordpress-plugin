@@ -47,7 +47,7 @@ class ExportProducts extends BaseController {
     }
     else {
       $api_secret = esc_attr( get_option( 'merchi_api_secret' ) );
-      $merchi_url = 'https://api.merchi.coains/import/woocommerce/';
+      $merchi_url = 'https://api.merchi.co/v6/domains/import/woocommerce/';
     }
     $args = [
       'body' => [
