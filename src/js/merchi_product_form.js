@@ -544,111 +544,6 @@ function initializeWhenReady() {
         e.stopPropagation();
         addNewGroup();
       });
-
-      // Replace the file upload preview handler
-      // jQuery(document).off('change', 'input[type="file"]');
-      // jQuery(document).on('change', 'input[type="file"]', function(e) {
-      //   var $input = jQuery(this);
-      //   var $wrapper = $input.closest('.custom-upload-wrapper');
-      //   var $previewArea = $wrapper.next('.multi-file-upload-preview');
-      //   if ($previewArea.length === 0) {
-      //     $previewArea = jQuery('<div class="multi-file-upload-preview"></div>');
-      //     $wrapper.after($previewArea);
-      //   }
-
-      //   $input.off('change.file-input').on('change.file-input', function(e) {
-      //     var files = Array.from(this.files);
-
-      //     // --- Maintain a DataTransfer object for this input ---
-      //     if (!$input[0]._dt) {
-      //       $input[0]._dt = new DataTransfer();
-      //     }
-      //     var dt = $input[0]._dt;
-
-      //     // Add new files, avoiding duplicates by name+size
-      //     files.forEach(function(file) {
-      //       var exists = false;
-      //       for (var i = 0; i < dt.items.length; i++) {
-      //         var f = dt.items[i].getAsFile();
-      //         if (f.name === file.name && f.size === file.size) {
-      //           exists = true;
-      //           break;
-      //         }
-      //       }
-      //       if (!exists) dt.items.add(file);
-      //     });
-      //     // Update input files
-      //     $input[0].files = dt.files;
-
-      //     // --- Render preview ---
-      //     $previewArea.empty();
-      //     var dtFiles = Array.from(dt.files);
-      //     if (dtFiles.length > 0) {
-      //       dtFiles.forEach(function(file, idx) {
-      //         var $fileBox = jQuery('<div class="multi-file-box" style="display: flex; align-items: center; margin-bottom: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 8px;"></div>');
-      //         var $removeBtn = jQuery('<span class="file-upload-remove" style="margin-left: 10px; cursor: pointer; font-size: 20px; color: #d00;">&times;</span>');
-      //         $removeBtn.on('click', function(e) {
-      //           e.stopPropagation();
-      //           var newDT = new DataTransfer();
-      //           dtFiles.forEach(function(f, i) {
-      //             if (i !== idx) newDT.items.add(f);
-      //           });
-      //           $input[0]._dt = newDT;
-      //           $input[0].files = newDT.files;
-      //           $input.trigger('change');
-      //         });
-      //         if (file.type.startsWith('image/')) {
-      //           var reader = new FileReader();
-      //           reader.onload = function(e) {
-      //             var $img = jQuery('<img />', {
-      //               src: e.target.result,
-      //               css: {
-      //                 'max-width': '60px',
-      //                 'max-height': '60px',
-      //                 'object-fit': 'contain',
-      //                 'margin-right': '10px',
-      //                 'border-radius': '4px',
-      //                 'box-shadow': '0 1px 4px rgba(0,0,0,0.08)'
-      //               }
-      //             });
-      //             $fileBox.prepend($img);
-      //           };
-      //           reader.readAsDataURL(file);
-      //         } else {
-      //           var $fileIcon = jQuery('<span style="font-size: 32px; margin-right: 10px;">📄</span>');
-      //           $fileBox.prepend($fileIcon);
-      //         }
-      //         var $fileName = jQuery('<span style="font-weight: bold; font-size:0.5em; color: #333;">' + file.name + '</span>');
-      //         var $downloadBtn = jQuery('<a style="margin-left: 10px; font-size: 18px; text-decoration: none;" href="#" download>⬇️</a>');
-      //         $downloadBtn.on('click', function(ev) {
-      //           ev.preventDefault();
-      //           var url = URL.createObjectURL(file);
-      //           var a = document.createElement('a');
-      //           a.href = url;
-      //           a.download = file.name;
-      //           document.body.appendChild(a);
-      //           a.click();
-      //           setTimeout(function() { URL.revokeObjectURL(url); document.body.removeChild(a); }, 100);
-      //         });
-      //         $fileBox.append($fileName).append($downloadBtn).append($removeBtn);
-      //         $previewArea.append($fileBox);
-      //       });
-      //       // Show file count
-      //       var $count = jQuery('<div style="color: #666; font-size: 14px; font-weight:bold; margin-top: 4px;">' + dtFiles.length + ' file' + (dtFiles.length > 1 ? 's' : '') + ' selected <span style="cursor:pointer;color:#0073aa;" class="toggle-file-list">&#9650;</span></div>');
-      //       $previewArea.append($count);
-      //       $count.find('.toggle-file-list').on('click', function() {
-      //         $previewArea.toggleClass('collapsed');
-      //         $previewArea.find('.multi-file-box').toggle();
-      //         jQuery(this).html($previewArea.hasClass('collapsed') ? '&#9660;' : '&#9650;');
-      //       });
-      //     } else {
-      //       $previewArea.empty();
-      //     }
-      //     // Always show icon and instruction
-      //     $wrapper.find('.upload-icon').show();
-      //     $wrapper.find('.upload-instruction, .upload-types').show();
-      //   });
-      // });
     }
 
     function initializeImageSelectVariations($container) {
@@ -1506,6 +1401,10 @@ jQuery(function ($) {
     $gallery.after('<div class="wc-gallery-placeholder" aria-hidden="true"></div>');
   }
 
+  function isMobileDevice() {
+    return window.innerWidth < 768;
+  }
+
   function topOffset() {
     var o = 16;
     var $admin = $('#wpadminbar'); if ($admin.length) o += $admin.outerHeight();
@@ -1516,6 +1415,11 @@ jQuery(function ($) {
   }
 
   function update() {
+    if (isMobileDevice()) {
+      $gallery.removeClass('wc-gallery--fixed wc-gallery--stuck');
+      return;
+    }
+
     var off = topOffset();
     var EXTRA = 100;
     var gTop = $gallery.offset().top;
