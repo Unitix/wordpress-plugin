@@ -862,6 +862,7 @@ function render_custom_product_meta_box()
                 success: function(response) {
                     if (response.success) {
                         status.text('Synced successfully!');
+                        window.location.reload();
                     } else {
                         status.text('Sync failed: ' + (response.data && response.data.message ? response.data.message : 'Unknown error'));
                     }
@@ -893,6 +894,7 @@ function render_custom_product_meta_box()
                 success: function(response) {
                     if (response.success) {
                         status.text('Synced successfully!');
+                        window.location.reload();
                     } else {
                         status.text('Sync failed: ' + (response.data && response.data.message ? response.data.message : 'Unknown error'));
                     }
@@ -2531,7 +2533,7 @@ function import_merchi_product_data($woo_product_id) {
 							],
 							'selectedBy' => new stdClass()
 				],
-				'featureImage' => new stdClass(),
+        'featureImage' => new stdClass(),
         'images' => new stdClass(),
         'independentVariationFields' => [
 					  'options' => [
