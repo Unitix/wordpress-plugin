@@ -959,7 +959,28 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   width: 50px;
   height: 50px;
   border-radius: 50%;
+  border: 2px solid #ddd;
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.custom-field input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border-radius: 50%;
+}
+
+.custom-field input[type="color"]::-webkit-color-swatch {
   border: none;
+  border-radius: 50%;
+}
+
+.custom-field input[type="color"]::-moz-color-swatch {
+  border: none;
+  border-radius: 50%;
 }
 
 .custom-field input[type="file"] {
