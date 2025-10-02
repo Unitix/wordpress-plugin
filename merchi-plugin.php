@@ -848,8 +848,8 @@ function render_custom_product_meta_box()
     <script type="text/javascript">
     jQuery(document).ready(function($) {
         $('#sync_with_merchi_btn').on('click', function() {
-            var btn = $(this);
-            var status = $('#sync_merchi_status');
+            let btn = $(this);
+            let status = $('#sync_merchi_status');
             btn.prop('disabled', true);
             status.text('Syncing...');
             $.ajax({
@@ -2531,6 +2531,7 @@ function import_merchi_product_data($woo_product_id) {
 							],
 							'selectedBy' => new stdClass()
 				],
+				'featureImage' => new stdClass(),
         'images' => new stdClass(),
         'independentVariationFields' => [
 					  'options' => [
@@ -2566,6 +2567,68 @@ function import_merchi_product_data($woo_product_id) {
     if (isset($data['product']['allowQuotation'])) {
         $allow_quotation = $data['product']['allowQuotation'];
         update_post_meta($woo_product_id, 'allowQuotation', $allow_quotation);
+    }
+
+    // Handle feature image
+    if (isset($data['product']['featureImage']) && !empty($data['product']['featureImage'])) {
+        $feature_image = $data['product']['featureImage'];
+        $image_url = null;
+        
+        // Get the image URL from the featureImage data
+        if (is_array($feature_image) && isset($feature_image['viewUrl'])) {
+            $image_url = $feature_image['viewUrl'];
+        } elseif (is_string($feature_image)) {
+            $image_url = $feature_image;
+        }
+        
+        if ($image_url) {
+            error_log('import_merchi_product_data: Downloading feature image from: ' . $image_url);
+            $attachment_id = download_and_attach_image($image_url);
+            
+            if ($attachment_id && !is_wp_error($attachment_id)) {
+                set_post_thumbnail($woo_product_id, $attachment_id);
+                error_log('import_merchi_product_data: Successfully set post thumbnail with attachment ID: ' . $attachment_id);
+            } else {
+                error_log('import_merchi_product_data: Failed to download or attach feature image');
+            }
+        }
+    }
+
+    // Handle gallery images
+    if (isset($data['product']['images']) && is_array($data['product']['images']) && !empty($data['product']['images'])) {
+        $gallery_attachment_ids = [];
+
+        foreach ($data['product']['images'] as $image_item) {
+            $image_url = null;
+
+            if (is_array($image_item)) {
+                if (isset($image_item['viewUrl'])) {
+                    $image_url = $image_item['viewUrl'];
+                } elseif (isset($image_item['url'])) {
+                    $image_url = $image_item['url'];
+                }
+            } elseif (is_string($image_item)) {
+                $image_url = $image_item;
+            }
+
+            if (!empty($image_url)) {
+                error_log('import_merchi_product_data: Downloading gallery image from: ' . $image_url);
+                $attachment_id = download_and_attach_image($image_url);
+                if ($attachment_id && !is_wp_error($attachment_id)) {
+                    $gallery_attachment_ids[] = (int) $attachment_id;
+                } else {
+                    error_log('import_merchi_product_data: Failed to download or attach gallery image');
+                }
+            }
+        }
+
+        if (!empty($gallery_attachment_ids)) {
+            // Remove duplicates and ensure integers
+            $gallery_attachment_ids = array_values(array_unique(array_map('intval', $gallery_attachment_ids)));
+            // Store as comma-separated list per WooCommerce convention
+            update_post_meta($woo_product_id, '_product_image_gallery', implode(',', $gallery_attachment_ids));
+            error_log('import_merchi_product_data: Set product gallery with attachment IDs: ' . implode(',', $gallery_attachment_ids));
+        }
     }
 
     update_post_meta($woo_product_id, '_merchi_product_data', $data);
