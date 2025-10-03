@@ -2982,7 +2982,7 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 				}
 
 				$variation_options = [];
-				foreach ($options as $option) {
+        foreach ($options as $option) {
 					if (!empty($option['include']) && !empty($option['value'])) {
 						$option_value = sanitize_text_field($option['value']);
 						$image_url = !empty($option['linkedFile']['viewUrl']) ? esc_url($option['linkedFile']['viewUrl']) : '';
@@ -3007,7 +3007,7 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 							}
 						}
 
-						if (!empty($option['id'])) {
+            if (!empty($option['id'])) {
 							update_term_meta($term_id, 'variation_option_id', sanitize_text_field($option['id']));
 						}
 
@@ -3018,6 +3018,11 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 						update_term_meta($term_id, 'variationCost', $variation_cost);
 						update_term_meta($term_id, 'variationUnitCost', $variation_unit_cost);
 						update_term_meta($term_id, 'colour', $colour);
+
+            // Store option position for frontend rendering and WooCommerce ordering
+            $position = isset($option['position']) ? intval($option['position']) : 0;
+            update_term_meta($term_id, 'position', $position);
+            update_term_meta($term_id, 'order_' . $taxonomy, $position);
 
 						$variation_options[] = $option_value;
 					}
@@ -3083,7 +3088,7 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 
 				$variation_options = [];
 
-				foreach ($options as $option) {
+        foreach ($options as $option) {
 					if (!empty($option['include']) && !empty($option['value'])) {
 						$option_value = sanitize_text_field($option['value']);
 						$image_url = !empty($option['linkedFile']['viewUrl']) ? esc_url($option['linkedFile']['viewUrl']) : '';
@@ -3111,7 +3116,7 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 							}
 						}
 
-						if (!empty($option['id'])) {
+            if (!empty($option['id'])) {
 							update_term_meta($term_id, 'variation_option_id', sanitize_text_field($option['id']));
 						}
 
@@ -3119,6 +3124,11 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 						update_term_meta($term_id, 'colour', $colour);
 						update_term_meta($term_id, 'variationCost', $variation_option_cost);
 						update_term_meta($term_id, 'variationUnitCost', $variation_option_unit_cost);
+
+						// Store option position for frontend rendering and WooCommerce ordering
+						$position = isset($option['position']) ? intval($option['position']) : 0;
+						update_term_meta($term_id, 'position', $position);
+						update_term_meta($term_id, 'order_' . $taxonomy, $position);
 
 						$variation_options[] = $option_value;
 					}

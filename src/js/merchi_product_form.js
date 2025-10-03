@@ -192,6 +192,29 @@ function initializeWhenReady() {
       return `$${totalCost.toFixed(2)} ${taxText}`;
     }
 
+    // Sort selectable options by their position, falling back to name/value
+    function sortOptionsByPosition(options) {
+      if (!Array.isArray(options)) return [];
+      return options.slice().sort((a, b) => {
+        const posA = a && a.position;
+        const posB = b && b.position;
+
+        const hasPosA = typeof posA === 'number';
+        const hasPosB = typeof posB === 'number';
+
+        if (hasPosA && hasPosB) {
+          if (posA === posB) return 0;
+          return posA < posB ? -1 : 1;
+        }
+        if (hasPosA) return -1;
+        if (hasPosB) return 1;
+
+        const nameA = (a && (a.value || a.name || '')) + '';
+        const nameB = (b && (b.value || b.name || '')) + '';
+        return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+      });
+    }
+
     // Helper function to render field HTML in JavaScript (mirrors PHP rendering logic)
     function renderFieldHtml(newVariation, namePrefix, fieldIndex, isGroup = false, groupIndex = 0) {
       const {
@@ -251,6 +274,8 @@ function initializeWhenReady() {
         }
         return label;
       };
+
+      const sortedOptions = sortOptionsByPosition(selectableOptions);
       let html = `<div class="custom-field"${requiredClass}>`;
 
       switch (fieldType) {
@@ -273,7 +298,7 @@ function initializeWhenReady() {
           } else {
             html += `<select name="${fieldName}"${commonDataAttrs} class="select">`;
           }
-          selectableOptions.forEach((option, index) => {
+          sortedOptions.forEach((option, index) => {
             const selected = index === 0 && !multipleSelect ? 'selected' : '';
             const isEnabled = option.isVisible && option.available;
             const optionCost = costLabelForOption(option);
@@ -398,7 +423,7 @@ function initializeWhenReady() {
         case 6: // CHECKBOX
           html += `<label for="${fieldName}">${label}</label>`;
           html += '<div class="checkbox-options-container">';
-            selectableOptions.forEach(option => {
+            sortedOptions.forEach(option => {
               const isEnabled = option.isVisible && option.available;
               const optionCost = costLabelForOption(option);
               const disabledAttr = !isEnabled ? 'disabled' : '';
@@ -423,7 +448,7 @@ function initializeWhenReady() {
         case 7: // RADIO
           html += `<label for="${fieldName}">${label}</label>`;
           html += '<div class="radio-options-container">';
-            selectableOptions.forEach((option) => {
+            sortedOptions.forEach((option) => {
               const isEnabled = option.isVisible && option.available;
               const checked = isOptionSelected(option) ? 'checked' : '';
               const optionCost = costLabelForOption(option);
@@ -465,7 +490,7 @@ function initializeWhenReady() {
             </label>`;
           html += `<div class="group-variation-container" name="${fieldName}"${commonDataAttrs}>`;
           html += '<div class="image-select-options-container">';
-            selectableOptions.forEach((option) => {
+            sortedOptions.forEach((option) => {
               const checked = isOptionSelected(option) ? 'checked' : '';
               const isEnabled = option.isVisible && option.available;
               const disabledAttr = !isEnabled ? 'disabled' : '';
@@ -509,7 +534,7 @@ function initializeWhenReady() {
               ${label} ${costLabel()}
             </label>`;
           html += '<div class="color-options-grid">';
-          selectableOptions.forEach((option) => {
+          sortedOptions.forEach((option) => {
             const isEnabled = option.isVisible && option.available;
             const checked = isOptionSelected(option) ? 'checked' : '';
             const disabledAttr = !isEnabled ? 'disabled' : '';
@@ -583,7 +608,7 @@ function initializeWhenReady() {
 
     // Helper function to apply variation values to rendered fields
     function applyVariationValue($container, variation) {
-      const { value, variationField, variationFiles = [] } = variation;
+      const { value, variationField } = variation;
       const variationFieldId = variationField.id;
       // Find the field with matching variation field ID
       const $field = $container.find('[data-variation-field]').filter(function() {
@@ -640,13 +665,14 @@ function initializeWhenReady() {
           if (fieldData.multipleSelect) {
             // Uncheck all checkboxes first
             $inputContainer.find('input[type="checkbox"]').prop('checked', false);
+            const values = value.split(',');
             
-            if (Array.isArray(value)) {
-              value.forEach(val => {
+            if (values.length > 1) {
+              values.forEach(val => {
                 $inputContainer.find(`input[type="checkbox"][value="${val}"]`).prop('checked', true);
               });
-            } else if (value) {
-              $inputContainer.find(`input[type="checkbox"][value="${value}"]`).prop('checked', true);
+            } else if (values.length === 1) {
+              $inputContainer.find(`input[type="checkbox"][value="${values[0]}"]`).prop('checked', true);
             }
           } else {
             // Uncheck all radios first
@@ -1516,6 +1542,17 @@ function initializeWhenReady() {
 
         const variation = { variationField };
 
+        function getCheckedValues($fieldContainer) {
+          let $isChecked = $fieldContainer.find('input[type="checkbox"]:checked');
+          if ($isChecked.length > 1) {
+            return $isChecked.map(function () { return $(this).val(); }).get().join(',');
+          } else if ($isChecked.length === 1) {
+            return $isChecked.val();
+          } else {
+            return null;
+          }
+        }
+
         switch (variationField.fieldType) {
           case 1: // TEXT
           case 4: // TEXTAREA  
@@ -1554,14 +1591,7 @@ function initializeWhenReady() {
             
           case 6: // CHECKBOX
             // Collect all checked values as an array
-            const $checked = $fieldContainer.find('input[type="checkbox"]:checked');
-            if ($checked.length > 1) {
-              variation.value = $checked.map(function () { return $(this).val(); }).get();
-            } else if ($checked.length === 1) {
-              variation.value = $checked.val();
-            } else {
-              variation.value = null;
-            }
+            variation.value = getCheckedValues($fieldContainer);
             break;
             
           case 7: // RADIO
@@ -1570,8 +1600,8 @@ function initializeWhenReady() {
             break;
             
           case 9: // IMAGE_SELECT
-            const $checkedImage = $fieldContainer.find('input[data-field-type="image-select"]:checked');
-            variation.value = $checkedImage.length ? $checkedImage.val() : null;
+            // Collect all checked values as an array
+            variation.value = getCheckedValues($fieldContainer);
             break;
             
           case 10: // COLOR
@@ -1579,8 +1609,7 @@ function initializeWhenReady() {
             break;
             
           case 11: // COLOR_SELECT
-            const $checkedColor = $fieldContainer.find('input[data-field-type="colour-select"]:checked');
-            variation.value = $checkedColor.length ? $checkedColor.val() : null;
+            variation.value = getCheckedValues($fieldContainer);
             break;
             
           default:
