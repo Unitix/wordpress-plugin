@@ -1181,8 +1181,10 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 .merchi-action-buttons-container {
   display: flex;
   flex-wrap: wrap;
+  gap: 15px;
   max-width: 800px;
   justify-content: flex-start;
+  align-items: center;
   padding-left: 0 !important;
   margin-left: 0 !important;
 }
@@ -1195,28 +1197,16 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 .single_add_to_cart_button,
 .single_get_quote_button,
 .ts-buy-now-button {
-  width: 180px;
-}
-
-
-.single_add_to_cart_button {
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
   margin: 0 !important;
-  flex: 0 0 auto;
-  margin-left: 0 !important;
-  margin-right: 15px !important;
-}
-
-.single_get_quote_button {
-  margin: 0 !important;
-  flex: 0 0 auto;
-  margin-left: 15px !important;
-  margin-right: 0 !important;
-}
-
-/* Buy Now button spacing */
-.ts-buy-now-button {
-  margin-left: 15px !important;
-  margin-right: 15px !important;
+  box-sizing: border-box;
+  padding: 12px 24px !important;
+  height: auto !important;
+  line-height: 1.5 !important;
+  vertical-align: middle;
+  width: auto !important;
 }
 
 .number-button {
@@ -1226,6 +1216,13 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 .custom-field .quantity .plus,
 .custom-field .quantity .number-button:after {
   right: 0 !important;
+}
+
+@media (max-width: 768px) {
+  .custom-field .quantity .plus,
+  .custom-field .quantity .number-button:after {
+    right: 20px !important;
+  }
 }
 
 .group-quantity-container {
@@ -1925,4 +1922,53 @@ body.single-product #cart-count {
 .wc-gallery--fixed+.wc-gallery-placeholder,
 .wc-gallery--stuck+.wc-gallery-placeholder {
   height: var(--gallery-pin-height, 0);
+}
+
+@media (max-width: 991px) {
+  .wc-gallery--fixed {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    width: auto !important;
+    z-index: auto !important;
+    transform: none !important;
+  }
+
+  .wc-gallery--stuck {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    width: auto !important;
+  }
+
+  .wc-gallery-placeholder {
+    display: none !important;
+    height: 0 !important;
+    width: 0 !important;
+  }
+
+  .wc-gallery--fixed+.wc-gallery-placeholder,
+  .wc-gallery--stuck+.wc-gallery-placeholder {
+    display: none !important;
+    height: 0 !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .merchi-action-buttons-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    width: 100%;
+  }
+
+  .single_add_to_cart_button,
+  .single_get_quote_button,
+  .ts-buy-now-button {
+    flex: 1 1 calc(50% - 7.5px);
+    max-width: calc(50% - 7.5px);
+    margin: 0 !important;
+    padding: 12px 16px !important;
+    font-size: 14px;
+  }
 }
