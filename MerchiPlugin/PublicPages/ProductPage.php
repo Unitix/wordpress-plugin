@@ -201,7 +201,7 @@ class ProductPage extends BaseController {
 		// Add group quantity field after variation fields
 		echo '<div class="custom-field">';
 		if ($minimum_quantity > 1) {
-			echo '<label>Quantity <span class="price-tooltip-icon" data-tooltip="This product requires a minimum order of ' . esc_attr($minimum_quantity) . ' units">
+			echo '<label for="quantity">Quantity <span class="price-tooltip-icon" data-tooltip="This product requires a minimum order of ' . esc_attr($minimum_quantity) . ' units">
 				<svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 					<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
 					<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -209,12 +209,12 @@ class ProductPage extends BaseController {
 				</svg>
 			</span></label>';
 		} else {
-			echo '<label>Quantity</label>';
+			echo '<label for="quantity">Quantity</label>';
 		}
 		echo '<div class="quantity">';
 		echo '<div class="number-button">';
 		echo '<input type="button" value="-" class="minus" data-group-index="0">';
-		echo '<input type="number" class="qty group-quantity" name="variationsGroups[0].quantity" value="' . esc_attr($minimum_quantity) . '" min="' . esc_attr($minimum_quantity) . '" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="0" aria-label="Product quantity" step="1" inputmode="numeric" autocomplete="off">';
+		echo '<input type="number" id="quantity" class="qty group-quantity" name="variationsGroups[0].quantity" value="' . esc_attr($minimum_quantity) . '" min="' . esc_attr($minimum_quantity) . '" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="0" aria-label="Product quantity" step="1" inputmode="numeric" autocomplete="off">';
 		echo '<input type="button" value="+" class="plus" data-group-index="0">';
 		echo '</div>';
 		echo '<span class="group-unit-price"><span class="loading-spinner"></span></span>';
@@ -264,7 +264,7 @@ class ProductPage extends BaseController {
 		
 		echo '<div class="custom-field">';
 		if ($minimum_quantity > 1) {
-			echo '<label>Quantity <span class="price-tooltip-icon" data-tooltip="This product requires a minimum order of ' . esc_attr($minimum_quantity) . ' units">
+			echo '<label for="quantity">Quantity <span class="price-tooltip-icon" data-tooltip="This product requires a minimum order of ' . esc_attr($minimum_quantity) . ' units">
 				<svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 					<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
 					<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -272,13 +272,13 @@ class ProductPage extends BaseController {
 				</svg>
 			</span></label>';
 		} else {
-			echo '<label>Quantity</label>';
+			echo '<label for="quantity">Quantity</label>';
 		}
 		echo '
 			<div class="quantity">
 				<div class="number-button">
 					<input type="button" value="-" class="minus" data-group-index="0">
-					<input type="number" class="qty group-quantity" name="quantity" value="' . esc_attr($minimum_quantity) . '" min="' . esc_attr($minimum_quantity) . '" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="0" aria-label="Product quantity" step="1" inputmode="numeric" autocomplete="off">
+					<input type="number" id="quantity" class="qty group-quantity" name="quantity" value="' . esc_attr($minimum_quantity) . '" min="' . esc_attr($minimum_quantity) . '" data-unit-price="' . esc_attr($unit_price) . '" data-group-index="0" aria-label="Product quantity" step="1" inputmode="numeric" autocomplete="off">
 					<input type="button" value="+" class="plus" data-group-index="0">
 				</div>
 				<span class="group-unit-price">$' . esc_html($unit_price) . ' per unit</span>
