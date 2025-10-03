@@ -430,7 +430,7 @@ class ProductPage extends BaseController {
 			if ($field_type === 2) {
 					$html .= "<label for='{$slug}'>{$label}</label>";
 					if ($is_multiple) {
-							$html .= '<select multiple name="' . $field_name . '" ' . $common_data_attrs . ' data-calculate="' . ($has_cost ? 'true' : 'false') . '" class="select">';
+							$html .= '<select multiple id="' . $slug . '" name="' . $field_name . '" ' . $common_data_attrs . ' data-calculate="' . ($has_cost ? 'true' : 'false') . '" class="select">';
 							foreach ($terms as $term) {
 									$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
 									$variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
@@ -444,7 +444,7 @@ class ProductPage extends BaseController {
 							}
 							$html .= '</select>';
 					} else {
-							$html .= '<select name="' . $field_name . '"' . $common_data_attrs . ' data-calculate="' . ($has_cost ? 'true' : 'false') . '" class="select">';
+							$html .= '<select id="' . $slug . '" name="' . $field_name . '"' . $common_data_attrs . ' data-calculate="' . ($has_cost ? 'true' : 'false') . '" class="select">';
 							foreach ($terms as $index => $term) {
 									$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
 									$variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
@@ -498,9 +498,10 @@ class ProductPage extends BaseController {
 							$normalized_term_name = preg_replace('/\s+/', ' ', trim($term->name));
 							$normalized_default_value = $default_option_value ? preg_replace('/\s+/', ' ', trim($default_option_value)) : '';
 							$is_checked = (strtolower($normalized_term_name) === strtolower($normalized_default_value)) ? 'checked' : '';
+							$radio_id = ($index === 0) ? $slug : $slug . '_' . $index;
 							$html .= '<div class="radio-option">';
-							$html .= '<label class="radio-label">';
-							$html .= '<input type="radio" name="' . $field_name . '" value="' . esc_attr($variation_option_id) . '" ' . $is_checked . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '" class="input-radio" />';
+							$html .= '<label class="radio-label" for="' . $radio_id . '">';
+							$html .= '<input type="radio" id="' . $radio_id . '" name="' . $field_name . '" value="' . esc_attr($variation_option_id) . '" ' . $is_checked . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '" class="input-radio" />';
 							$html .= '<span class="option-label">' . esc_html($term->name) 
 									. $this->cost_label_content($variation_unit_cost, $variation_cost)
 									. '</span>';
@@ -576,8 +577,9 @@ class ProductPage extends BaseController {
 							$variation_cost = get_term_meta($term->term_id, 'variationCost', true);
 							$variation_cost = is_numeric($variation_cost) ? floatval($variation_cost) : 0.0;
 							$color = get_term_meta($term->term_id, 'colour', true);
-							$html .= '<label class="color-option" data-full-name="' . esc_attr($term->name) . '">';
-							$html .= '<input type="' . $input_type . '" name="' . $field_name . '" value="' . esc_attr($variation_option_id) . '" ' . ($is_multiple ? '' : $is_checked) . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '" data-field-type="colour-select"/>';
+							$color_id = ($index === 0) ? $slug : $slug . '_' . $index;
+							$html .= '<label class="color-option" for="' . $color_id . '" data-full-name="' . esc_attr($term->name) . '">';
+							$html .= '<input type="' . $input_type . '" id="' . $color_id . '" name="' . $field_name . '" value="' . esc_attr($variation_option_id) . '" ' . ($is_multiple ? '' : $is_checked) . $common_data_attrs . ' data-variation-field-value="' . esc_attr($variation_option_id) . '" data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '" data-calculate="' . ($has_cost ? 'true' : 'false') . '" data-field-type="colour-select"/>';
 							$html .= '<div class="color-option-inner">';
 							$html .= '<span class="color-indicator" style="background-color: ' . esc_attr($color) . ';"></span>';
 							$html .= '<span class="checkmark">✓</span>';
@@ -657,7 +659,7 @@ class ProductPage extends BaseController {
 				case 1: $html .= "<input type='text' name='{$field_name}' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-text'/>"; break;
 				case 3: $html .= "<label class='custom-upload-wrapper'><div class='upload-icon'>📎</div><div class='upload-instruction'>Drop file here or click to browse</div><div class='upload-types'>.jpeg, .jpg, .gif, .png, .pdf</div><input type='file' name='{$field_name}' multiple {$required} accept='.jpeg,.jpg,.gif,.png,.pdf' data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-file'/></label>"; break;
 				case 4: $html .= "<textarea name='{$field_name}' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-textarea'></textarea>"; break;
-				case 5: $html .= "<input type='number' name='{$field_name}' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-number'/>"; break;
+				case 5: $html .= "<input type='number' id='{$slug}' name='{$field_name}' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-number'/>"; break;
 				case 10: $html .= "<input type='color' name='{$field_name}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-color'/>"; break;
 				case 8: $html .= "<p class='field-instructions'>{$instructions}</p>"; break;
 				default: $html .= "<input type='text' name='{$field_name}' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-text'/>"; break;
