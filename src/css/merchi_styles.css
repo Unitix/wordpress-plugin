@@ -1219,6 +1219,7 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 }
 
 @media (max-width: 768px) {
+
   .custom-field .quantity .plus,
   .custom-field .quantity .number-button:after {
     right: 20px !important;
@@ -1952,6 +1953,29 @@ body.single-product #cart-count {
     display: none !important;
     height: 0 !important;
   }
+
+  .merchi-price-range-display .price-tooltip-icon:hover::after {
+    white-space: normal;
+    max-width: 280px;
+    width: max-content;
+    min-width: 200px;
+    text-align: center;
+    word-wrap: break-word;
+    line-height: 1.4;
+  }
+
+  .custom-field label .price-tooltip-icon:hover::after {
+    white-space: normal !important;
+    max-width: 280px !important;
+    width: max-content !important;
+    min-width: 200px !important;
+    text-align: center !important;
+    word-wrap: break-word !important;
+    line-height: 1.4 !important;
+    left: -50px !important;
+    transform: none !important;
+  }
+
 }
 
 @media (max-width: 768px) {
