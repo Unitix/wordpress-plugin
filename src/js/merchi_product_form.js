@@ -2014,6 +2014,10 @@ jQuery(function ($) {
     $gallery.after('<div class="wc-gallery-placeholder" aria-hidden="true"></div>');
   }
 
+  function isMobileDevice() {
+    return window.innerWidth < 768;
+  }
+
   function topOffset() {
     var o = 16;
     var $admin = $('#wpadminbar'); if ($admin.length) o += $admin.outerHeight();
@@ -2024,6 +2028,11 @@ jQuery(function ($) {
   }
 
   function update() {
+    if (isMobileDevice()) {
+      $gallery.removeClass('wc-gallery--fixed wc-gallery--stuck');
+      return;
+    }
+
     var off = topOffset();
     var EXTRA = 100;
     var gTop = $gallery.offset().top;

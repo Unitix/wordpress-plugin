@@ -15,7 +15,7 @@ class Enqueue extends BaseController {
 
 
 	public function do_enqueue() {
-		wp_enqueue_style( 'styles', $this->plugin_url . 'src/css/merchi_styles.css' );
+		wp_enqueue_style( 'styles', $this->plugin_url . 'dist/css/merchi_styles.css' );
 		$mount_point = get_option( 'merchi_mount_point_id' );
 		$css         = ".$mount_point {visibility: hidden;}";
 		wp_add_inline_style( 'styles', $css );
@@ -45,7 +45,7 @@ class Enqueue extends BaseController {
 			'merchiStoreName' => $merchi_url,
 		];
 
-		wp_enqueue_style( 'styles',  $this->plugin_url . 'src/css/merchi_styles_admin.css' );
+		wp_enqueue_style( 'styles',  $this->plugin_url . 'dist/css/merchi_styles_admin.css' );
 		wp_localize_script( 'merchi_plugin_val', 'merchiObject', $merchi_plugin_object );
 		wp_enqueue_script( 'ajax_script', $this->plugin_url . 'dist/js/create_merchi_products.js', [ 'jquery' ] );
 		wp_localize_script(
