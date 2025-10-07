@@ -58,22 +58,6 @@ class ProductPage extends BaseController {
 				true
 			);
 		}
-
-
-		// wp_enqueue_script(
-		// 	'stripe-js-cdn',
-		// 	'https://js.stripe.com/v3/',
-		// 	array(),
-		// 	null,
-		// 	true
-		// );
-		// wp_enqueue_script(
-		// 	'react-stripe-js-cdn',
-		// 	'https://unpkg.com/@stripe/react-stripe-js@3.7.0/dist/react-stripe.umd.min.js',
-		// 	array(),
-		// 	null,
-		// 	true
-		// );
 		// load Merchi SDK
 		wp_enqueue_script(
 			'merchi_sdk',
@@ -290,10 +274,66 @@ class ProductPage extends BaseController {
 			if (!empty($field['taxonomy'])) {
 					// Attribute field: fetch terms only for current product
 					$product_id = get_the_ID();
-					return wc_get_product_terms($product_id, $field['taxonomy'], ['fields' => 'all']);
+					$taxonomy = $field['taxonomy'];
+					$terms = wc_get_product_terms($product_id, $taxonomy, [
+						'fields'   => 'all',
+						'orderby'  => 'menu_order', // hint WooCommerce
+						'order'    => 'ASC',
+					]);
+
+					// Enforce ordering using saved term meta if needed
+					if (!empty($terms) && is_array($terms)) {
+						usort($terms, function($a, $b) use ($taxonomy) {
+							$posA = get_term_meta($a->term_id, 'position', true);
+							$posB = get_term_meta($b->term_id, 'position', true);
+							$hasPosA = ($posA !== '' && $posA !== null);
+							$hasPosB = ($posB !== '' && $posB !== null);
+
+							if ($hasPosA && $hasPosB) {
+								$pa = intval($posA); $pb = intval($posB);
+								if ($pa === $pb) return 0;
+								return ($pa < $pb) ? -1 : 1;
+							}
+
+							// Fallback to WooCommerce order_pa_{taxonomy}
+							$orderKey = 'order_' . $taxonomy;
+							$oa = get_term_meta($a->term_id, $orderKey, true);
+							$ob = get_term_meta($b->term_id, $orderKey, true);
+							$hasOA = ($oa !== '' && $oa !== null);
+							$hasOB = ($ob !== '' && $ob !== null);
+							if ($hasOA && $hasOB) {
+								$ia = intval($oa); $ib = intval($ob);
+								if ($ia === $ib) return 0;
+								return ($ia < $ib) ? -1 : 1;
+							}
+
+							// Final fallback to natural name
+							return strnatcasecmp($a->name, $b->name);
+						});
+					}
+
+					return $terms;
 			} else if (!empty($field['options'])) {
-					// Meta field: return options array if present (customize as needed)
-					return $field['options'];
+					// Meta field: return options sorted by their 'position' value
+					$options = $field['options'];
+					if (is_array($options)) {
+						usort($options, function($a, $b) {
+							$posA = is_array($a) ? ($a['position'] ?? null) : (is_object($a) ? ($a->position ?? null) : null);
+							$posB = is_array($b) ? ($b['position'] ?? null) : (is_object($b) ? ($b->position ?? null) : null);
+
+							if ($posA === null && $posB === null) {
+								$nameA = is_array($a) ? ($a['name'] ?? ($a['label'] ?? '')) : (is_object($a) ? ($a->name ?? ($a->label ?? '')) : '');
+								$nameB = is_array($b) ? ($b['name'] ?? ($b['label'] ?? '')) : (is_object($b) ? ($b->name ?? ($b->label ?? '')) : '');
+								return strnatcasecmp((string) $nameA, (string) $nameB);
+							}
+
+							if ($posA === null) { return 1; }
+							if ($posB === null) { return -1; }
+							if ($posA == $posB) { return 0; }
+							return ($posA < $posB) ? -1 : 1;
+						});
+					}
+					return $options;
 			}
 			return [];
 	}
@@ -549,6 +589,7 @@ class ProductPage extends BaseController {
 													data-variation-unit-cost="' . esc_attr($variation_unit_cost) . '"
 													data-update-label="true"
 													data-calculate="' . ($has_cost ? 'true' : 'false') . '"
+													data-field-type="image-select"
 													' . ($will_be_checked ? 'checked' : '') . ' />';
 							$html .= '<label class="image-select-label" for="' . $image_id . '">';
 							$html .= '<span class="image-select-checkmark"></span>';
