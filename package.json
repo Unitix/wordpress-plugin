@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "Merchi WordPress Plugin",
   "scripts": {
-    "build": "webpack --mode production && copyfiles -u 1 \"src/css/**/*\" dist/css/",
+    "build": "webpack --mode production && copyfiles -u 2 \"src/css/**/*\" dist/css/",
     "dev": "webpack --mode development --watch",
-    "copy-css": "copyfiles -u 1 \"src/css/**/*\" dist/css/"
+    "copy-css": "copyfiles -u 2 \"src/css/**/*\" dist/css/"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^3.7.0",
