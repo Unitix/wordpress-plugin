@@ -218,6 +218,8 @@ function initializeWhenReady() {
     // Helper function to render field HTML in JavaScript (mirrors PHP rendering logic)
     function renderFieldHtml(newVariation, namePrefix, fieldIndex, isGroup = false, groupIndex = 0) {
       const {
+        onceOffCost = 0,
+        unitCost = 0,
         selectableOptions = [],
         value,
         variationField = {},
@@ -232,8 +234,6 @@ function initializeWhenReady() {
         placeholder = '',
         instructions = '',
         multipleSelect = false,
-        variationCost = 0,
-        variationUnitCost = 0
       } = variationField;
 
       const slug = label.toLowerCase().replace(/[^a-z0-9]/g, '_');
@@ -253,11 +253,11 @@ function initializeWhenReady() {
       // Cost label helper
       const costLabel = () => {
         let label = '';
-        if (variationUnitCost > 0) {
-          label += ` + ( $${variationUnitCost.toFixed(2)} per unit )`;
+        if (unitCost > 0) {
+          label += ` + ( $${unitCost.toFixed(2)} per unit )`;
         }
-        if (variationCost > 0) {
-          label += ` + ( $${variationCost.toFixed(2)} once off )`;
+        if (onceOffCost > 0) {
+          label += ` + ( $${onceOffCost.toFixed(2)} once off )`;
         }
         return label;
       };
@@ -1543,11 +1543,11 @@ function initializeWhenReady() {
         const variation = { variationField };
 
         function getCheckedValues($fieldContainer) {
-          let $isChecked = $fieldContainer.find('input[type="checkbox"]:checked');
-          if ($isChecked.length > 1) {
-            return $isChecked.map(function () { return $(this).val(); }).get().join(',');
-          } else if ($isChecked.length === 1) {
-            return $isChecked.val();
+          const $checked = $fieldContainer.find('input[type="checkbox"]:checked, input[type="radio"]:checked');
+          if ($checked.length > 1) {
+            return $checked.map(function () { return jQuery(this).val(); }).get().join(',');
+          } else if ($checked.length === 1) {
+            return $checked.val();
           } else {
             return null;
           }
