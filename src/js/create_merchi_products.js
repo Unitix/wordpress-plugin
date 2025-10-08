@@ -1,22 +1,23 @@
 jQuery(document).ready(function ($) {
-  var limit = 25;
-  var totalAvailable = 0;
-  var allProducts = [];
-  var embed = {
+  let limit = 25;
+  let allProducts = [];
+  let embed = {
     featureImage: {},
     images: {},
     domain: { company: {} },
   };
-  var allowedExtensions = {
+  let allowedExtensions = {
     "image/jpeg": "jpeg",
     "image/jpg": "jpg",
     "image/png": "png",
   };
   
   function downloadMerchiImageReturnData(file) {
-    var mimetype = file.mimetype() ? file.mimetype() : null,
-      downloadSrc = $('#merchi_base_url').length ? $('#merchi_base_url').val() + "v6/product-public-file/download/" : "https://api.merchi.co/v6/product-public-file/download/",
-      extension = mimetype ? allowedExtensions[mimetype] : null;
+    let mimetype = file.mimetype() ? file.mimetype() : null;
+    let downloadSrc = $('#merchi_base_url').length
+      ? $('#merchi_base_url').val() + "v6/product-public-file/download/"
+      : "https://api.merchi.co/v6/product-public-file/download/";
+    let extension = mimetype ? allowedExtensions[mimetype] : null;
     return extension
       ? { src: `${downloadSrc}${file.id()}.${extension}` }
       : null;
@@ -29,18 +30,13 @@ jQuery(document).ready(function ($) {
   }
 
   function convertedMerchiProducts(products) {
-    var _products = [],
-      i,
-      j,
-      arraySize = limit,
-      arrayOfProductArrays = [];
+    let _products = [];
     if (products) {
-      for (i = 0; i < products.length; i++) {
+      for (let i = 0; i < products.length; i++) {
         var merchiProduct = products[i],
           merchiProductImages;
         if (merchiProduct.json && merchiProduct.json === "product") {
           merchiProductImages = convertMerchiProductImages(merchiProduct);
-		  // console.log(merchiProductImages);
           _products.push({
             description: merchiProduct.description(),
             price: merchiProduct.unitPrice(),
@@ -53,9 +49,6 @@ jQuery(document).ready(function ($) {
         }
       }
     }
-    // for (j = 0; j < _products.length; j += arraySize) {
-    //   arrayOfProductArrays.push(_products.slice(j, j + arraySize));
-    // }
     return _products;
   }
 
@@ -147,25 +140,9 @@ jQuery(document).ready(function ($) {
     });
     $(merchiProducts.create).each(function (index, product) {
       if($.inArray(product['sku'], skus) !== -1) {
-        ////////////////////////////////////////////////////////////////////
-        // if( index == 0 ){
-        //   product['name'] = '';
-        // }
-        // if( index == 1 ){
-        //   product['price'] = '';
-        // }
-        // if( index == 2 ){
-        //   product['regular_price'] = '';
-        // }
-        // if( index == 3 ){
-        //   product['regular_price'] = '';
-        //   product['name'] = '';
-        // }
-        /////////////////////////////////////////////////////////////////////
         products.push(product);
       }
     });
-    totalAvailable = products.length;
     if( products.length > 0 ) {
       injectProductsIntoDB({ create: products });
     }
@@ -228,10 +205,10 @@ jQuery(document).ready(function ($) {
 
   // 
   async function prepereProducts(productTotal) {
-    var available = productTotal;
+    let available = productTotal;
+    let offset = 0;
+    let num = Math.floor(productTotal/limit) + 1;
     allProducts = [];
-    var offset = 0;
-    var num = Math.floor(productTotal/limit) + 1;
     for (j = 0; j < num; j++) {
       try {
         const data = await fetchProducts(offset);
@@ -269,7 +246,7 @@ jQuery(document).ready(function ($) {
   // Show toast
   function toast($products) {
     // Get the snackbar DIV
-    var x = document.getElementById("snackbar");
+    let x = document.getElementById("snackbar");
     // Set text inside snackbar DIV
     $("#snackbar").text($products + " Merchi products created/updated.");
     // Add the "show" class to DIV

@@ -848,8 +848,8 @@ function render_custom_product_meta_box()
     <script type="text/javascript">
     jQuery(document).ready(function($) {
         $('#sync_with_merchi_btn').on('click', function() {
-            var btn = $(this);
-            var status = $('#sync_merchi_status');
+            let btn = $(this);
+            let status = $('#sync_merchi_status');
             btn.prop('disabled', true);
             status.text('Syncing...');
             $.ajax({
@@ -862,6 +862,7 @@ function render_custom_product_meta_box()
                 success: function(response) {
                     if (response.success) {
                         status.text('Synced successfully!');
+                        window.location.reload();
                     } else {
                         status.text('Sync failed: ' + (response.data && response.data.message ? response.data.message : 'Unknown error'));
                     }
@@ -893,6 +894,7 @@ function render_custom_product_meta_box()
                 success: function(response) {
                     if (response.success) {
                         status.text('Synced successfully!');
+                        window.location.reload();
                     } else {
                         status.text('Sync failed: ' + (response.data && response.data.message ? response.data.message : 'Unknown error'));
                     }
@@ -2408,11 +2410,19 @@ function fetch_products_from_merchi() {
 
 
     // Make the external API request
-    $response = wp_remote_get($api_url);
+    // Add Host header for dev.localhost routing through proxy
+		// TODO REMOVE HEADERS AFTER TESTING
+    $headers = array();
+    if (strpos($api_url, 'host.docker.internal:5000') !== false) {
+        $headers['Host'] = 'dev.localhost';
+        error_log('fetch_products_from_merchi: Adding Host header: dev.localhost for URL: ' . $api_url);
+    }
+    // $response = wp_remote_get($api_url);
+    $response = wp_remote_get($api_url, array('headers' => $headers));
 
     // Check if the request was successful
     if (is_wp_error($response)) {
-        wp_send_json_error(['message' => 'Error fetching products']);
+        wp_send_json_error(['message' => $response]);
         wp_die();
     }
 
@@ -2434,7 +2444,7 @@ function fetch_products_from_merchi() {
         unset($item);
         wp_send_json_success($products);
     } else {
-        wp_send_json_error(['message' => 'No products found']);
+        wp_send_json_error(['message' => $response]);
     }
 
     wp_die(); // Terminate to ensure no further output
@@ -2516,9 +2526,22 @@ function import_merchi_product_data($woo_product_id) {
         ],
         'draftTemplates' => ['file' => new stdClass()],
         'groupBuyStatus' => new stdClass(),
-        'groupVariationFields' => ['options' => ['linkedFile' => new stdClass()]],
+        'groupVariationFields' => [
+					  'options' => [
+							  'linkedFile' => new stdClass(),
+								'selectedBy' => new stdClass()
+							],
+							'selectedBy' => new stdClass()
+				],
+        'featureImage' => new stdClass(),
         'images' => new stdClass(),
-        'independentVariationFields' => ['options' => ['linkedFile' => new stdClass()]],
+        'independentVariationFields' => [
+					  'options' => [
+							  'linkedFile' => new stdClass(),
+								'selectedBy' => new stdClass()
+						],
+						'selectedBy' => new stdClass()
+				],
         'publicFiles' => new stdClass(),
     ];
     $embed_json = json_encode($productEmbed);
@@ -2530,11 +2553,6 @@ function import_merchi_product_data($woo_product_id) {
     error_log('import_merchi_product_data: Making API request to: ' . $api_url);
     $response = wp_remote_get($api_url);
 
-    // Debug: Log the raw response
-    if (is_wp_error($response)) {
-        error_log('import_merchi_product_data: Failed to fetch Merchi product data. ' . $response->get_error_message());
-        return ['success' => false, 'message' => 'Failed to fetch Merchi product data.'];
-    }
     error_log('import_merchi_product_data: Raw API response: ' . print_r($response, true));
 
     $body = wp_remote_retrieve_body($response);
@@ -2551,6 +2569,68 @@ function import_merchi_product_data($woo_product_id) {
     if (isset($data['product']['allowQuotation'])) {
         $allow_quotation = $data['product']['allowQuotation'];
         update_post_meta($woo_product_id, 'allowQuotation', $allow_quotation);
+    }
+
+    // Handle feature image
+    if (isset($data['product']['featureImage']) && !empty($data['product']['featureImage'])) {
+        $feature_image = $data['product']['featureImage'];
+        $image_url = null;
+        
+        // Get the image URL from the featureImage data
+        if (is_array($feature_image) && isset($feature_image['viewUrl'])) {
+            $image_url = $feature_image['viewUrl'];
+        } elseif (is_string($feature_image)) {
+            $image_url = $feature_image;
+        }
+        
+        if ($image_url) {
+            error_log('import_merchi_product_data: Downloading feature image from: ' . $image_url);
+            $attachment_id = download_and_attach_image($image_url);
+            
+            if ($attachment_id && !is_wp_error($attachment_id)) {
+                set_post_thumbnail($woo_product_id, $attachment_id);
+                error_log('import_merchi_product_data: Successfully set post thumbnail with attachment ID: ' . $attachment_id);
+            } else {
+                error_log('import_merchi_product_data: Failed to download or attach feature image');
+            }
+        }
+    }
+
+    // Handle gallery images
+    if (isset($data['product']['images']) && is_array($data['product']['images']) && !empty($data['product']['images'])) {
+        $gallery_attachment_ids = [];
+
+        foreach ($data['product']['images'] as $image_item) {
+            $image_url = null;
+
+            if (is_array($image_item)) {
+                if (isset($image_item['viewUrl'])) {
+                    $image_url = $image_item['viewUrl'];
+                } elseif (isset($image_item['url'])) {
+                    $image_url = $image_item['url'];
+                }
+            } elseif (is_string($image_item)) {
+                $image_url = $image_item;
+            }
+
+            if (!empty($image_url)) {
+                error_log('import_merchi_product_data: Downloading gallery image from: ' . $image_url);
+                $attachment_id = download_and_attach_image($image_url);
+                if ($attachment_id && !is_wp_error($attachment_id)) {
+                    $gallery_attachment_ids[] = (int) $attachment_id;
+                } else {
+                    error_log('import_merchi_product_data: Failed to download or attach gallery image');
+                }
+            }
+        }
+
+        if (!empty($gallery_attachment_ids)) {
+            // Remove duplicates and ensure integers
+            $gallery_attachment_ids = array_values(array_unique(array_map('intval', $gallery_attachment_ids)));
+            // Store as comma-separated list per WooCommerce convention
+            update_post_meta($woo_product_id, '_product_image_gallery', implode(',', $gallery_attachment_ids));
+            error_log('import_merchi_product_data: Set product gallery with attachment IDs: ' . implode(',', $gallery_attachment_ids));
+        }
     }
 
     update_post_meta($woo_product_id, '_merchi_product_data', $data);
@@ -2902,7 +2982,7 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 				}
 
 				$variation_options = [];
-				foreach ($options as $option) {
+        foreach ($options as $option) {
 					if (!empty($option['include']) && !empty($option['value'])) {
 						$option_value = sanitize_text_field($option['value']);
 						$image_url = !empty($option['linkedFile']['viewUrl']) ? esc_url($option['linkedFile']['viewUrl']) : '';
@@ -2927,7 +3007,7 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 							}
 						}
 
-						if (!empty($option['id'])) {
+            if (!empty($option['id'])) {
 							update_term_meta($term_id, 'variation_option_id', sanitize_text_field($option['id']));
 						}
 
@@ -2938,6 +3018,11 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 						update_term_meta($term_id, 'variationCost', $variation_cost);
 						update_term_meta($term_id, 'variationUnitCost', $variation_unit_cost);
 						update_term_meta($term_id, 'colour', $colour);
+
+            // Store option position for frontend rendering and WooCommerce ordering
+            $position = isset($option['position']) ? intval($option['position']) : 0;
+            update_term_meta($term_id, 'position', $position);
+            update_term_meta($term_id, 'order_' . $taxonomy, $position);
 
 						$variation_options[] = $option_value;
 					}
@@ -3003,7 +3088,7 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 
 				$variation_options = [];
 
-				foreach ($options as $option) {
+        foreach ($options as $option) {
 					if (!empty($option['include']) && !empty($option['value'])) {
 						$option_value = sanitize_text_field($option['value']);
 						$image_url = !empty($option['linkedFile']['viewUrl']) ? esc_url($option['linkedFile']['viewUrl']) : '';
@@ -3031,7 +3116,7 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 							}
 						}
 
-						if (!empty($option['id'])) {
+            if (!empty($option['id'])) {
 							update_term_meta($term_id, 'variation_option_id', sanitize_text_field($option['id']));
 						}
 
@@ -3039,6 +3124,11 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 						update_term_meta($term_id, 'colour', $colour);
 						update_term_meta($term_id, 'variationCost', $variation_option_cost);
 						update_term_meta($term_id, 'variationUnitCost', $variation_option_unit_cost);
+
+						// Store option position for frontend rendering and WooCommerce ordering
+						$position = isset($option['position']) ? intval($option['position']) : 0;
+						update_term_meta($term_id, 'position', $position);
+						update_term_meta($term_id, 'order_' . $taxonomy, $position);
 
 						$variation_options[] = $option_value;
 					}
@@ -3287,15 +3377,4 @@ add_action('wp_head', function () {
     </script>
     <?php
 }, 1);
-
-/**
- * Proper ob_end_flush() for all levels
- *
- * This replaces the WordPress `wp_ob_end_flush_all()` function
- * with a replacement that doesn't cause PHP notices.
- */
-remove_action( 'shutdown', 'wp_ob_end_flush_all', 1 );
-add_action( 'shutdown', function() {
-   while ( @ob_end_flush() );
-} );
 

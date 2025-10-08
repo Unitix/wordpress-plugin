@@ -5,11 +5,9 @@ A WordPress plugin that integrates Merchi products with WooCommerce, allowing se
 ## Features
 
 - Search and import Merchi products directly into WooCommerce
-- Automatic product synchronization
 - Custom product meta fields
 - Image gallery support
 - Variation management
-- Real-time product updates
 
 ## Installation
 
