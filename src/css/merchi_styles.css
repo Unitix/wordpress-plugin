@@ -1237,6 +1237,24 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   width: 100px;
 }
 
+.priority-fields-section {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.priority-fields-container {
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 20px 25px 20px 20px;
+}
+
+.priority-fields-section h3 {
+  font-size: 22px !important;
+  margin: 20px 0 15px 0 !important;
+  color: #333 !important;
+  font-weight: 600 !important;
+}
+
 .group-field-set {
   margin-bottom: 20px;
   padding-bottom: 20px;

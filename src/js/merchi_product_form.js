@@ -1320,6 +1320,12 @@ function initializeWhenReady() {
 
     // Sets all the event listeners for the variations
     function initializeVariations() {
+      // Initialize priority fields (File upload & Text input)
+      const $priorityFieldsContainer = jQuery('.priority-fields-section');
+      initializeVariationFields($priorityFieldsContainer);
+      initializeFileUploadVariations($priorityFieldsContainer);
+
+      // Initialize other standalone variations
       const $variationsContainer = jQuery('.custom-variation-options');
       // Initialize calculate inputs
       initializeVariationFields($variationsContainer);
@@ -1671,8 +1677,14 @@ function initializeWhenReady() {
         formData.quantity = parseInt(jQuery('input.qty').val()) || minimumQuantity;
       }
 
+      // Process priority fields (File upload & Text input)
+      const priorityVariations = await processVariations(jQuery('.priority-fields-section'));
+
       // Process standalone variations
-      formData.variations = await processVariations(jQuery('.custom-variation-options'));
+      const standaloneVariations = await processVariations(jQuery('.custom-variation-options'));
+
+      // Combine priority fields and standalone variations
+      formData.variations = [...priorityVariations, ...standaloneVariations];
 
       return formData;
     }
