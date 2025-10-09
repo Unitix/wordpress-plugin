@@ -541,7 +541,7 @@ function initializeWhenReady() {
             const checked = isOptionSelected(option) ? 'checked' : '';
             const disabledAttr = !isEnabled ? 'disabled' : '';
             html += `
-              <label class="color-option" for="${fieldName}">
+              <label class="color-option" for="${fieldName}" data-full-name="${option.value}">
                 <input
                   type="${colorInputType}"
                   name="${fieldName}"
