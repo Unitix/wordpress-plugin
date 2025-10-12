@@ -737,16 +737,6 @@ span.round-tab:hover {
   }
 }
 
-@media (max-width: 480px) {
-  .image-select-option {
-    flex: 0 0 100%;
-  }
-
-  .image-container {
-    height: 160px;
-  }
-}
-
 /*----------------------------------------------------
    E) Colour select widget
    -----------------------------------------------------*/

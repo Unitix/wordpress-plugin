@@ -492,15 +492,17 @@ function initializeWhenReady() {
             </label>`;
           html += `<div class="group-variation-container" name="${fieldName}"${commonDataAttrs}>`;
           html += '<div class="image-select-options-container">';
-          sortedOptions.forEach((option) => {
+          sortedOptions.forEach((option, optionIndex) => {
             const checked = isOptionSelected(option) ? 'checked' : '';
             const isEnabled = option.isVisible && option.available;
             const disabledAttr = !isEnabled ? 'disabled' : '';
+            const radioInputId = `${fieldName}-option-${option.optionId}`;
             html += `
                 <div class="image-select-option">
                   <input
                     ${disabledAttr}
                     type="${inputType}"
+                    id="${radioInputId}"
                     name="${fieldName}"
                     value="${option.optionId}"
                     ${checked}${commonDataAttrs}
@@ -508,7 +510,7 @@ function initializeWhenReady() {
                     data-update-label="true"
                     data-field-type="image-select"
                   />
-                  <label class="image-select-label" for="${fieldName}">
+                  <label class="image-select-label" for="${radioInputId}">
                     <span class="image-select-checkmark"></span>
                     ${option.linkedFile ? `<img src="${option.linkedFile.viewUrl}" alt="${option.value}" />` : ''}
                     <span class="option-label">${option.value}</span>
@@ -775,10 +777,11 @@ function initializeWhenReady() {
 
           // Add group quantity field
           const { costPerUnit = 0 } = defaultJobJson;
+          const quantityInputId = `group-quantity-${groupIndex}`;
           groupsHtml += `
             <div class="custom-field">
-              <label>Quantity <span class="group-unit-price">( $${costPerUnit.toFixed(2)} per unit )</span></label>
-              <input type="number" class="qty group-quantity" name="variationsGroups[${groupIndex}].quantity" value="${quantity}" min="1" data-group-index="${groupIndex}">
+              <label for="${quantityInputId}">Quantity <span class="group-unit-price">( $${costPerUnit.toFixed(2)} per unit )</span></label>
+              <input type="number" class="qty group-quantity" id="${quantityInputId}" name="variationsGroups[${groupIndex}].quantity" value="${quantity}" min="1" data-group-index="${groupIndex}">
             </div>`;
 
           // Add variation fields for this group
