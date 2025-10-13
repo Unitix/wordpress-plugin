@@ -295,9 +295,9 @@ function initializeWhenReady() {
         case 2: // SELECT
           html += `<label for="${fieldName}">${label}</label>`;
           if (multipleSelect) {
-            html += `<select multiple name="${fieldName}"${commonDataAttrs} class="select">`;
+            html += `<select multiple id="${fieldName}" name="${fieldName}"${commonDataAttrs} class="select">`;
           } else {
-            html += `<select name="${fieldName}"${commonDataAttrs} class="select">`;
+            html += `<select id="${fieldName}" name="${fieldName}"${commonDataAttrs} class="select">`;
           }
           sortedOptions.forEach((option, index) => {
             const selected = index === 0 && !multipleSelect ? 'selected' : '';
@@ -523,7 +523,7 @@ function initializeWhenReady() {
 
         case 10: // COLOR
           html += `<label for="${fieldName}">${label}${costLabel()}</label>`;
-          html += `<input type="color" name="${fieldName}" ${requiredAttr}${commonDataAttrs} class="input-color"/>`;
+          html += `<input type="color" id="${fieldName}" name="${fieldName}" ${requiredAttr}${commonDataAttrs} class="input-color"/>`;
           break;
 
         case 11: // COLOR_SELECT
