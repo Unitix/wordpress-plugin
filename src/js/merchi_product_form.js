@@ -1166,7 +1166,7 @@ function initializeWhenReady() {
 
     // Initialize event handlers
     function initializeHandlers() {
-      // Remove any existing handlers
+      jQuery(document).off('.merchiQuantity');
       jQuery(document).off('change', '.custom-variation-options input, .custom-variation-options select');
       jQuery(document).off('blur', '.group-quantity');
       jQuery(document).off('input', '.group-quantity');
@@ -1180,6 +1180,36 @@ function initializeWhenReady() {
         initializeGroupVariationHandlers(jQuery($groups[i]));
       }
 
+      // Handle plus/minus buttons for non-group products
+      jQuery('.custom-field').not('.group-field-set .custom-field').find('.plus').off('click.merchiQuantity').on('click.merchiQuantity', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        const $button = jQuery(this);
+        const $input = $button.siblings('.group-quantity');
+        const currentVal = parseInt($input.val()) || 0;
+        const maxVal = parseInt($input.attr('max')) || 999999;
+
+        if (currentVal < maxVal) {
+          $input.val(currentVal + 1);
+          $input.trigger('input');
+        }
+      });
+
+      jQuery('.custom-field').not('.group-field-set .custom-field').find('.minus').off('click.merchiQuantity').on('click.merchiQuantity', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        const $button = jQuery(this);
+        const $input = $button.siblings('.group-quantity');
+        const currentVal = parseInt($input.val()) || 0;
+        const minVal = parseInt($input.attr('min')) || 1;
+
+        if (currentVal > minVal) {
+          $input.val(currentVal - 1);
+          $input.trigger('input');
+        }
+      });
 
       // Enforce minimum quantity on blur
       jQuery(document).on('blur', '.group-quantity', function () {
@@ -1671,7 +1701,7 @@ function initializeWhenReady() {
 
           formData.variationsGroups.push({
             groupCost: parseFloat($group.find('[data-group-cost]').attr('data-group-cost')) || 0,
-            quantity: parseInt($group.find('.group-quantity').val) || 1,
+            quantity: parseInt($group.find('.group-quantity').val()) || 1,
             variations: groupVariations
           });
         }
