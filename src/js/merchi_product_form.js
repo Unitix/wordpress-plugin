@@ -285,6 +285,7 @@ function initializeWhenReady() {
           html += `
             <input
               type="text"
+              id="${fieldName}"
               name="${fieldName}"
               placeholder="${placeholder}" 
               ${requiredAttr}${commonDataAttrs}
