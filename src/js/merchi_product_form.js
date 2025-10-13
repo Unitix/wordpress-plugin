@@ -285,7 +285,6 @@ function initializeWhenReady() {
           html += `
             <input
               type="text"
-              id="${fieldName}"
               name="${fieldName}"
               placeholder="${placeholder}" 
               ${requiredAttr}${commonDataAttrs}
@@ -749,6 +748,12 @@ function initializeWhenReady() {
                 applyVariationValue($independentContainer, variation, true);
               }
             });
+
+            // Re-initialize event handlers for the re-rendered independent variations
+            initializeVariationFields($independentContainer);
+            initializeFileUploadVariations($independentContainer);
+            initializeImageSelectVariations($independentContainer);
+            initializeColorSelectVariations($independentContainer);
           }
         }
       }
@@ -776,16 +781,7 @@ function initializeWhenReady() {
           groupsHtml += `<div class="group-field-set" data-group-index="${groupIndex}">`;
           groupsHtml += `<h4>Group <span class="group-number">${groupIndex + 1}</span></h4>`;
 
-          // Add group quantity field
-          const { costPerUnit = 0 } = defaultJobJson;
-          const quantityInputId = `group-quantity-${groupIndex}`;
-          groupsHtml += `
-            <div class="custom-field">
-              <label for="${quantityInputId}">Quantity <span class="group-unit-price">( $${costPerUnit.toFixed(2)} per unit )</span></label>
-              <input type="number" class="qty group-quantity" id="${quantityInputId}" name="variationsGroups[${groupIndex}].quantity" value="${quantity}" min="1" data-group-index="${groupIndex}">
-            </div>`;
-
-          // Add variation fields for this group
+          // Add variation fields for this group FIRST
           groupVariations.forEach((variation, variationIndex) => {
             if (variation.variationField) {
               groupsHtml += renderFieldHtml(
@@ -797,6 +793,22 @@ function initializeWhenReady() {
               );
             }
           });
+
+          // Add group quantity field AFTER variation fields (to match PHP rendering)
+          const { costPerUnit = 0 } = defaultJobJson;
+          const quantityInputId = `group-quantity-${groupIndex}`;
+          groupsHtml += `
+            <div class="custom-field">
+              <label for="${quantityInputId}">Quantity</label>
+              <div class="quantity">
+                <div class="number-button">
+                  <input type="button" value="-" class="minus" data-group-index="${groupIndex}">
+                  <input type="number" class="qty group-quantity" id="${quantityInputId}" name="variationsGroups[${groupIndex}].quantity" value="${quantity}" min="1" data-group-index="${groupIndex}" aria-label="Product quantity" step="1" inputmode="numeric" autocomplete="off">
+                  <input type="button" value="+" class="plus" data-group-index="${groupIndex}">
+                </div>
+                <span class="group-unit-price">( $${costPerUnit.toFixed(2)} per unit )</span>
+              </div>
+            </div>`;
 
           groupsHtml += `
             <div
@@ -829,13 +841,15 @@ function initializeWhenReady() {
               applyVariationValue($groupContainer, variation, true);
             }
           });
+
+          // Re-initialize event handlers for this re-rendered group
+          initializeGroupVariationHandlers($groupContainer);
         });
 
       }
-      // If we made changes, reinitialize handlers
+      // Re-bind quantity buttons after re-rendering (must be after group handlers)
       if (hasChanges) {
-        // Reinitialize all handlers for the updated form
-        initializeHandlers();
+        bindQuantityButtons();
       }
     }
 
@@ -1166,10 +1180,16 @@ function initializeWhenReady() {
 
     // Initialize event handlers
     function initializeHandlers() {
-      jQuery(document).off('.merchiQuantity');
-      jQuery(document).off('change', '.custom-variation-options input, .custom-variation-options select');
-      jQuery(document).off('blur', '.group-quantity');
-      jQuery(document).off('input', '.group-quantity');
+      // Remove ALL handlers (not just namespaced ones) to prevent conflicts with WooCommerce/theme scripts
+      jQuery(document).off('click', '.quantity .plus');
+      jQuery(document).off('click', '.quantity .minus');
+      jQuery(document).off('blur.merchi', '.group-quantity');
+      jQuery(document).off('input.merchi', '.group-quantity');
+      jQuery(document).off('click.merchi', '.delete-group-button');
+
+      // Also remove handlers directly on the buttons themselves
+      jQuery('.quantity .plus').off('click');
+      jQuery('.quantity .minus').off('click');
 
       // initialise event handlers for variations
       initializeVariations();
@@ -1180,39 +1200,9 @@ function initializeWhenReady() {
         initializeGroupVariationHandlers(jQuery($groups[i]));
       }
 
-      // Handle plus/minus buttons for non-group products
-      jQuery('.custom-field').not('.group-field-set .custom-field').find('.plus').off('click.merchiQuantity').on('click.merchiQuantity', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        const $button = jQuery(this);
-        const $input = $button.siblings('.group-quantity');
-        const currentVal = parseInt($input.val()) || 0;
-        const maxVal = parseInt($input.attr('max')) || 999999;
-
-        if (currentVal < maxVal) {
-          $input.val(currentVal + 1);
-          $input.trigger('input');
-        }
-      });
-
-      jQuery('.custom-field').not('.group-field-set .custom-field').find('.minus').off('click.merchiQuantity').on('click.merchiQuantity', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        const $button = jQuery(this);
-        const $input = $button.siblings('.group-quantity');
-        const currentVal = parseInt($input.val()) || 0;
-        const minVal = parseInt($input.attr('min')) || 1;
-
-        if (currentVal > minVal) {
-          $input.val(currentVal - 1);
-          $input.trigger('input');
-        }
-      });
 
       // Enforce minimum quantity on blur
-      jQuery(document).on('blur', '.group-quantity', function () {
+      jQuery(document).on('blur.merchi', '.group-quantity', function () {
         const $input = jQuery(this);
 
         if ($input.attr('data-calculate') === 'true') {
@@ -1223,7 +1213,7 @@ function initializeWhenReady() {
       });
 
       // Handle quantity input events (for when user types)
-      jQuery(document).on('input', '.group-quantity', calculateAndUpdatePrice);
+      jQuery(document).on('input.merchi', '.group-quantity', calculateAndUpdatePrice);
 
       jQuery('.add-group-button').off('click');
 
@@ -1235,7 +1225,42 @@ function initializeWhenReady() {
       });
 
       // Delete group handler with immediate price update
-      jQuery(document).on('click', '.delete-group-button', actionDeleteGroup);
+      jQuery(document).on('click.merchi', '.delete-group-button', actionDeleteGroup);
+
+      // Bind directly to existing buttons (not using delegation to ensure priority)
+      bindQuantityButtons();
+    }
+
+    // Separate function to bind quantity button handlers
+    function bindQuantityButtons() {
+      // Plus button handler - bind directly to elements for highest priority
+      jQuery('.quantity .plus').off('click').on('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        const $button = jQuery(this);
+        const $input = $button.siblings('.group-quantity');
+        const currentValue = parseInt($input.val()) || 0;
+        $input.val(currentValue + 1);
+        calculateAndUpdatePrice();
+        return false;
+      });
+
+      // Minus button handler - bind directly to elements for highest priority
+      jQuery('.quantity .minus').off('click').on('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        const $button = jQuery(this);
+        const $input = $button.siblings('.group-quantity');
+        const currentValue = parseInt($input.val()) || 0;
+        const minValue = parseInt($input.attr('min')) || 1;
+        if (currentValue > minValue) {
+          $input.val(currentValue - 1);
+          calculateAndUpdatePrice();
+        }
+        return false;
+      });
     }
 
     function initializeImageSelectVariations($container) {
@@ -1572,6 +1597,8 @@ function initializeWhenReady() {
       if (jQuery(".group-field-set").length > 1) {
         jQuery(".delete-group-button").show();
       }
+      // Rebind quantity buttons for the new group
+      bindQuantityButtons();
       calculateAndUpdatePrice();
     }
 
