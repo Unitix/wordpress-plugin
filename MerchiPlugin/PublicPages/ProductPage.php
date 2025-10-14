@@ -127,12 +127,17 @@ class ProductPage extends BaseController {
 		$independent_fields = get_post_meta($product_id, '_merchi_ordered_fields', true);
 		
 		$priority_fields = [];
+		// track field id to prevent duplicates
+		$seen_field_ids = [];
 		
 		if (!empty($group_fields_template) && is_array($group_fields_template)) {
 			foreach ($group_fields_template as $field) {
 				$fieldType = intval($field['fieldType']);
-				if ($fieldType === 3 || $fieldType === 1) {
+				$fieldID = isset($field['fieldID']) ? intval($field['fieldID']) : null;
+				
+				if (($fieldType === 3 || $fieldType === 1) && $fieldID && !in_array($fieldID, $seen_field_ids)) {
 					$priority_fields[] = ['field' => $field, 'source' => 'group'];
+					$seen_field_ids[] = $fieldID;
 				}
 			}
 		}
@@ -140,8 +145,11 @@ class ProductPage extends BaseController {
 		if (!empty($independent_fields) && is_array($independent_fields)) {
 			foreach ($independent_fields as $field) {
 				$fieldType = intval($field['fieldType']);
-				if ($fieldType === 3 || $fieldType === 1) {
+				$fieldID = isset($field['fieldID']) ? intval($field['fieldID']) : null;
+				
+				if (($fieldType === 3 || $fieldType === 1) && $fieldID && !in_array($fieldID, $seen_field_ids)) {
 					$priority_fields[] = ['field' => $field, 'source' => 'independent'];
+					$seen_field_ids[] = $fieldID;
 				}
 			}
 		}

@@ -595,16 +595,32 @@ function initializeWhenReady() {
         const responseField = response.variationField || response;
 
         // Compare key properties that would affect rendering
+        // value changes should not trigger form re-render, only check structure changes
         if (currentField.id !== responseField.id ||
           currentField.fieldType !== responseField.fieldType ||
-          currentField.options?.length !== responseField.options?.length ||
           currentField.required !== responseField.required) {
           return true;
         }
 
-        // Compare variation values
-        if (current.value !== response.value) {
+        // Check if options have changed (for dependent/dynamic fields)
+        const currentOptions = currentField.options || [];
+        const responseOptions = responseField.options || [];
+
+        if (currentOptions.length !== responseOptions.length) {
           return true;
+        }
+
+        // Compare option ids to detect changes in available options
+        // This detects when one field's selection changes another field's available options
+        if (currentOptions.length > 0 && responseOptions.length > 0) {
+          for (let j = 0; j < currentOptions.length; j++) {
+            const currentOptionId = currentOptions[j]?.id || currentOptions[j]?.value;
+            const responseOptionId = responseOptions[j]?.id || responseOptions[j]?.value;
+
+            if (currentOptionId !== responseOptionId) {
+              return true;
+            }
+          }
         }
       }
       return false;
@@ -728,13 +744,24 @@ function initializeWhenReady() {
       if ($independentContainer.length > 0) {
         const currentVariations = await processVariations($independentContainer);
 
-        if (hasVariationsChanged(currentVariations, variations)) {
+        // Filter out priority fields from response variations for comparison
+        const filteredVariations = variations.filter(v => {
+          const fieldType = v.variationField?.fieldType;
+          return fieldType !== 3 && fieldType !== 1;
+        });
+
+        if (hasVariationsChanged(currentVariations, filteredVariations)) {
           hasChanges = true;
 
           // Re-render independent variations
           let independentHtml = '';
           variations.forEach((variation, index) => {
             if (variation.variationField) {
+              const fieldType = variation.variationField.fieldType;
+              // Skip file upload (3) and text input (1) fields
+              if (fieldType === 3 || fieldType === 1) {
+                return;
+              }
               independentHtml += renderFieldHtml(variation, 'custom_fields', index);
             }
           });
@@ -745,6 +772,11 @@ function initializeWhenReady() {
             // Apply current values from response to newly rendered fields
             variations.forEach((variation) => {
               if (variation.variationField && variation.value !== undefined && variation.value !== null) {
+                const fieldType = variation.variationField.fieldType;
+                // Skip priority fields
+                if (fieldType === 3 || fieldType === 1) {
+                  return;
+                }
                 applyVariationValue($independentContainer, variation, true);
               }
             });
@@ -784,6 +816,11 @@ function initializeWhenReady() {
           // Add variation fields for this group FIRST
           groupVariations.forEach((variation, variationIndex) => {
             if (variation.variationField) {
+              const fieldType = variation.variationField.fieldType;
+              // Skip file upload (3) and text input (1) fields
+              if (fieldType === 3 || fieldType === 1) {
+                return;
+              }
               groupsHtml += renderFieldHtml(
                 variation,
                 `variationsGroups[${groupIndex}]`,
@@ -838,6 +875,11 @@ function initializeWhenReady() {
 
           groupVariations.forEach((variation) => {
             if (variation.variationField && variation.value !== undefined && variation.value !== null) {
+              const fieldType = variation.variationField.fieldType;
+              // Skip priority fields
+              if (fieldType === 3 || fieldType === 1) {
+                return;
+              }
               applyVariationValue($groupContainer, variation, true);
             }
           });
@@ -2155,3 +2197,4 @@ jQuery(function ($) {
   }
   update();
 });
+
