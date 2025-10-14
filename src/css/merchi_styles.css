@@ -34,7 +34,8 @@
   width: 100%;
 }
 
-.merchi-product-form h3 {
+.merchi-product-form h2.add-your-design-heading,
+.merchi-product-form h2.grouped-options-heading {
   font-size: 22px !important;
   margin: 20px 0 0 20px;
 }

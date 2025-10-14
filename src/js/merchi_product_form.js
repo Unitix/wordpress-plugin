@@ -805,7 +805,7 @@ function initializeWhenReady() {
         hasChanges = true;
 
         // Re-render group variations
-        let groupsHtml = '<h3>Grouped Options</h3>';
+        let groupsHtml = '<h2 class="grouped-options-heading">Grouped Options:</h2>';
 
         variationsGroups.forEach((group, groupIndex) => {
           const { variations: groupVariations = [], quantity = 1, groupCost = 0 } = group;
@@ -1837,7 +1837,8 @@ function initializeWhenReady() {
         }
 
         let merchiCartJson = localStorage.getItem('MerchiCart');
-        const cartData = merchiCartJson ? JSON.parse(merchiCartJson) : null;
+        let cartData = merchiCartJson ? JSON.parse(merchiCartJson) : null;
+
         // If no cart exists, create a new one
         if (!cartData) {
           try {
@@ -1851,13 +1852,9 @@ function initializeWhenReady() {
           cartData = merchiCartJson ? JSON.parse(merchiCartJson) : null;
         }
 
-        merchiCartItemJson.cart = cartData ? {
+        merchiCartItemJson.cart = {
           id: cartData.id,
           token: cartData.token
-        } : null;
-
-        const cartPayload = {
-          merchiCartItemJson,
         };
 
         jQuery.ajax({
@@ -1865,7 +1862,7 @@ function initializeWhenReady() {
           url: (typeof frontendajax !== 'undefined' ? frontendajax.ajaxurl : '/wp-admin/admin-ajax.php'),
           data: {
             action: "send_id_for_add_cart",
-            item: cartPayload,
+            item: JSON.stringify({ merchiCartItemJson }),
           },
           dataType: "json",
           success: function (response) {

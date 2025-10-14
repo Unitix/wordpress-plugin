@@ -160,7 +160,7 @@ class ProductPage extends BaseController {
 			});
 			
 			echo '<div class="priority-fields-section merchi-product-form">';
-			echo '<h3>Add Your Design</h3>';
+			echo '<h2 class="add-your-design-heading">Add Your Design</h2>';
 			echo '<div class="priority-fields-container">';
 			
 			foreach ($priority_fields as $index => $item) {
@@ -229,7 +229,7 @@ class ProductPage extends BaseController {
 		});
 
 		echo '<div id="grouped-fields-container" class="merchi-product-form">';
-		echo '<h3>Grouped Options:</h3>';
+		echo '<h2 class="grouped-options-heading">Grouped Options:</h2>';
 
 		echo '<div class="group-field-set" data-group-index="0">';
 		echo '<h4>Group <span class="group-number">1</span></h4>';

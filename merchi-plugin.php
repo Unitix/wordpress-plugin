@@ -1092,15 +1092,35 @@ function merchi_build_clean_cart_item_payload( array $item ) : array {
             return [
                 'quantity'   => (int) ( $g['quantity'] ?? 0 ),
                 'variations' => array_map( function ( $v ) {
-                    return [
+                    $var = [
                         'variationField' => isset( $v['variationField']['id'] )
                             ? [ 'id' => $v['variationField']['id'] ]
                             : null,
                         'value'          => $v['value'] ?? null,
                     ];
+                    if (isset($v['variationFiles']) && is_array($v['variationFiles']) && !empty($v['variationFiles'])) {
+                        $var['variationFiles'] = array_map(function($file) {
+                            return ['id' => $file['id']];
+                        }, $v['variationFiles']);
+                    }
+                    return $var;
                 }, $g['variations'] ?? [] ),
             ];
         }, $item['variationsGroups'] ?? [] ),
+        'variations' => array_map( function ( $v ) {
+            $var = [
+                'variationField' => isset( $v['variationField']['id'] )
+                    ? [ 'id' => $v['variationField']['id'] ]
+                    : null,
+                'value'          => $v['value'] ?? null,
+            ];
+            if (isset($v['variationFiles']) && is_array($v['variationFiles']) && !empty($v['variationFiles'])) {
+                $var['variationFiles'] = array_map(function($file) {
+                    return ['id' => $file['id']];
+                }, $v['variationFiles']);
+            }
+            return $var;
+        }, $item['variations'] ?? [] ),
     ];
 
     // only include id if it's not null
@@ -1440,7 +1460,8 @@ function send_id_for_add_cart(){
     if (class_exists('WooCommerce')) {
         try {
             $item_count = count( WC()->cart->get_cart() ) ;
-            $request_data = $_POST['item']; 
+            $item_raw = $_POST['item'];
+            $request_data = is_string($item_raw) ? json_decode(wp_unslash($item_raw), true) : $item_raw;
 
             // Clear and store new session data
             WC()->session->__unset('merchi_cart_data');
@@ -1496,7 +1517,7 @@ function send_id_for_add_cart(){
             }
         
             // Set cart ID cookie
-            setcookie('cstCartId', $cart_id, time() + (86400 * 30), "/");
+            setcookie('cstCartId', (string)$cart_id, time() + (86400 * 30), "/");
             $_COOKIE['cstCartId'] = $cart_id;
             
             $products = array();
