@@ -802,39 +802,59 @@ function initializeWhenReady() {
           currentGroupVariations.push(groupVariations);
         }
 
-        hasChanges = true;
-
-        // Re-render group variations
-        let groupsHtml = '<h2 class="grouped-options-heading">Grouped Options:</h2>';
-
-        variationsGroups.forEach((group, groupIndex) => {
-          const { variations: groupVariations = [], quantity = 1, groupCost = 0 } = group;
-
-          groupsHtml += `<div class="group-field-set" data-group-index="${groupIndex}">`;
-          groupsHtml += `<h4>Group <span class="group-number">${groupIndex + 1}</span></h4>`;
-
-          // Add variation fields for this group FIRST
-          groupVariations.forEach((variation, variationIndex) => {
-            if (variation.variationField) {
-              const fieldType = variation.variationField.fieldType;
-              // Skip file upload (3) and text input (1) fields
-              if (fieldType === 3 || fieldType === 1) {
-                return;
-              }
-              groupsHtml += renderFieldHtml(
-                variation,
-                `variationsGroups[${groupIndex}]`,
-                variationIndex,
-                true,
-                groupIndex
-              );
+        // Check if group structure has changed (not just values)
+        let groupHasChanges = false;
+        if (currentGroupVariations.length !== variationsGroups.length) {
+          groupHasChanges = true;
+        } else {
+          for (let i = 0; i < variationsGroups.length; i++) {
+            const responseGroupVariations = variationsGroups[i].variations || [];
+            const filteredGroupVariations = responseGroupVariations.filter(v => {
+              const fieldType = v.variationField?.fieldType;
+              return fieldType !== 3 && fieldType !== 1;
+            });
+            if (hasVariationsChanged(currentGroupVariations[i], filteredGroupVariations)) {
+              groupHasChanges = true;
+              break;
             }
-          });
+          }
+        }
 
-          // Add group quantity field AFTER variation fields (to match PHP rendering)
-          const { costPerUnit = 0 } = defaultJobJson;
-          const quantityInputId = `group-quantity-${groupIndex}`;
-          groupsHtml += `
+        hasChanges = groupHasChanges;
+
+        // only rerender if structure changed, otherwise just update values
+        if (groupHasChanges) {
+          // Re-render group variations
+          let groupsHtml = '<h2 class="grouped-options-heading">Grouped Options:</h2>';
+
+          variationsGroups.forEach((group, groupIndex) => {
+            const { variations: groupVariations = [], quantity = 1, groupCost = 0 } = group;
+
+            groupsHtml += `<div class="group-field-set" data-group-index="${groupIndex}">`;
+            groupsHtml += `<h4>Group <span class="group-number">${groupIndex + 1}</span></h4>`;
+
+            // Add variation fields for this group FIRST
+            groupVariations.forEach((variation, variationIndex) => {
+              if (variation.variationField) {
+                const fieldType = variation.variationField.fieldType;
+                // Skip file upload (3) and text input (1) fields
+                if (fieldType === 3 || fieldType === 1) {
+                  return;
+                }
+                groupsHtml += renderFieldHtml(
+                  variation,
+                  `variationsGroups[${groupIndex}]`,
+                  variationIndex,
+                  true,
+                  groupIndex
+                );
+              }
+            });
+
+            // Add group quantity field AFTER variation fields (to match PHP rendering)
+            const { costPerUnit = 0 } = defaultJobJson;
+            const quantityInputId = `group-quantity-${groupIndex}`;
+            groupsHtml += `
             <div class="custom-field">
               <label for="${quantityInputId}">Quantity</label>
               <div class="quantity">
@@ -847,7 +867,7 @@ function initializeWhenReady() {
               </div>
             </div>`;
 
-          groupsHtml += `
+            groupsHtml += `
             <div
               class="group-cost-display"
               data-group-index="${groupIndex}"
@@ -855,7 +875,7 @@ function initializeWhenReady() {
             >
               Group Cost: $${groupCost.toFixed(2)}
             </div>`;
-          groupsHtml += `
+            groupsHtml += `
             <button
               type="button"
               class="button wp-element-button delete-group-button"
@@ -863,30 +883,47 @@ function initializeWhenReady() {
             >
               Delete Group
             </button>`;
-          groupsHtml += '</div>';
-        });
-
-        $groupsContainer.html(groupsHtml);
-
-        // Apply current values from response to newly rendered group fields
-        variationsGroups.forEach((group, groupIndex) => {
-          const { variations: groupVariations = [] } = group;
-          const $groupContainer = $groupsContainer.find(`.group-field-set[data-group-index="${groupIndex}"]`);
-
-          groupVariations.forEach((variation) => {
-            if (variation.variationField && variation.value !== undefined && variation.value !== null) {
-              const fieldType = variation.variationField.fieldType;
-              // Skip priority fields
-              if (fieldType === 3 || fieldType === 1) {
-                return;
-              }
-              applyVariationValue($groupContainer, variation, true);
-            }
+            groupsHtml += '</div>';
           });
 
-          // Re-initialize event handlers for this re-rendered group
-          initializeGroupVariationHandlers($groupContainer);
-        });
+          $groupsContainer.html(groupsHtml);
+
+          // Apply current values from response to newly rendered group fields
+          variationsGroups.forEach((group, groupIndex) => {
+            const { variations: groupVariations = [] } = group;
+            const $groupContainer = $groupsContainer.find(`.group-field-set[data-group-index="${groupIndex}"]`);
+
+            groupVariations.forEach((variation) => {
+              if (variation.variationField && variation.value !== undefined && variation.value !== null) {
+                const fieldType = variation.variationField.fieldType;
+                // Skip priority fields
+                if (fieldType === 3 || fieldType === 1) {
+                  return;
+                }
+                applyVariationValue($groupContainer, variation, true);
+              }
+            });
+
+            // Re-initialize event handlers for this re-rendered group
+            initializeGroupVariationHandlers($groupContainer);
+          });
+        } else {
+          // no structure changes, only update field values
+          variationsGroups.forEach((group, groupIndex) => {
+            const { variations: groupVariations = [] } = group;
+            const $groupContainer = $groupsContainer.find(`.group-field-set[data-group-index="${groupIndex}"]`);
+
+            groupVariations.forEach((variation) => {
+              if (variation.variationField && variation.value !== undefined && variation.value !== null) {
+                const fieldType = variation.variationField.fieldType;
+                if (fieldType === 3 || fieldType === 1) {
+                  return;
+                }
+                applyVariationValue($groupContainer, variation, true);
+              }
+            });
+          });
+        }
 
       }
       // Re-bind quantity buttons after re-rendering (must be after group handlers)
