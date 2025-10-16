@@ -126,8 +126,23 @@ export default function ShippingOptions({
                                     ...cart,
                                     shipmentGroups: shipmentGroups.map((g) =>
                                       g.id === shipmentGroup.id
-                                        ? { id: g.id, selectedQuote: { id: quote.id } }
-                                        : { id: g.id }
+                                        ? {
+                                          id: g.id,
+                                          selectedQuote: { id: quote.id },
+                                          cartItems: g.cartItems?.map(ci => ({
+                                            id: ci.id,
+                                            product: { id: ci.product.id }
+                                          })),
+                                          quotes: g.quotes?.map(q => ({ id: q.id }))
+                                        }
+                                        : {
+                                          id: g.id,
+                                          cartItems: g.cartItems?.map(ci => ({
+                                            id: ci.id,
+                                            product: { id: ci.product.id }
+                                          })),
+                                          quotes: g.quotes?.map(q => ({ id: q.id }))
+                                        }
                                     ),
                                   };
 

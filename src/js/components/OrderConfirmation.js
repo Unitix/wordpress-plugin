@@ -141,17 +141,19 @@ const OrderConfirmation = () => {
         </table>
       </section>
 
-      <section className="woocommerce-customer-details">
-        <h2 className="woocommerce-column__title">Shipping address</h2>
-        <address>
-          {client.name} <br />
-          {client.emailAddresses[0].emailAddress} <br />
-          {receiverAddress.lineOne} <br />
-          {receiverAddress.city}, {receiverAddress.postcode} <br />
-          {receiverAddress.state} <br />
-          {receiverAddress.country} <br />
-        </address>
-      </section>
+      {receiverAddress && (
+        <section className="woocommerce-customer-details">
+          <h2 className="woocommerce-column__title">Shipping address</h2>
+          <address>
+            {client.name} <br />
+            {client.emailAddresses[0].emailAddress} <br />
+            {receiverAddress.lineOne} <br />
+            {receiverAddress.city}, {receiverAddress.postcode} <br />
+            {receiverAddress.state} <br />
+            {receiverAddress.country} <br />
+          </address>
+        </section>
+      )}
 
       {orderInfo.orderNote && (
         <section className="woocommerce-order-note">

@@ -9,7 +9,7 @@ import { patchCart } from '../merchi_public_custom';
 import { MERCHI_API_URL, MERCHI_SDK } from '../merchi_sdk';
 import { useCart } from '../contexts/CartContext';
 import 'react-phone-input-2/lib/style.css';
-import { ensureWooNonce, fetchWooNonce, updateWooNonce, getCountryFromBrowser, toIso, cleanShipmentGroups, getWpApiRoot } from '../utils';
+import { ensureWooNonce, fetchWooNonce, updateWooNonce, getCountryFromBrowser, toIso, cleanShipmentGroups, getWpApiRoot, cartEmbed } from '../utils';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { mergeCartProducts } from '../utils';
 
@@ -53,7 +53,7 @@ async function createClient(MERCHI, clientJson, cartJson) {
 }
 
 const WoocommerceCheckoutForm = () => {
-  const { cart, updateCart, clearCart } = useCart();
+  const { cart, updateCart, clearCart, syncCartFromStorage } = useCart();
   const [orderInfo, setOrderInfo] = useState({ cart, client: null, receiverAddress: null });
 
   useEffect(() => {
@@ -219,19 +219,43 @@ const WoocommerceCheckoutForm = () => {
 
       cartEnt.receiverAddress(addressEnt);
 
+      // ensure receiverAddress is available in Order Confirmation page
+      const receiverAddressObj = {
+        lineOne: shipping_address_1,
+        lineTwo: shipping_address_2,
+        city: shipping_city,
+        postcode: shipping_postcode,
+        country: selectedShippingCountry,
+        state: selectedShippingState,
+      };
+
+      setOrderInfo(prev => ({
+        ...prev,
+        receiverAddress: receiverAddressObj
+      }));
+
       //convert cartEnt to json
       const cartJson = MERCHI.toJson(cartEnt);
-      //delete the id of cart item from cartItems
+
+      // Preserve shipmentGroups and selectedQuote from original cart
+      if (cart.shipmentGroups) {
+        cartJson.shipmentGroups = cart.shipmentGroups;
+      }
+      if (cart.selectedQuote) {
+        cartJson.selectedQuote = cart.selectedQuote;
+      }
 
       // Patch the cart data to Merchi server
-      await patchCart(cartJson)
+      await patchCart(cartJson, undefined, { includeShippingFields: true })
         .then(async response => {
           //turn merchi entity response to json
           const responseJson = MERCHI.toJson(response);
-          await updateCart(responseJson);
+          syncCartFromStorage();
+
           setOrderInfo(prev => ({
             ...prev,
             cart: responseJson,
+            receiverAddress: responseJson.receiverAddress || null,
             client: {
               ...prev.client,
               name: getValues('client.name'),
@@ -242,7 +266,9 @@ const WoocommerceCheckoutForm = () => {
             orderNote: getValues('order_notes') || ''
           }));
         })
-        .catch(e => console.warn('[MerchiSync] patchCart error:', e.response?.status || e));
+        .catch(e => {
+          console.warn('[MerchiSync] patchCart error:', e.response?.status || e);
+        });
 
       const merchi_api_url = MERCHI_API_URL();
       const response = await fetch(`${merchi_api_url}v6/stripe/payment_intent/cart/${cartEnt.id()}/?cart_token=${cartEnt.token()}`);

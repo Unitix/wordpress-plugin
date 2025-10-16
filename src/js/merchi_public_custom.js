@@ -105,6 +105,8 @@ export async function patchCart(cartJson, embed = cartEmbed, options = {}) {
   const cleanedCartJson = {
     ...cartJson,
     domain: { id: cartJson.domain.id },
+    // simplify client to just id to avoid sending unnecessary user data
+    client: cartJson.client?.id ? { id: cartJson.client.id } : cartJson.client,
     cartItems: cartJson.cartItems.map(item => ({
       ...item,
       product: { id: item.product.id },
@@ -114,22 +116,48 @@ export async function patchCart(cartJson, embed = cartEmbed, options = {}) {
     })),
   };
 
+  delete cleanedCartJson.invoice;
+  delete cleanedCartJson.subtotalCost;
+  delete cleanedCartJson.taxAmount;
+  delete cleanedCartJson.totalCost;
+  delete cleanedCartJson.cartItemsSubtotalCost;
+  delete cleanedCartJson.cartItemsTaxAmount;
+  delete cleanedCartJson.cartItemsTotalCost;
+  delete cleanedCartJson.updated;
+  delete cleanedCartJson.creationDate;
+  delete cleanedCartJson.ip;
   // keep or remove shipping fields based on options parameter 
   if (!includeShippingFields) {
     // Remove shipping-related fields that may cause 403 errors
     delete cleanedCartJson.shipmentGroups;
     delete cleanedCartJson.selectedQuote;
     delete cleanedCartJson.receiverAddress;
+    delete cleanedCartJson.shipmentSubtotalCost;
+    delete cleanedCartJson.shipmentTaxAmount;
+    delete cleanedCartJson.shipmentTotalCost;
   } else {
     // Include shipping fields (for checkout scenarios)
-    cleanedCartJson.shipmentGroups = cartJson.shipmentGroups || [];
-    cleanedCartJson.selectedQuote = cartJson.selectedQuote || null;
+    cleanedCartJson.shipmentGroups = (cartJson.shipmentGroups || []).map(g => ({
+      id: g.id,
+      cartItems: (g.cartItems || []).map(ci => ({
+        id: ci.id,
+        product: { id: ci.product.id }
+      })),
+      quotes: (g.quotes || []).map(q => ({ id: q.id })),
+      selectedQuote: g.selectedQuote ? { id: g.selectedQuote.id } : undefined
+    }));
+    cleanedCartJson.selectedQuote = cartJson.selectedQuote ? { id: cartJson.selectedQuote.id } : null;
     cleanedCartJson.receiverAddress = cartJson.receiverAddress || null;
   }
 
   const cartEnt = MERCHI.fromJson(new MERCHI.Cart(), cleanedCartJson);
 
   cartEnt.token(cartJson.token);
+
+  const currentCartItems = cartEnt.cartItems();
+  if (currentCartItems !== undefined) {
+    cartEnt.cartItems(currentCartItems);
+  }
 
   // Store the current cart state for potential rollback
   const currentCartState = localStorage.getItem("MerchiCart");
@@ -483,7 +511,21 @@ async function handleCartItemRemoval(merchiItemId) {
       it => String(it?.id) !== String(merchiItemId)
     );
 
-    await patchCart(cartJson, window.cartEmbed || null, { includeShippingFields: false });
+    delete cartJson.invoice;
+    delete cartJson.shipmentGroups;
+    delete cartJson.selectedQuote;
+    delete cartJson.receiverAddress;
+    delete cartJson.shipmentSubtotalCost;
+    delete cartJson.shipmentTaxAmount;
+    delete cartJson.shipmentTotalCost;
+    delete cartJson.subtotalCost;
+    delete cartJson.taxAmount;
+    delete cartJson.totalCost;
+    delete cartJson.cartItemsSubtotalCost;
+    delete cartJson.cartItemsTaxAmount;
+    delete cartJson.cartItemsTotalCost;
+
+    await patchCart(cartJson, cartEmbed, { includeShippingFields: false });
 
     if (!cartJson.cartItems.length) {
       // keep the cart structure but clear items
@@ -538,6 +580,20 @@ function handleMerchiCartItemRemoved(response) {
 
       // Filter out the removed item from cartItems
       cartJson.cartItems = cartJson.cartItems.filter(item => item.id !== item_id);
+
+      delete cartJson.invoice;
+      delete cartJson.shipmentGroups;
+      delete cartJson.selectedQuote;
+      delete cartJson.receiverAddress;
+      delete cartJson.shipmentSubtotalCost;
+      delete cartJson.shipmentTaxAmount;
+      delete cartJson.shipmentTotalCost;
+      delete cartJson.subtotalCost;
+      delete cartJson.taxAmount;
+      delete cartJson.totalCost;
+      delete cartJson.cartItemsSubtotalCost;
+      delete cartJson.cartItemsTaxAmount;
+      delete cartJson.cartItemsTotalCost;
 
       // Update the cart using patchCart
       patchCart(cartJson, cartEmbed, { includeShippingFields: false }).then(response => {

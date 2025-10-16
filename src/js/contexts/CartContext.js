@@ -110,6 +110,11 @@ export const CartProvider = ({ children }) => {
     setError(null);
   }, []);
 
+  const syncCartFromStorage = useCallback(() => {
+    const cartData = readCartFromStorage();
+    setCart(cartData);
+  }, []);
+
   // Computed values
   const cartItems = cart?.cartItems || [];
   const cartItemsCount = cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
@@ -137,7 +142,8 @@ export const CartProvider = ({ children }) => {
     refreshCart,
     updateCart,
     clearCart,
-    initializeCart
+    initializeCart,
+    syncCartFromStorage
   };
 
   return (
