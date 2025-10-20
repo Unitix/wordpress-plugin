@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { cartEmbed } from '../utils';
+import React, { useState, useEffect, useRef } from 'react';
+import { backendUri } from '../utils';
 import { patchCartDiscountItems } from '../merchi_public_custom';
 
 export default function ShippingOptions({
@@ -7,14 +7,87 @@ export default function ShippingOptions({
   shipmentOptionsLoading = false,
   register,
   errors = {},
-  patchCart,
   cart,
-  updateCart,
+  syncCartFromStorage,
   MERCHI,
   setIsUpdatingShipping,
 }) {
 
   const [selectedQuoteIds, setSelectedQuoteIds] = useState({});
+  const lastChoiceRef = useRef({}); // remember user's last chosen method
+
+  function buildGroupKey(group) {
+    try {
+      const ids = (group?.cartItems || []).map((i) => i?.product?.id).filter(Boolean).sort();
+      return ids.join(',');
+    } catch {
+      return String(group?.id ?? '');
+    }
+  }
+
+  function buildQuoteKey(quote) {
+    const carrier = quote?.shipmentMethod?.transportCompanyName || '';
+    const name = quote?.name || quote?.shipmentMethod?.name || '';
+    const cost = String(quote?.totalCost ?? quote?.subtotalCost ?? '');
+    return `${carrier}::${name}::${cost}`;
+  }
+
+  useEffect(() => {
+    const nextSelected = { ...selectedQuoteIds };
+    let changed = false;
+
+    shipmentGroups.forEach((group) => {
+      const quoteIds = (group.quotes || []).map((q) => q.id);
+      const current = nextSelected[group.id];
+      const groupKey = buildGroupKey(group);
+
+      if (current == null) {
+        const lastKey = lastChoiceRef.current[groupKey];
+        if (lastKey) {
+          const match = (group.quotes || []).find((q) => buildQuoteKey(q) === lastKey);
+          if (match) {
+            nextSelected[group.id] = match.id;
+            changed = true;
+            return;
+          }
+        }
+
+        const serverSel = group?.selectedQuote?.id;
+        if (quoteIds.includes(serverSel)) {
+          nextSelected[group.id] = serverSel;
+          changed = true;
+          return;
+        }
+
+        const fallback = quoteIds[0];
+        if (fallback != null) {
+          nextSelected[group.id] = fallback;
+          changed = true;
+        }
+      } else if (!quoteIds.includes(current)) {
+        const lastKey = lastChoiceRef.current[groupKey];
+        const match = lastKey ? (group.quotes || []).find((q) => buildQuoteKey(q) === lastKey) : null;
+        if (match) {
+          nextSelected[group.id] = match.id;
+          changed = true;
+        } else if (quoteIds.length) {
+          nextSelected[group.id] = quoteIds[0];
+          changed = true;
+        }
+      }
+    });
+
+    Object.keys(nextSelected).forEach((gid) => {
+      if (!shipmentGroups.some((g) => String(g.id) === String(gid))) {
+        delete nextSelected[gid];
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      setSelectedQuoteIds(nextSelected);
+    }
+  }, [shipmentGroups]);
 
   const validShipmentGroups = shipmentGroups.filter(
     (g) => g.cartItems?.length
@@ -116,39 +189,92 @@ export default function ShippingOptions({
                                 onChange={async (e) => {
                                   rhf.onChange(e);
 
+                                  // remember user's logical choice
+                                  try {
+                                    const gKey = buildGroupKey(shipmentGroup);
+                                    const qKey = buildQuoteKey(quote);
+                                    lastChoiceRef.current[gKey] = qKey;
+                                  } catch { }
+
                                   setSelectedQuoteIds((prev) => ({
                                     ...prev,
                                     [shipmentGroup.id]: quote.id,
                                   }));
                                   setIsUpdatingShipping(true);
 
-                                  const newCart = {
-                                    ...cart,
-                                    shipmentGroups: shipmentGroups.map((g) =>
-                                      g.id === shipmentGroup.id
-                                        ? {
-                                          id: g.id,
-                                          selectedQuote: { id: quote.id },
-                                          cartItems: g.cartItems?.map(ci => ({
-                                            id: ci.id,
-                                            product: { id: ci.product.id }
-                                          })),
-                                          quotes: g.quotes?.map(q => ({ id: q.id }))
-                                        }
-                                        : {
-                                          id: g.id,
-                                          cartItems: g.cartItems?.map(ci => ({
-                                            id: ci.id,
-                                            product: { id: ci.product.id }
-                                          })),
-                                          quotes: g.quotes?.map(q => ({ id: q.id }))
-                                        }
-                                    ),
-                                  };
-
                                   try {
-                                    const cartEnt = await patchCart(newCart, cartEmbed, { includeShippingFields: true });
-                                    const cartJson = MERCHI.toJson(cartEnt);
+                                    if (!cart?.id) {
+                                      throw new Error('Cart ID is missing');
+                                    }
+
+                                    if (!cart?.token) {
+                                      throw new Error('Cart token is missing');
+                                    }
+
+                                    const payload = {
+                                      shipmentGroups: shipmentGroups.map((g) =>
+                                        g.id === shipmentGroup.id
+                                          ? { id: g.id, selectedQuote: { id: quote.id } }
+                                          : { id: g.id }
+                                      )
+                                    };
+
+                                    const response = await fetch(`${backendUri}v6/carts/${cart.id}/?cart_token=${cart.token}`, {
+                                      method: 'PATCH',
+                                      headers: {
+                                        'Content-Type': 'application/json'
+                                      },
+                                      body: JSON.stringify(payload)
+                                    });
+
+                                    if (!response.ok) {
+                                      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                                    }
+
+                                    const responseData = await response.json();
+                                    const apiCart = responseData.cart || responseData;
+
+                                    const updatedCart = {
+                                      ...cart,
+                                      ...apiCart,
+                                      cartItems: apiCart.cartItems || cart.cartItems || [],
+                                      domain: apiCart.domain || cart.domain || {},
+                                      shipmentGroups: apiCart.shipmentGroups || cart.shipmentGroups || [],
+                                      receiverAddress: apiCart.receiverAddress !== undefined ? apiCart.receiverAddress : cart.receiverAddress,
+                                      discountItems: apiCart.discountItems || cart.discountItems || []
+                                    };
+
+                                    // Update the specific shipmentGroup with the selected quote
+                                    if (updatedCart.shipmentGroups && updatedCart.shipmentGroups.length > 0) {
+                                      const targetGroupKey = buildGroupKey(shipmentGroup);
+                                      const targetQuoteKey = buildQuoteKey(quote);
+
+                                      updatedCart.shipmentGroups = updatedCart.shipmentGroups.map((g) => {
+                                        const gKey = buildGroupKey(g);
+
+                                        if (gKey === targetGroupKey) {
+                                          const matchingQuote = (g.quotes || []).find(q => buildQuoteKey(q) === targetQuoteKey);
+
+                                          if (matchingQuote) {
+                                            return {
+                                              ...g,
+                                              selectedQuote: matchingQuote
+                                            };
+                                          } else {
+                                            const byId = (g.quotes || []).find(q => q.id === quote.id);
+                                            if (byId) {
+                                              return {
+                                                ...g,
+                                                selectedQuote: byId
+                                              };
+                                            }
+                                            return g;
+                                          }
+                                        }
+                                        return g;
+                                      });
+                                    }
+
 
                                     if (Array.isArray(cart.discountItems) && cart.discountItems.length) {
                                       const slim = cart.discountItems.map(({ code, id, description = '', cost }) => ({
@@ -157,13 +283,17 @@ export default function ShippingOptions({
                                         description,
                                         cost,
                                       }));
-                                      const patched2 = await patchCartDiscountItems(cartJson, slim);
-                                      Object.assign(cartJson, MERCHI.toJson(patched2));
+                                      const patched2 = await patchCartDiscountItems(updatedCart, slim);
+                                      Object.assign(updatedCart, MERCHI.toJson(patched2));
                                     }
 
-                                    await updateCart(cartJson);
+                                    localStorage.setItem('MerchiCart', JSON.stringify(updatedCart));
+
+                                    if (syncCartFromStorage) {
+                                      syncCartFromStorage();
+                                    }
                                   } catch (err) {
-                                    console.error('[ShippingOptions] patchCart error:', err);
+                                    console.error('[ShippingOptions] fetch PATCH error:', err);
                                   } finally {
                                     setIsUpdatingShipping(false);
                                   }

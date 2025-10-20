@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import PhoneInput from 'react-phone-input-2'
 import { useForm, Controller } from 'react-hook-form';
 import WoocommerceCheckoutFormSideCart from './WoocommerceCheckoutFormSideCart';
@@ -11,7 +11,7 @@ import { useCart } from '../contexts/CartContext';
 import 'react-phone-input-2/lib/style.css';
 import { ensureWooNonce, fetchWooNonce, updateWooNonce, getCountryFromBrowser, toIso, cleanShipmentGroups, getWpApiRoot, cartEmbed } from '../utils';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
-import { mergeCartProducts } from '../utils';
+
 
 async function createClient(MERCHI, clientJson, cartJson) {
   return new Promise((resolve, reject) => {
@@ -73,6 +73,9 @@ const WoocommerceCheckoutForm = () => {
     useState(browserCountry);
 
   const [selectedShippingState, setSelectedShippingState] = useState(null);
+  const isInitialLoad = useRef(true);
+  const isUpdatingAddress = useRef(false);
+
   const { control, register, handleSubmit, formState: { errors }, setValue, getValues } = useForm({
     defaultValues: {
       shipping_country: browserCountry || '',
@@ -97,6 +100,8 @@ const WoocommerceCheckoutForm = () => {
           `${merchi_api_url}v6/generate-cart-shipment-quotes/${id}/?cart_token=${token}`,
           requestOptions
         );
+
+
         const { shipmentGroups } = await response.json();
         setShipmentGroups(shipmentGroups.filter((g) => g.cartItems?.length));
         return;
@@ -107,41 +112,92 @@ const WoocommerceCheckoutForm = () => {
     }
   }
 
-  async function changeShippingCountryOrState(country, state) {
+  async function changeShippingCountryOrState(country, state, forceUpdate = false) {
+    if (isUpdatingAddress.current) return;
+    if (!cart?.id || !cart?.token || !Array.isArray(cart?.cartItems) || cart.cartItems.length === 0) return;
+
+    isUpdatingAddress.current = true;
     setShipmentOptionsLoading(true);
+
     const c = toIso(country);
-    const s = toIso(state);
+    const s = state ? toIso(state) : null;
+    const existingCountry = cart?.receiverAddress?.country;
+    const existingState = cart?.receiverAddress?.state;
+    const addressUnchanged = (existingCountry === c) && (existingState === s || (!existingState && !s));
 
-    const cartJson = {
-      ...cart,
-      receiverAddress: { ...cart.receiverAddress, country: c, state: s },
-      shipmentGroups: [],
-    };
+    if (addressUnchanged && !forceUpdate && cart?.receiverAddress?.country) {
+      try {
+        await getShippingGroup();
+      } finally {
+        setShipmentOptionsLoading(false);
+        isUpdatingAddress.current = false;
+      }
+      return;
+    }
+
     try {
-      // the patch with selectedQuote is sent only after the user picks one
-      const cartEnt = await patchCart(cartJson, undefined, { includeShippingFields: true });
-      const _cartJson = MERCHI.toJson(cartEnt);
+      // only create new cart entity (prevent 403 errors)
+      const currentValues = getValues();
 
-      const cleanedCartJson = cleanShipmentGroups(_cartJson);
-      const merged = mergeCartProducts(cleanedCartJson, cart);
-      await updateCart(merged);
+      const cartEnt = new MERCHI.Cart();
+      cartEnt.id(cart.id);
+      cartEnt.token(cart.token);
+
+      const addressEnt = new MERCHI.Address();
+      addressEnt.country(c);
+      if (s) addressEnt.state(s);
+
+      // Use form values if available, otherwise fall back to cart data
+      const lineOne = currentValues.shipping_address_1 || cart.receiverAddress?.lineOne;
+      const lineTwo = currentValues.shipping_address_2 || cart.receiverAddress?.lineTwo;
+      const city = currentValues.shipping_city || cart.receiverAddress?.city;
+      const postcode = currentValues.shipping_postcode || cart.receiverAddress?.postcode;
+
+      if (lineOne) addressEnt.lineOne(lineOne);
+      if (lineTwo) addressEnt.lineTwo(lineTwo);
+      if (city) addressEnt.city(city);
+      if (postcode) addressEnt.postcode(postcode);
+
+      cartEnt.receiverAddress(addressEnt);
+
+      await new Promise((resolve, reject) => {
+        cartEnt.patch(
+          async (updatedCart) => {
+            const _cartJson = MERCHI.toJson(updatedCart);
+
+
+            const existingCart = JSON.parse(localStorage.getItem('MerchiCart') || '{}');
+            const mergedCart = {
+              ...existingCart,
+              receiverAddress: _cartJson.receiverAddress
+            };
+
+            localStorage.setItem('MerchiCart', JSON.stringify(mergedCart));
+            syncCartFromStorage();
+            resolve(updatedCart);
+          },
+          (status, data) => reject(new Error(`Patch failed: ${status}`)),
+          { receiverAddress: {} }
+        );
+      });
+
       await getShippingGroup();
-    } catch (error) {
-      console.error('Error updating cart:', error);
     } finally {
       setShipmentOptionsLoading(false);
+      isUpdatingAddress.current = false;
     }
   }
 
   useEffect(() => {
-    if (browserCountry) {
-      setValue('shipping_country', browserCountry);
-      changeShippingCountryOrState(browserCountry, null);
+    if (isInitialLoad.current) {
+      if (browserCountry) {
+        setValue('shipping_country', browserCountry);
+        changeShippingCountryOrState(browserCountry, null);
+      }
+      isInitialLoad.current = false;
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
-  useEffect(() => {
     if (selectedShippingCountry) {
       changeShippingCountryOrState(selectedShippingCountry, selectedShippingState);
     }
@@ -526,9 +582,8 @@ const WoocommerceCheckoutForm = () => {
                   shipmentOptionsLoading={shipmentOptionsLoading}
                   register={register}
                   errors={errors}
-                  patchCart={patchCart}
                   cart={cart}
-                  updateCart={updateCart}
+                  syncCartFromStorage={syncCartFromStorage}
                   MERCHI={MERCHI}
                   setIsUpdatingShipping={setIsUpdatingShipping}
                 />

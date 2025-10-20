@@ -102,6 +102,7 @@ export async function patchCart(cartJson, embed = cartEmbed, options = {}) {
     preserveShippingInLocalStorage = true // Whether to preserve shipping data in localStorage
   } = options;
 
+
   const cleanedCartJson = {
     ...cartJson,
     domain: { id: cartJson.domain.id },
