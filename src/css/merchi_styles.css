@@ -1733,12 +1733,40 @@ body.single-product #cart-count {
   font-size: 1rem;
   line-height: 1.5em;
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 4px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .wc-block-checkout__sidebar .merchi-variation-list .wc-block-components-product-details__name {
   flex-shrink: 0;
+  min-width: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.wc-block-checkout__sidebar .merchi-variation-list .variation-value,
+.wc-block-checkout__sidebar .merchi-variation-list .variation-detail {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  min-width: 0;
+  flex: 1;
+}
+
+.wc-block-checkout__sidebar .wc-block-components-product-details__name,
+.wc-block-checkout__sidebar .wc-block-components-product-details__value,
+.wc-block-checkout__sidebar .wc-block-components-product-details__description {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  max-width: 100%;
+}
+
+.wc-block-checkout__sidebar .wc-block-components-order-summary {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 
 .payment-actions {
