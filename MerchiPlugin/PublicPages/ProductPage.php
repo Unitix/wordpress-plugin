@@ -11,7 +11,6 @@ class ProductPage extends BaseController {
 
 
 	public function register() {
-		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_priority_fields' ], 5 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_grouped_attributes' ], 10 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_independent_attributes' ], 20 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_new_group_button' ], 25 );
@@ -119,58 +118,6 @@ class ProductPage extends BaseController {
 		}
 	}
 
-	public function display_priority_fields() {
-		global $product;
-		
-		$product_id = $product->get_id();
-		$group_fields_template = get_post_meta($product_id, '_group_variation_field_template', true);
-		$independent_fields = get_post_meta($product_id, '_merchi_ordered_fields', true);
-		
-		$priority_fields = [];
-		// track field id to prevent duplicates
-		$seen_field_ids = [];
-		
-		if (!empty($group_fields_template) && is_array($group_fields_template)) {
-			foreach ($group_fields_template as $field) {
-				$fieldType = intval($field['fieldType']);
-				$fieldID = isset($field['fieldID']) ? intval($field['fieldID']) : null;
-				
-				if (($fieldType === 3 || $fieldType === 1) && $fieldID && !in_array($fieldID, $seen_field_ids)) {
-					$priority_fields[] = ['field' => $field, 'source' => 'group'];
-					$seen_field_ids[] = $fieldID;
-				}
-			}
-		}
-		
-		if (!empty($independent_fields) && is_array($independent_fields)) {
-			foreach ($independent_fields as $field) {
-				$fieldType = intval($field['fieldType']);
-				$fieldID = isset($field['fieldID']) ? intval($field['fieldID']) : null;
-				
-				if (($fieldType === 3 || $fieldType === 1) && $fieldID && !in_array($fieldID, $seen_field_ids)) {
-					$priority_fields[] = ['field' => $field, 'source' => 'independent'];
-					$seen_field_ids[] = $fieldID;
-				}
-			}
-		}
-		
-		if (!empty($priority_fields)) {
-			usort($priority_fields, function($a, $b) {
-				return ($a['field']['position'] ?? 0) <=> ($b['field']['position'] ?? 0);
-			});
-			
-			echo '<div class="priority-fields-section merchi-product-form">';
-			echo '<h2 class="add-your-design-heading">Add Your Design</h2>';
-			echo '<div class="priority-fields-container">';
-			
-			foreach ($priority_fields as $index => $item) {
-				echo $this->render_meta_field($item['field'], 'custom_fields', $index);
-			}
-			
-			echo '</div>';
-			echo '</div>';
-		}
-	}
 
 	public function custom_display_independent_attributes() {
     global $product;
@@ -188,12 +135,6 @@ class ProductPage extends BaseController {
     echo '<div class="custom-variation-options merchi-product-form">';
 
     foreach ($fields as $index => $field) {
-        // Skip file upload (3) and text input (1) fields as they are rendered separately
-        $fieldType = intval($field['fieldType']);
-        if ($fieldType === 3 || $fieldType === 1) {
-            continue;
-        }
-        
         if ($field['type'] === 'attribute') {
             echo $this->render_attribute_field($field, 'custom_fields', false, $index);
         } else {
@@ -235,12 +176,6 @@ class ProductPage extends BaseController {
 		echo '<h4>Group <span class="group-number">1</span></h4>';
 		
 		foreach ($group_fields_template as $field_index => $field) {
-			// Skip file upload and text input fields
-			$fieldType = intval($field['fieldType']);
-			if ($fieldType === 3 || $fieldType === 1) {
-				continue;
-			}
-			
 			if ($field['type'] === 'attribute') {
 				echo $this->render_attribute_field($field, "variationsGroups[0]", true, $field_index);
 			} else {

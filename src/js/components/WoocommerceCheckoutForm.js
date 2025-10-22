@@ -224,8 +224,28 @@ const WoocommerceCheckoutForm = () => {
       shipping_postcode
     } = getValues();
 
-    let cartEnt = MERCHI.fromJson(new MERCHI.Cart(), cart);
     try {
+      // ensure shipping options are loaded before proceeding
+      if (!cart.shipmentGroups || cart.shipmentGroups.length === 0) {
+        setShipmentOptionsLoading(true);
+        try {
+          await getShippingGroup();
+          syncCartFromStorage();
+        } catch (error) {
+          console.error('[Shipping] Failed to load:', error);
+          return;
+        } finally {
+          setShipmentOptionsLoading(false);
+        }
+      }
+
+      // build a minimal cart object with only necessary fields for checkout
+      const minimalCartData = {
+        id: cart.id,
+        token: cart.token,
+        client: cart.client?.id ? { id: cart.client.id } : undefined,
+      };
+
       // try update or create new client
       const cartClientEmail =
         cart?.client?.emailAddresses?.[0]?.emailAddress ?? '';
@@ -259,23 +279,11 @@ const WoocommerceCheckoutForm = () => {
           orderNote: getValues('order_notes') || ''
         });
 
-        const newCartClientEnt = MERCHI.fromJson(new MERCHI.User(), { id: newCartClient.user.id });
-
-        cartEnt.client(newCartClientEnt);
+        // Update the minimal cart data with new client
+        minimalCartData.client = { id: newCartClient.user.id };
       }
 
-      const addressEnt = new MERCHI.Address();
-
-      addressEnt.lineOne(shipping_address_1);
-      addressEnt.lineTwo(shipping_address_2);
-      addressEnt.city(shipping_city);
-      addressEnt.postcode(shipping_postcode);
-      addressEnt.country(selectedShippingCountry);
-      addressEnt.state(selectedShippingState);
-
-      cartEnt.receiverAddress(addressEnt);
-
-      // ensure receiverAddress is available in Order Confirmation page
+      // build receiverAddress object
       const receiverAddressObj = {
         lineOne: shipping_address_1,
         lineTwo: shipping_address_2,
@@ -285,27 +293,34 @@ const WoocommerceCheckoutForm = () => {
         state: selectedShippingState,
       };
 
+      // add receiverAddress to minimal cart data
+      minimalCartData.receiverAddress = receiverAddressObj;
+
+      const hasSelectedShipping = cart.shipmentGroups?.some(g => g.selectedQuote?.id);
+      if (!hasSelectedShipping) {
+        console.error('[Shipping] No shipping method selected');
+        return;
+      }
+
       setOrderInfo(prev => ({
         ...prev,
         receiverAddress: receiverAddressObj
       }));
 
-      //convert cartEnt to json
-      const cartJson = MERCHI.toJson(cartEnt);
-
-      // Preserve shipmentGroups and selectedQuote from original cart
-      if (cart.shipmentGroups) {
-        cartJson.shipmentGroups = cart.shipmentGroups;
-      }
-      if (cart.selectedQuote) {
-        cartJson.selectedQuote = cart.selectedQuote;
-      }
+      // Log raw data BEFORE patch
+      console.log('=== BEFORE PATCH ===');
+      console.log('cart:', cart);
+      console.log('minimalCartData:', minimalCartData);
 
       // Patch the cart data to Merchi server
-      await patchCart(cartJson, undefined, { includeShippingFields: true })
+      await patchCart(minimalCartData, undefined, { includeShippingFields: true })
         .then(async response => {
-          //turn merchi entity response to json
           const responseJson = MERCHI.toJson(response);
+
+          // Log raw data AFTER patch
+          console.log('=== AFTER PATCH ===');
+          console.log('responseJson:', responseJson);
+
           syncCartFromStorage();
 
           setOrderInfo(prev => ({
@@ -323,12 +338,26 @@ const WoocommerceCheckoutForm = () => {
           }));
         })
         .catch(e => {
-          console.warn('[MerchiSync] patchCart error:', e.response?.status || e);
+          throw e;
         });
 
+      // Log cart state before Stripe API
+      console.log('=== BEFORE STRIPE API ===');
+      console.log('cart:', cart);
+
       const merchi_api_url = MERCHI_API_URL();
-      const response = await fetch(`${merchi_api_url}v6/stripe/payment_intent/cart/${cartEnt.id()}/?cart_token=${cartEnt.token()}`);
+      const response = await fetch(`${merchi_api_url}v6/stripe/payment_intent/cart/${cart.id}/?cart_token=${cart.token}`);
+
+      if (!response.ok) {
+        throw new Error('Unable to initialize payment. Please try again.');
+      }
+
       const data = await response.json();
+
+      if (!data.stripeClientSecret) {
+        throw new Error('Payment initialization failed. Please try again.');
+      }
+
       setStripeClientSecret(data.stripeClientSecret);
       setCurrentStep('payment');
 

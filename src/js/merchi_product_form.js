@@ -744,24 +744,13 @@ function initializeWhenReady() {
       if ($independentContainer.length > 0) {
         const currentVariations = await processVariations($independentContainer);
 
-        // Filter out priority fields from response variations for comparison
-        const filteredVariations = variations.filter(v => {
-          const fieldType = v.variationField?.fieldType;
-          return fieldType !== 3 && fieldType !== 1;
-        });
-
-        if (hasVariationsChanged(currentVariations, filteredVariations)) {
+        if (hasVariationsChanged(currentVariations, variations)) {
           hasChanges = true;
 
           // Re-render independent variations
           let independentHtml = '';
           variations.forEach((variation, index) => {
             if (variation.variationField) {
-              const fieldType = variation.variationField.fieldType;
-              // Skip file upload (3) and text input (1) fields
-              if (fieldType === 3 || fieldType === 1) {
-                return;
-              }
               independentHtml += renderFieldHtml(variation, 'custom_fields', index);
             }
           });
@@ -772,11 +761,6 @@ function initializeWhenReady() {
             // Apply current values from response to newly rendered fields
             variations.forEach((variation) => {
               if (variation.variationField && variation.value !== undefined && variation.value !== null) {
-                const fieldType = variation.variationField.fieldType;
-                // Skip priority fields
-                if (fieldType === 3 || fieldType === 1) {
-                  return;
-                }
                 applyVariationValue($independentContainer, variation, true);
               }
             });
@@ -809,11 +793,7 @@ function initializeWhenReady() {
         } else {
           for (let i = 0; i < variationsGroups.length; i++) {
             const responseGroupVariations = variationsGroups[i].variations || [];
-            const filteredGroupVariations = responseGroupVariations.filter(v => {
-              const fieldType = v.variationField?.fieldType;
-              return fieldType !== 3 && fieldType !== 1;
-            });
-            if (hasVariationsChanged(currentGroupVariations[i], filteredGroupVariations)) {
+            if (hasVariationsChanged(currentGroupVariations[i], responseGroupVariations)) {
               groupHasChanges = true;
               break;
             }
@@ -836,11 +816,6 @@ function initializeWhenReady() {
             // Add variation fields for this group FIRST
             groupVariations.forEach((variation, variationIndex) => {
               if (variation.variationField) {
-                const fieldType = variation.variationField.fieldType;
-                // Skip file upload (3) and text input (1) fields
-                if (fieldType === 3 || fieldType === 1) {
-                  return;
-                }
                 groupsHtml += renderFieldHtml(
                   variation,
                   `variationsGroups[${groupIndex}]`,
@@ -895,11 +870,6 @@ function initializeWhenReady() {
 
             groupVariations.forEach((variation) => {
               if (variation.variationField && variation.value !== undefined && variation.value !== null) {
-                const fieldType = variation.variationField.fieldType;
-                // Skip priority fields
-                if (fieldType === 3 || fieldType === 1) {
-                  return;
-                }
                 applyVariationValue($groupContainer, variation, true);
               }
             });
@@ -915,10 +885,6 @@ function initializeWhenReady() {
 
             groupVariations.forEach((variation) => {
               if (variation.variationField && variation.value !== undefined && variation.value !== null) {
-                const fieldType = variation.variationField.fieldType;
-                if (fieldType === 3 || fieldType === 1) {
-                  return;
-                }
                 applyVariationValue($groupContainer, variation, true);
               }
             });
@@ -1458,12 +1424,7 @@ function initializeWhenReady() {
 
     // Sets all the event listeners for the variations
     function initializeVariations() {
-      // Initialize priority fields (File upload & Text input)
-      const $priorityFieldsContainer = jQuery('.priority-fields-section');
-      initializeVariationFields($priorityFieldsContainer);
-      initializeFileUploadVariations($priorityFieldsContainer);
-
-      // Initialize other standalone variations
+      // Initialize standalone variations
       const $variationsContainer = jQuery('.custom-variation-options');
       // Initialize calculate inputs
       initializeVariationFields($variationsContainer);
@@ -1817,14 +1778,8 @@ function initializeWhenReady() {
         formData.quantity = parseInt(jQuery('input.qty').val()) || minimumQuantity;
       }
 
-      // Process priority fields (File upload & Text input)
-      const priorityVariations = await processVariations(jQuery('.priority-fields-section'));
-
       // Process standalone variations
-      const standaloneVariations = await processVariations(jQuery('.custom-variation-options'));
-
-      // Combine priority fields and standalone variations
-      formData.variations = [...priorityVariations, ...standaloneVariations];
+      formData.variations = await processVariations(jQuery('.custom-variation-options'));
 
       return formData;
     }

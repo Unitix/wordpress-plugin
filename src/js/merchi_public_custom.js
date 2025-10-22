@@ -104,60 +104,76 @@ export async function patchCart(cartJson, embed = cartEmbed, options = {}) {
 
 
   const cleanedCartJson = {
-    ...cartJson,
-    domain: { id: cartJson.domain.id },
-    // simplify client to just id to avoid sending unnecessary user data
+    id: cartJson.id,
+    token: cartJson.token,
     client: cartJson.client?.id ? { id: cartJson.client.id } : cartJson.client,
-    cartItems: cartJson.cartItems.map(item => ({
+  };
+
+  // only include cartItems if not in checkout
+  if (!includeShippingFields && cartJson.cartItems) {
+    cleanedCartJson.cartItems = cartJson.cartItems.map(item => ({
       ...item,
-      product: { id: item.product.id },
+      product: { id: item.product.id || item.product },
       taxType: item.taxType ? { id: item.taxType.id } : undefined,
       variations: item.variations,
       variationsGroups: (item.variationsGroups || []).map(cleanVariationGroupJson),
-    })),
-  };
-
-  delete cleanedCartJson.invoice;
-  delete cleanedCartJson.subtotalCost;
-  delete cleanedCartJson.taxAmount;
-  delete cleanedCartJson.totalCost;
-  delete cleanedCartJson.cartItemsSubtotalCost;
-  delete cleanedCartJson.cartItemsTaxAmount;
-  delete cleanedCartJson.cartItemsTotalCost;
-  delete cleanedCartJson.updated;
-  delete cleanedCartJson.creationDate;
-  delete cleanedCartJson.ip;
-  // keep or remove shipping fields based on options parameter 
-  if (!includeShippingFields) {
-    // Remove shipping-related fields that may cause 403 errors
-    delete cleanedCartJson.shipmentGroups;
-    delete cleanedCartJson.selectedQuote;
-    delete cleanedCartJson.receiverAddress;
-    delete cleanedCartJson.shipmentSubtotalCost;
-    delete cleanedCartJson.shipmentTaxAmount;
-    delete cleanedCartJson.shipmentTotalCost;
-  } else {
-    // Include shipping fields (for checkout scenarios)
-    cleanedCartJson.shipmentGroups = (cartJson.shipmentGroups || []).map(g => ({
-      id: g.id,
-      cartItems: (g.cartItems || []).map(ci => ({
-        id: ci.id,
-        product: { id: ci.product.id }
-      })),
-      quotes: (g.quotes || []).map(q => ({ id: q.id })),
-      selectedQuote: g.selectedQuote ? { id: g.selectedQuote.id } : undefined
     }));
-    cleanedCartJson.selectedQuote = cartJson.selectedQuote ? { id: cartJson.selectedQuote.id } : null;
-    cleanedCartJson.receiverAddress = cartJson.receiverAddress || null;
   }
 
-  const cartEnt = MERCHI.fromJson(new MERCHI.Cart(), cleanedCartJson);
+  // include shipping fields for checkout
+  if (includeShippingFields) {
+    if (cartJson.receiverAddress) {
+      cleanedCartJson.receiverAddress = cartJson.receiverAddress;
+    }
+  }
 
+  const cartEnt = new MERCHI.Cart();
+  cartEnt.id(cleanedCartJson.id);
   cartEnt.token(cartJson.token);
 
-  const currentCartItems = cartEnt.cartItems();
-  if (currentCartItems !== undefined) {
-    cartEnt.cartItems(currentCartItems);
+  if (cleanedCartJson.client?.id) {
+    const clientEnt = new MERCHI.User();
+    clientEnt.id(cleanedCartJson.client.id);
+    cartEnt.client(clientEnt);
+  }
+
+  // set cartItems only for non checkout
+  if (!includeShippingFields && cleanedCartJson.cartItems?.length > 0) {
+    const cartItemEnts = cleanedCartJson.cartItems.map(item => {
+      const itemEnt = new MERCHI.CartItem();
+      itemEnt.id(item.id);
+
+      const productEnt = new MERCHI.Product();
+      productEnt.id(item.product.id);
+      itemEnt.product(productEnt);
+
+      if (item.quantity !== undefined) {
+        itemEnt.quantity(item.quantity);
+      }
+
+      if (item.variations?.length > 0) {
+        const variationEnts = item.variations.map(v =>
+          MERCHI.fromJson(new MERCHI.Variation(), v)
+        );
+        itemEnt.variations(variationEnts);
+      }
+
+      if (item.variationsGroups?.length > 0) {
+        const groupEnts = item.variationsGroups.map(g =>
+          MERCHI.fromJson(new MERCHI.VariationsGroup(), g)
+        );
+        itemEnt.variationsGroups(groupEnts);
+      }
+
+      return itemEnt;
+    });
+    cartEnt.cartItems(cartItemEnts);
+  }
+
+  // set shipping fields for checkout
+  if (cleanedCartJson.receiverAddress) {
+    const addressEnt = MERCHI.fromJson(new MERCHI.Address(), cleanedCartJson.receiverAddress);
+    cartEnt.receiverAddress(addressEnt);
   }
 
   // Store the current cart state for potential rollback
@@ -176,9 +192,6 @@ export async function patchCart(cartJson, embed = cartEmbed, options = {}) {
               // Merge back the shipping data that was excluded from the patch
               if (originalCart.shipmentGroups) {
                 _cartJson.shipmentGroups = originalCart.shipmentGroups;
-              }
-              if (originalCart.selectedQuote) {
-                _cartJson.selectedQuote = originalCart.selectedQuote;
               }
               if (originalCart.receiverAddress) {
                 _cartJson.receiverAddress = originalCart.receiverAddress;

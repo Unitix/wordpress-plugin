@@ -1484,19 +1484,27 @@ function send_id_for_add_cart(){
                 $merchi_cart_token = $merchi_cart_item_json['cart']['token'];
                 $cart_id = $merchi_cart_item_json['cart']['id'];
 
+                // Log data BEFORE PATCH
+                error_log('=== ADD TO CART - BEFORE PATCH ===');
+                error_log('Data being sent to Merchi API: ' . json_encode($merchi_cart_item_json, JSON_PRETTY_PRINT));
+
                 // Create a new cart item attached to the cart
                 $create_cart_item_response = merchi_cart_item_post(
                     $merchi_cart_item_json,
                     $merchi_cart_token,
                 );
-                // Optionally, handle/log the response or errors
+                
+                // Log data AFTER PATCH
+                error_log('=== ADD TO CART - AFTER PATCH ===');
                 if (is_wp_error($create_cart_item_response)) {
                     error_log('Merchi PATCH error: ' . $create_cart_item_response->get_error_message());
                     echo 0;
                     exit;
                 } else {
                     error_log('Merchi PATCH success');
+                    error_log('Response from Merchi API: ' . json_encode($create_cart_item_response, JSON_PRETTY_PRINT));
                 }
+                error_log('=== END ADD TO CART LOG ===');
             } else {
                 error_log('Skipping Merchi PATCH - no valid cart data');
             }
