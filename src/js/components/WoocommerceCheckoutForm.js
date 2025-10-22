@@ -101,7 +101,6 @@ const WoocommerceCheckoutForm = () => {
           requestOptions
         );
 
-
         const { shipmentGroups } = await response.json();
         setShipmentGroups(shipmentGroups.filter((g) => g.cartItems?.length));
         return;

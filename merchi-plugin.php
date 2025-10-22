@@ -843,15 +843,14 @@ function render_custom_product_meta_box()
         <button type="button" id="sync_with_merchi_btn" class="button button-primary">
 					  Sync with Merchi
 				</button>
-        <span id="sync_merchi_status" style="margin-left: 10px;"></span>
     </div>
     <script type="text/javascript">
     jQuery(document).ready(function($) {
         $('#sync_with_merchi_btn').on('click', function() {
             let btn = $(this);
-            let status = $('#sync_merchi_status');
+            let originalText = btn.text();
             btn.prop('disabled', true);
-            status.text('Syncing...');
+            btn.text('Syncing...');
             $.ajax({
                 url: ajaxurl,
                 type: 'POST',
@@ -861,15 +860,15 @@ function render_custom_product_meta_box()
                 },
                 success: function(response) {
                     if (response.success) {
-                        status.text('Synced successfully!');
+                        btn.text('Synced successfully!');
                         window.location.reload();
                     } else {
-                        status.text('Sync failed: ' + (response.data && response.data.message ? response.data.message : 'Unknown error'));
+                        btn.text('Sync failed: ' + (response.data && response.data.message ? response.data.message : 'Unknown error'));
+                        btn.prop('disabled', false);
                     }
-                    btn.prop('disabled', false);
                 },
                 error: function(xhr, statusText, errorThrown) {
-                    status.text('Sync failed: ' + errorThrown);
+                    btn.text('Sync failed: ' + errorThrown);
                     btn.prop('disabled', false);
                 }
             });
@@ -877,37 +876,6 @@ function render_custom_product_meta_box()
     });
     </script>
     <?php endif; ?>
-    <script type="text/javascript">
-    jQuery(document).ready(function($) {
-        $('#sync_with_merchi_btn').on('click', function() {
-            var btn = $(this);
-            var status = $('#sync_merchi_status');
-            btn.prop('disabled', true);
-            status.text('Syncing...');
-            $.ajax({
-                url: ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'fetch_merchi_product',
-                    wooProductId: <?php echo intval($post->ID); ?>
-                },
-                success: function(response) {
-                    if (response.success) {
-                        status.text('Synced successfully!');
-                        window.location.reload();
-                    } else {
-                        status.text('Sync failed: ' + (response.data && response.data.message ? response.data.message : 'Unknown error'));
-                    }
-                    btn.prop('disabled', false);
-                },
-                error: function(xhr, statusText, errorThrown) {
-                    status.text('Sync failed: ' + errorThrown);
-                    btn.prop('disabled', false);
-                }
-            });
-        });
-    });
-    </script>
 <?php
 }
 /**
