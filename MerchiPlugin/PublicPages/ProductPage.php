@@ -11,8 +11,8 @@ class ProductPage extends BaseController {
 
 
 	public function register() {
-		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_grouped_attributes' ], 10 );
-		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_independent_attributes' ], 20 );
+		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_independent_attributes' ], 10 );
+		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_grouped_attributes' ], 20 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_new_group_button' ], 25 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_default_quantity' ], 27 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_total_price' ], 30 );
@@ -132,17 +132,91 @@ class ProductPage extends BaseController {
         return ($a['position'] ?? 0) <=> ($b['position'] ?? 0);
     });
 
-    echo '<div class="custom-variation-options merchi-product-form">';
-
+    // Separate fields into upload section, before-group fields, and after-group fields
+    $uploadFields = [];
+    $beforeGroupFields = [];
+    $afterGroupFields = [];
+    
     foreach ($fields as $index => $field) {
-        if ($field['type'] === 'attribute') {
-            echo $this->render_attribute_field($field, 'custom_fields', false, $index);
+        $fieldType = intval($field['fieldType']);
+        $fieldName = strtolower($field['label'] ?? '');
+        $fieldSlug = strtolower($field['slug'] ?? '');
+        
+        // Upload section: file upload and enter message fields
+        $isUploadField = (
+            $fieldType === 3 || 
+            strpos($fieldName, 'enter your message or artwork') !== false ||
+            strpos($fieldName, 'message or artwork') !== false
+        );
+        
+        // After-group section: Additional Comments and Delivery Description
+        $isAfterGroupField = (
+            strpos($fieldName, 'additional comments') !== false ||
+            $fieldSlug === 'delivery_options_do_not'
+        );
+        
+        if ($isUploadField) {
+            $uploadFields[] = ['field' => $field, 'index' => $index];
+        } else if ($isAfterGroupField) {
+            $afterGroupFields[] = ['field' => $field, 'index' => $index];
         } else {
-            echo $this->render_meta_field($field, 'custom_fields', $index);
+            $beforeGroupFields[] = ['field' => $field, 'index' => $index];
         }
     }
 
-    echo '</div>';
+    // Sort upload fields
+    usort($uploadFields, function($a, $b) {
+        $typeA = intval($a['field']['fieldType']);
+        $typeB = intval($b['field']['fieldType']);
+        return ($typeA !== $typeB) ? ($typeA - $typeB) : (($a['field']['position'] ?? 0) - ($b['field']['position'] ?? 0));
+    });
+
+    if (!empty($uploadFields)) {
+        echo '<div id="upload-design-container" class="merchi-product-form">';
+        echo '<h2 class="grouped-options-heading">Upload Your Design</h2>';
+        echo '<div class="upload-field-container custom-variation-options">';
+        
+        foreach ($uploadFields as $item) {
+            if ($item['field']['type'] === 'attribute') {
+                echo $this->render_attribute_field($item['field'], 'custom_fields', false, $item['index']);
+            } else {
+                echo $this->render_meta_field($item['field'], 'custom_fields', $item['index']);
+            }
+        }
+        
+        echo '</div>';
+        echo '</div>';
+    }
+
+    // before the group
+    if (!empty($beforeGroupFields)) {
+        echo '<div class="custom-variation-options merchi-product-form">';
+
+        foreach ($beforeGroupFields as $item) {
+            if ($item['field']['type'] === 'attribute') {
+                echo $this->render_attribute_field($item['field'], 'custom_fields', false, $item['index']);
+            } else {
+                echo $this->render_meta_field($item['field'], 'custom_fields', $item['index']);
+            }
+        }
+
+        echo '</div>';
+    }
+
+    // Store after-group fields to be rendered later (after Grouped Options)
+    if (!empty($afterGroupFields)) {
+        add_action('woocommerce_before_add_to_cart_button', function() use ($afterGroupFields) {
+            echo '<div class="custom-variation-options merchi-product-form after-group-fields">';
+            foreach ($afterGroupFields as $item) {
+                if ($item['field']['type'] === 'attribute') {
+                    echo $this->render_attribute_field($item['field'], 'custom_fields', false, $item['index']);
+                } else {
+                    echo $this->render_meta_field($item['field'], 'custom_fields', $item['index']);
+                }
+            }
+            echo '</div>';
+        }, 22);
+    }
 
     // Add the checkout container
     echo '<div id="merchi-checkout-container"></div>';
