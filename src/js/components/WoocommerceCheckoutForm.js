@@ -351,19 +351,10 @@ const WoocommerceCheckoutForm = () => {
         receiverAddress: receiverAddressObj
       }));
 
-      // Log raw data BEFORE patch
-      console.log('=== BEFORE PATCH ===');
-      console.log('cart:', cart);
-      console.log('minimalCartData:', minimalCartData);
-
       // Patch the cart data to Merchi server
       await patchCart(minimalCartData, undefined, { includeShippingFields: true })
         .then(async response => {
           const responseJson = MERCHI.toJson(response);
-
-          // Log raw data AFTER patch
-          console.log('=== AFTER PATCH ===');
-          console.log('responseJson:', responseJson);
 
           syncCartFromStorage();
 
@@ -384,10 +375,6 @@ const WoocommerceCheckoutForm = () => {
         .catch(e => {
           throw e;
         });
-
-      // Log cart state before Stripe API
-      console.log('=== BEFORE STRIPE API ===');
-      console.log('cart:', cart);
 
       const merchi_api_url = MERCHI_API_URL();
       const response = await fetch(`${merchi_api_url}v6/stripe/payment_intent/cart/${cart.id}/?cart_token=${cart.token}`);
