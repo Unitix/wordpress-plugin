@@ -306,7 +306,7 @@ export default function ShippingOptions({
                                     id={`radio-${groupIdx}-${quote.id}__label`}
                                     className="wc-block-components-radio-control__label"
                                   >
-                                    {quote.shipmentMethod.transportCompanyName}
+                                    {quote.name || quote.shipmentMethod.name || quote.shipmentMethod.transportCompanyName}
                                   </span>
                                   <span
                                     id={`radio-${groupIdx}-${quote.id}__secondary-label`}
