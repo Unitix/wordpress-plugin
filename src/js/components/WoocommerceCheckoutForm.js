@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import PhoneInput from 'react-phone-input-2'
 import { useForm, Controller } from 'react-hook-form';
 import WoocommerceCheckoutFormSideCart from './WoocommerceCheckoutFormSideCart';
@@ -75,8 +75,9 @@ const WoocommerceCheckoutForm = () => {
   const [selectedShippingState, setSelectedShippingState] = useState(null);
   const isInitialLoad = useRef(true);
   const isUpdatingAddress = useRef(false);
+  const addressUpdateTimer = useRef(null);
 
-  const { control, register, handleSubmit, formState: { errors }, setValue, getValues } = useForm({
+  const { control, register, handleSubmit, formState: { errors }, setValue, getValues, watch } = useForm({
     defaultValues: {
       shipping_country: browserCountry || '',
       billing_country: browserCountry || '',
@@ -201,6 +202,50 @@ const WoocommerceCheckoutForm = () => {
       changeShippingCountryOrState(selectedShippingCountry, selectedShippingState);
     }
   }, [selectedShippingCountry, selectedShippingState]);
+
+  // update complete address and refresh shipping quotes
+  const debouncedUpdateCompleteAddress = useCallback(() => {
+    if (addressUpdateTimer.current) {
+      clearTimeout(addressUpdateTimer.current);
+    }
+
+    addressUpdateTimer.current = setTimeout(() => {
+      if (selectedShippingCountry && selectedShippingState) {
+        // send complete address to backend
+        changeShippingCountryOrState(selectedShippingCountry, selectedShippingState, true);
+      }
+    }, 2000);
+  }, [selectedShippingCountry, selectedShippingState]);
+
+  // watch for changes in address fields
+  useEffect(() => {
+    const subscription = watch((value, { name, type }) => {
+      // only trigger for specific shipping address fields (not shipping method selection)
+      const addressFields = [
+        'shipping_address_1',
+        'shipping_address_2',
+        'shipping_city',
+        'shipping_postcode'
+      ];
+
+      if (addressFields.includes(name) && type === 'change') {
+        // check if we have the minimum required fields
+        const currentValues = getValues();
+        if (currentValues.shipping_address_1 ||
+          currentValues.shipping_city ||
+          currentValues.shipping_postcode) {
+          debouncedUpdateCompleteAddress();
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      if (addressUpdateTimer.current) {
+        clearTimeout(addressUpdateTimer.current);
+      }
+    };
+  }, [watch, debouncedUpdateCompleteAddress, getValues]);
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phoneNumberCountry, setPhoneNumberCountry] = useState('');

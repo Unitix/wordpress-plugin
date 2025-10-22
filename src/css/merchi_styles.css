@@ -1708,7 +1708,8 @@ body.single-product #cart-count {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 180px;
+  min-height: 120px;
+  padding: 20px;
 }
 
 .wc-cart-loading {
