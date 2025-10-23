@@ -1654,7 +1654,11 @@ function initializeWhenReady() {
         // if there is no variation field then we skip
         if (!variationField) return;
 
-        const variation = { variationField };
+        const variation = {
+          variationField,
+          selectableOptions: variationField.options || [],
+          variationFiles: []
+        };
 
         function getCheckedValues($fieldContainer) {
           const $checked = $fieldContainer.find('input[type="checkbox"]:checked, input[type="radio"]:checked');
@@ -1739,17 +1743,8 @@ function initializeWhenReady() {
 
     // Function to gather form data with proper group handling
     async function gatherFormData() {
-      // Add defensive checks for defaultJobJson
-      if (!defaultJobJson || !defaultJobJson.product) {
-        console.error('Product data not loaded yet');
-        return {
-          variationsGroups: [],
-          variations: []
-        };
-      }
-
       // Process variation groups
-      const { groupVariationFields = [] } = defaultJobJson.product;
+      const { groupVariationFields = [] } = productJson;
 
       const formData = {
         ...defaultJobJson,
