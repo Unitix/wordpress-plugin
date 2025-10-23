@@ -1180,6 +1180,11 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   margin-left: 0 !important;
 }
 
+/* Hide "View More Merch" button in checkout modal */
+.merchi-modal-content a[href="/customisable-merchandise"] {
+  display: none !important;
+}
+
 /* Hide WooCommerce default add to cart button if it exists in our container */
 .merchi-action-buttons-container .quantity {
   display: none !important;
