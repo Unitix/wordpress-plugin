@@ -1186,6 +1186,7 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
 }
 
 .single_add_to_cart_button,
+.single_buy_now_button,
 .single_get_quote_button,
 .ts-buy-now-button {
   flex: 0 0 auto !important;
@@ -2025,6 +2026,7 @@ body.single-product #cart-count {
   }
 
   .single_add_to_cart_button,
+  .single_buy_now_button,
   .single_get_quote_button,
   .ts-buy-now-button {
     flex: 1 1 calc(50% - 7.5px);

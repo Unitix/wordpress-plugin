@@ -17,6 +17,7 @@ class ProductPage extends BaseController {
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_default_quantity' ], 27 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_total_price' ], 30 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_action_buttons_container_start' ], 35 );
+		add_action('woocommerce_after_add_to_cart_button', [ $this, 'display_buy_now_button' ], 5 );
 		add_action('woocommerce_after_add_to_cart_button', [ $this, 'display_quote_button' ], 10 );
 		add_action('woocommerce_after_add_to_cart_button', [ $this, 'display_action_buttons_container_end' ], 20 );
 		add_action( 'wp', [ $this, 'remove_product_content' ] );
@@ -849,6 +850,25 @@ class ProductPage extends BaseController {
 		}
 		
 		return $button_html;
+	}
+
+	public function display_buy_now_button() {
+		global $product;
+
+		$product_id = get_the_ID();
+		$merchi_product_id = get_post_meta($product_id, 'product_id', true);
+		$allow_payment_upfront = get_post_meta($product_id, 'allowPaymentUpfront', true);
+
+		if (!$merchi_product_id || !$allow_payment_upfront) {
+			return;
+		}
+
+		// Add the Buy Now button between Add to Cart and Get Quote
+		echo '<button type="button" ' .
+			'class="button wp-element-button single_buy_now_button" ' .
+			'id="buy-now-button">' .
+			'Buy Now' .
+			'</button>';
 	}
 
 	public function display_quote_button() {

@@ -2568,6 +2568,11 @@ function import_merchi_product_data($woo_product_id) {
         update_post_meta($woo_product_id, 'allowQuotation', $allow_quotation);
     }
 
+    if (isset($data['product']['allowPaymentUpfront'])) {
+        $allow_payment_upfront = $data['product']['allowPaymentUpfront'];
+        update_post_meta($woo_product_id, 'allowPaymentUpfront', $allow_payment_upfront);
+    }
+
     // Handle feature image
     if (isset($data['product']['featureImage']) && !empty($data['product']['featureImage'])) {
         $feature_image = $data['product']['featureImage'];
