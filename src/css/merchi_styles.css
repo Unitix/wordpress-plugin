@@ -1185,6 +1185,121 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   display: none !important;
 }
 
+.merchi-modal-content .merchi_invoice-container-icons {
+  display: none !important;
+}
+
+.merchi-modal-content .w-100 .m-auto.text-center {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  margin-top: 30px;
+}
+
+.merchi-modal-content .container-fluid {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.merchi-modal-content .w-100.d-flex.flex-column.align-items-center {
+  align-items: flex-start !important;
+}
+
+.merchi-modal-content .d-flex.checkout-border-top {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.merchi-modal-content .m-auto {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.merchi-modal-content .text-center {
+  text-align: left !important;
+}
+
+.merchi-modal-content .w-100.mt-3 {
+  margin-top: 30px !important;
+}
+
+.merchi-modal-content .m-auto.pt-2 {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-top: 0 !important;
+  text-align: left !important;
+}
+
+.merchi-modal-content .w-100 .m-auto.text-center::before {
+  content: "Pay by Credit Card";
+  display: block;
+  font-weight: bold;
+  font-size: 16px;
+  color: #333;
+  text-align: left;
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+.merchi-modal-content .w-100 .m-auto.text-center p {
+  text-align: left;
+  margin-bottom: 20px;
+  color: #666;
+  font-size: 14px;
+}
+
+.merchi-modal-content .w-100 label strong {
+  display: block;
+  text-align: left;
+  margin-bottom: 15px;
+  font-size: 16px;
+  color: #333;
+}
+
+.merchi-modal-content .d-flex.flex-column.gap-1 {
+  width: 100%;
+  max-width: 400px;
+  margin: 0;
+}
+
+.merchi-modal-content .stripe-form-control {
+  margin-bottom: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 12px;
+  background: #fff;
+}
+
+.merchi-modal-content .btn.btn-lg.btn-primary.btn-block {
+  width: 100%;
+  max-width: 400px;
+  margin: 20px 0 0 0;
+  padding: 12px 24px;
+  background: #000;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.merchi-modal-content .btn.btn-lg.btn-primary.btn-block:hover {
+  background: #333;
+}
+
+.merchi-modal-content .w-100 .m-auto.text-center>div:last-child {
+  text-align: left;
+  margin-top: 20px;
+}
+
+.merchi-modal-content .w-100 .m-auto.text-center>div:last-child img {
+  margin: 5px;
+  max-height: 40px;
+  max-width: 67px;
+  padding: 4px;
+}
+
 /* Hide WooCommerce default add to cart button if it exists in our container */
 .merchi-action-buttons-container .quantity {
   display: none !important;

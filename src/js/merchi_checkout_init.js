@@ -1,27 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import CheckoutModal from './components/CheckoutModal';
+import BuyNowModal from './components/BuyNowModal';
 import { backendUri, stagingBackendUri } from './utils';
 
 // Main checkout component that manages the modal state
 const MerchiCheckout = React.forwardRef((props, ref) => {
   const { product } = props;
   const [isOpen, setIsOpen] = useState(false);
-  const [job, setJob] = useState({...props.job});
-  
+  const [isBuyNowOpen, setIsBuyNowOpen] = useState(false);
+  const [job, setJob] = useState({ ...props.job });
+
   // Expose methods through ref
   window.toggleMerchiCheckout = (jobDataFromForm = {}) => {
     if (jobDataFromForm) {
-      setJob({...jobDataFromForm});
+      setJob({ ...jobDataFromForm });
     }
     setIsOpen(!isOpen);
+  };
+
+  // Expose Buy Now method
+  window.toggleMerchiBuyNow = (jobDataFromForm = {}) => {
+    if (jobDataFromForm) {
+      setJob({ ...jobDataFromForm });
+    }
+    setIsBuyNowOpen(!isBuyNowOpen);
   };
 
   useEffect(() => {
     if (ref) {
       ref.current = {
         openModal: () => setIsOpen(true),
-        closeModal: () => setIsOpen(false)
+        closeModal: () => setIsOpen(false),
+        openBuyNowModal: () => setIsBuyNowOpen(true),
+        closeBuyNowModal: () => setIsBuyNowOpen(false)
       };
     }
   }, [ref]);
@@ -31,14 +43,24 @@ const MerchiCheckout = React.forwardRef((props, ref) => {
     : backendUri;
 
   return (
-    <CheckoutModal
-      apiUrl={`${apiUrl}v6/`}
-      isOpen={isOpen}
-      setIsOpen={setIsOpen}
-      product={product}
-      job={job}
-      setJob={setJob}
-    />
+    <>
+      <CheckoutModal
+        apiUrl={`${apiUrl}v6/`}
+        isOpen={isOpen}
+        setIsOpen={setIsOpen}
+        product={product}
+        job={job}
+        setJob={setJob}
+      />
+      <BuyNowModal
+        apiUrl={`${apiUrl}v6/`}
+        isOpen={isBuyNowOpen}
+        setIsOpen={setIsBuyNowOpen}
+        product={product}
+        job={job}
+        setJob={setJob}
+      />
+    </>
   );
 });
 
@@ -46,7 +68,7 @@ const MerchiCheckout = React.forwardRef((props, ref) => {
 export function initializeCheckout(product, job) {
   // Get or create the container
   let container = document.getElementById('merchi-checkout-container');
-  
+
   // If container doesn't exist, create it
   if (!container) {
     container = document.createElement('div');
@@ -56,7 +78,7 @@ export function initializeCheckout(product, job) {
 
   // Create a ref to access the component's methods
   const checkoutRef = React.createRef();
-  
+
   // Render the component
   ReactDOM.render(
     <MerchiCheckout

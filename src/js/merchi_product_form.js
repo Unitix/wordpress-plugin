@@ -1380,6 +1380,16 @@ function initializeWhenReady() {
       window.toggleMerchiCheckout({ ...formData });
     });
 
+    // Buy Now button click handler
+    jQuery('#buy-now-button').on('click', async function () {
+      if (!validateForm()) {
+        console.log('Form validation failed');
+        return;
+      }
+      const formData = await gatherFormData();
+      window.toggleMerchiBuyNow({ ...formData });
+    });
+
     // When deleteing a group we update each group index and name
     function updateGroupNumbers() {
       jQuery(".group-field-set").each(function (index) {
