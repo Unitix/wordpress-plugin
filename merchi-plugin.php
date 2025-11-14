@@ -981,29 +981,19 @@ function media_image_attach()
 	$image_url = sanitize_text_field($_POST['image_url']);
 	$product_id = sanitize_text_field($_POST['postId']);
 	$mimetype = sanitize_text_field($_POST['mimetype']);
-	$filename = basename($image_url);
-	if (!empty($filename)) {
-		$image_data = file_get_contents($image_url);
-		$upload_dir = wp_upload_dir();
-		$file_path = $upload_dir['path'] . '/' . $filename;
-		file_put_contents($file_path, $image_data);
-		$attachment_data = array(
-			'post_title'     => sanitize_file_name($filename),
-			'post_content'   => '',
-			'post_status'    => 'inherit',
-			'post_mime_type' => $mimetype,
-		);
-		$attachment_id = wp_insert_attachment($attachment_data, $file_path);
-		require_once ABSPATH . 'wp-admin/includes/image.php';
-		$attachment_data = wp_generate_attachment_metadata($attachment_id, $file_path);
-		wp_update_attachment_metadata($attachment_id, $attachment_data);
-
+	
+	$attachment_id = download_and_attach_image($image_url);
+	
+	if ($attachment_id && !is_wp_error($attachment_id)) {
 		$gallery_images = get_post_meta($product_id, '_product_image_gallery', true);
-		$gallery_images_array = explode(',', $gallery_images);
-		$gallery_images_array[] = $attachment_id;
-		update_post_meta($product_id, '_product_image_gallery', implode(',', $gallery_images_array));
-		// Return attachment ID as response
+		$gallery_images_array = $gallery_images ? explode(',', $gallery_images) : array();
+		if (!in_array($attachment_id, $gallery_images_array)) {
+			$gallery_images_array[] = $attachment_id;
+			update_post_meta($product_id, '_product_image_gallery', implode(',', $gallery_images_array));
+		}
 		echo json_encode(implode(',', $gallery_images_array));
+	} else {
+		echo json_encode(false);
 	}
 }
 
@@ -1015,31 +1005,14 @@ function media_featureimage_attach()
 	$image_url = sanitize_text_field($_POST['image_url']);
 	$product_id = sanitize_text_field($_POST['postId']);
 	$mimetype = sanitize_text_field($_POST['mimetype']);
-	$filename = basename($image_url);
 
-	if (!empty($filename)) {
-		$image_data = file_get_contents($image_url);
-		$upload_dir = wp_upload_dir();
-		$file_path = $upload_dir['path'] . '/' . $filename;
-		file_put_contents($file_path, $image_data);
-		$attachment_data = array(
-			'post_title'     => sanitize_file_name($filename),
-			'post_content'   => '',
-			'post_status'    => 'inherit',
-			'post_mime_type' => $mimetype,
-		);
-		$attachment_id = wp_insert_attachment($attachment_data, $file_path);
-		require_once ABSPATH . 'wp-admin/includes/image.php';
-		$attachment_data = wp_generate_attachment_metadata($attachment_id, $file_path);
-		wp_update_attachment_metadata($attachment_id, $attachment_data);
-
-		$gallery_images = get_post_meta($product_id, '_product_image_gallery', true);
-		$gallery_images_array = explode(',', $gallery_images);
-		$gallery_images_array[] = $attachment_id;
+	$attachment_id = download_and_attach_image($image_url);
+	
+	if ($attachment_id && !is_wp_error($attachment_id)) {
 		set_post_thumbnail($product_id, $attachment_id);
-		// update_post_meta($product_id, '_regular_price', $new_regular_price);
-		// Return attachment ID as response
 		echo json_encode($attachment_id);
+	} else {
+		echo json_encode(false);
 	}
 }
 
@@ -2574,6 +2547,8 @@ function import_merchi_product_data($woo_product_id) {
     }
 
     // Handle feature image
+    $feature_image_url = null;
+    $feature_image_id = null;
     if (isset($data['product']['featureImage']) && !empty($data['product']['featureImage'])) {
         $feature_image = $data['product']['featureImage'];
         $image_url = null;
@@ -2586,10 +2561,12 @@ function import_merchi_product_data($woo_product_id) {
         }
         
         if ($image_url) {
+            $feature_image_url = $image_url;
             error_log('import_merchi_product_data: Downloading feature image from: ' . $image_url);
             $attachment_id = download_and_attach_image($image_url);
             
             if ($attachment_id && !is_wp_error($attachment_id)) {
+                $feature_image_id = $attachment_id;
                 set_post_thumbnail($woo_product_id, $attachment_id);
                 error_log('import_merchi_product_data: Successfully set post thumbnail with attachment ID: ' . $attachment_id);
             } else {
@@ -2615,10 +2592,19 @@ function import_merchi_product_data($woo_product_id) {
                 $image_url = $image_item;
             }
 
+            // skip if this image is the same as the feature image
+            if ($feature_image_url && $image_url && $image_url == $feature_image_url) {
+                continue;
+            }
+
             if (!empty($image_url)) {
                 error_log('import_merchi_product_data: Downloading gallery image from: ' . $image_url);
                 $attachment_id = download_and_attach_image($image_url);
                 if ($attachment_id && !is_wp_error($attachment_id)) {
+                    // skip if this attachment is the same as the feature image
+                    if ($feature_image_id && $attachment_id == $feature_image_id) {
+                        continue;
+                    }
                     $gallery_attachment_ids[] = (int) $attachment_id;
                 } else {
                     error_log('import_merchi_product_data: Failed to download or attach gallery image');
@@ -2695,6 +2681,19 @@ function download_and_attach_image($image_url) {
     require_once ABSPATH . 'wp-admin/includes/media.php';
     require_once ABSPATH . 'wp-admin/includes/image.php';
 
+    // check if this image URL already exists in media
+    global $wpdb;
+    $existing_attachment_id = $wpdb->get_var($wpdb->prepare(
+        "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_source_url' AND meta_value = %s LIMIT 1",
+        $image_url
+    ));
+    if ($existing_attachment_id) {
+        $attachment = get_post($existing_attachment_id);
+        if ($attachment && $attachment->post_type === 'attachment') {
+            return (int) $existing_attachment_id;
+        }
+    }
+
     $upload_dir = wp_upload_dir();
     if (is_wp_error($upload_dir)) {
         error_log('Error getting upload directory: ' . $upload_dir->get_error_message());
@@ -2754,6 +2753,9 @@ function download_and_attach_image($image_url) {
     }
 
     error_log('Successfully created attachment with ID: ' . $attachment_id);
+    // store the source URL for future duplicate detection
+    add_post_meta($attachment_id, '_source_url', $image_url, true);
+    
     return $attachment_id;
 }
 

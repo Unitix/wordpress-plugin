@@ -53,8 +53,8 @@ class MerchiProductImportListtable extends \WP_List_Table
             'inDomain' => $this->domain_id,
             'session_token' => $this->session_token,
             'embed' => urlencode(json_encode([
-                'featureImage' => new stdClass(),
-                'images' => new stdClass()
+                'featureImage' => new \stdClass(),
+                'images' => new \stdClass()
             ])),
             'skip_rights' => 'y'
         ], $this->api_url);
@@ -302,16 +302,24 @@ class MerchiProductImportListtable extends \WP_List_Table
         update_post_meta($new_product_id, '_regular_price', $product_price);
         update_post_meta($new_product_id, '_price', $product_price);
 
+        $feature_image_id = null;
         if (!empty($product_thumbnail_url)) {
             $image_id = $this->uploadProductImage($product_thumbnail_url, $new_product_id, $_mimetype);
             if (!is_wp_error($image_id)) {
                 set_post_thumbnail($new_product_id, $image_id);
+                $feature_image_id = !empty($productData->product->featureImage) ? $productData->product->featureImage->id : null;
             }
         }
 
         $gallery_ids = array();
         foreach ($images as $image) {
             $imageDownloadUrls = $image->id;
+            
+            // skip if this image is the same as the feature image
+            if ($feature_image_id && $imageDownloadUrls == $feature_image_id) {
+                continue;
+            }
+            
             $gallery_mimetype = $image->mimetype;
             $mimetype_parts = explode('/', $gallery_mimetype);
             $_mimetype = end($mimetype_parts);
@@ -347,14 +355,35 @@ class MerchiProductImportListtable extends \WP_List_Table
         $mimetype = $_mimetype;
         $new_product_id = $product_id;
 
-        // Use media_sideload_image to handle image upload
-        $attachment_id = media_sideload_image($image_url, $new_product_id, '', 'id');
+        // check if this image URL already exists in media
+        global $wpdb;
+        $existing_attachment_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_source_url' AND meta_value = %s LIMIT 1",
+            $image_url
+        ));
+        
+        if ($existing_attachment_id) {
+            $attachment = get_post($existing_attachment_id);
+            if ($attachment && $attachment->post_type === 'attachment') {
+                error_log('Found existing attachment ID: ' . $existing_attachment_id . ' for URL: ' . $image_url);
+                $attachment_id = (int) $existing_attachment_id;
+            } else {
+                $attachment_id = false;
+            }
+        } else {
+            // Use media_sideload_image to handle image upload
+            $attachment_id = media_sideload_image($image_url, $new_product_id, '', 'id');
+        }
+        
         if (is_wp_error($attachment_id)) {
             error_log('Error uploading product image: ' . $attachment_id->get_error_message());
             return false;
         }
-        // Set the attachment as the product's featured image
-        set_post_thumbnail($new_product_id, $attachment_id);
+        
+        if ($attachment_id) {
+            // Set the attachment as the product's featured image
+            set_post_thumbnail($new_product_id, $attachment_id);
+        }
 
         return $attachment_id;
     }
@@ -364,7 +393,25 @@ class MerchiProductImportListtable extends \WP_List_Table
         $image_url = $product_gallery_url;
         $mimetype = $_mimetype;
         $new_product_id = $product_id;
-        $attachment_id = media_sideload_image($image_url, $new_product_id, '', 'id');
+        
+        // check if this image URL already exists in media
+        global $wpdb;
+        $existing_attachment_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_source_url' AND meta_value = %s LIMIT 1",
+            $image_url
+        ));
+        
+        if ($existing_attachment_id) {
+            $attachment = get_post($existing_attachment_id);
+            if ($attachment && $attachment->post_type === 'attachment') {
+                error_log('Found existing attachment ID: ' . $existing_attachment_id . ' for URL: ' . $image_url);
+                $attachment_id = (int) $existing_attachment_id;
+            } else {
+                $attachment_id = false;
+            }
+        } else {
+            $attachment_id = media_sideload_image($image_url, $new_product_id, '', 'id');
+        }
 
         if (is_wp_error($attachment_id)) {
             error_log('Error uploading product gallery image: ' . $attachment_id->get_error_message());

@@ -631,42 +631,9 @@ jQuery(document).ready(function ($) {
               jQuery(".wrap").eq(0).css("filter", "none");
               attachFeatureMedia(msg);
             }
-
-            const featureImage = data.product.featureImage;
-            if (
-              featureImage &&
-              featureImage.downloadUrl &&
-              featureImage.mimetype
-            ) {
-              const inputString = featureImage.mimetype;
-              const parts = inputString.split("/");
-              const fileType = parts[1];
-              const url = `${scriptData.merchi_url}v6/product-public-file/download/${featureImage.id}.${fileType}`;
-              attachFeatureMedia(url, inputString);
-            } else {
-              const msg = "Images not available";
-              jQuery(".loader").eq(0).hide();
-              jQuery(".wrap").eq(0).css("filter", "none");
-              attachFeatureMedia(msg);
-            }
-
-            const imagesArray = data.product.images;
-            if (Array.isArray(imagesArray)) {
-              for (const image of imagesArray) {
-                if (image && image.downloadUrl && image.mimetype) {
-                  const inputString = image.mimetype;
-                  const parts = inputString.split("/");
-                  const fileType = parts[1];
-                  const url = `${scriptData.merchi_url}v6/product-public-file/download/${image.id}.${fileType}`;
-                  attachMedia(url, inputString);
-                } else {
-                  const msg = "Images not available";
-                  jQuery(".loader").eq(0).hide();
-                  jQuery(".wrap").eq(0).css("filter", "none");
-                  attachMedia(msg);
-                }
-              }
-            }
+            mediaFeatureImageDone = true;
+            mediaImageDone = true;
+            maybeRedirect();
           }
         },
         error: function (error) {

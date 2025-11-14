@@ -9,6 +9,8 @@ namespace MerchiPlugin;
 require_once plugin_dir_path(__DIR__) . 'MerchiPlugin/Base/BaseController.php';
 require_once plugin_dir_path(__DIR__) . 'MerchiPlugin/Base/Enqueue.php';
 require_once plugin_dir_path(__DIR__) . 'MerchiPlugin/Base/SettingsLinks.php';
+require_once plugin_dir_path(__DIR__) . 'MerchiPlugin/Base/MerchiProductImportListtable.php';
+require_once plugin_dir_path(__DIR__) . 'MerchiPlugin/Base/MerchiProductExportList.php';
 
 // Callbacks (relies on BaseController)
 require_once plugin_dir_path(__DIR__) . 'MerchiPlugin/Api/Callbacks/AdminCallbacks.php';
