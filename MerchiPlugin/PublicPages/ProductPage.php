@@ -11,8 +11,8 @@ class ProductPage extends BaseController {
 
 
 	public function register() {
-		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_independent_attributes' ], 10 );
-		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_grouped_attributes' ], 20 );
+		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_independent_attributes' ], 20 );
+		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_grouped_attributes' ], 21 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_new_group_button' ], 25 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_default_quantity' ], 27 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_total_price' ], 30 );
