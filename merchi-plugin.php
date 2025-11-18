@@ -2969,12 +2969,13 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 	error_log('create_variations_for_product: Processing grouped variation fields');
 	if (!empty($merchi_product['groupVariationFields'])) {
 		error_log('create_variations_for_product: Found ' . count($merchi_product['groupVariationFields']) . ' grouped variation fields');
-		foreach ($merchi_product['groupVariationFields'] as $group_field) {
-			$field_type = intval($group_field['fieldType']);
-			$field_id = intval($group_field['id']);
-			$field_name = sanitize_text_field($group_field['name']);
-			$slug = generate_short_slug($field_name);
-			$options = $group_field['options'] ?? [];
+	foreach ($merchi_product['groupVariationFields'] as $group_field) {
+		$field_type = intval($group_field['fieldType']);
+		$field_id = intval($group_field['id']);
+		$is_html = !empty($group_field['isHtml']);
+		$field_name = $is_html ? $group_field['name'] : sanitize_text_field($group_field['name']);
+		$slug = generate_short_slug(strip_tags($group_field['name']));
+		$options = $group_field['options'] ?? [];
 
 			error_log('create_variations_for_product: Processing grouped field: ' . $field_name . ' with ' . count($options) . ' options');
 
@@ -3058,7 +3059,8 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 					'fieldType'    => $field_type,
 					'fieldID'      => $field_id,
 					'placeholder'  => esc_attr($group_field['placeholder'] ?? ''),
-					'instructions' => esc_html($group_field['instructions'] ?? ''),
+					'instructions' => $group_field['instructions'] ?? '',
+					'isHtml'       => $is_html,
 					'required'     => !empty($group_field['required']),
 					'multipleSelect' => !empty($group_field['multipleSelect']),
 					'position' => $group_field['position'] ?? 0,
@@ -3072,13 +3074,14 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 	error_log('create_variations_for_product: Processing independent variation fields');
 	if (!empty($merchi_product['independentVariationFields'])) {
 		error_log('create_variations_for_product: Found ' . count($merchi_product['independentVariationFields']) . ' independent variation fields');
-		foreach ($merchi_product['independentVariationFields'] as $variation_field) {
-			$field_type = $variation_field['fieldType'];
-			$field_id = $variation_field['id'];
-			$field_name = sanitize_text_field($variation_field['name']);
-			$slug = generate_short_slug($field_name);
-			$taxonomy = 'pa_' . $slug;
-			$options = $variation_field['options'] ?? [];
+	foreach ($merchi_product['independentVariationFields'] as $variation_field) {
+		$field_type = $variation_field['fieldType'];
+		$field_id = $variation_field['id'];
+		$is_html = !empty($variation_field['isHtml']);
+		$field_name = $is_html ? $variation_field['name'] : sanitize_text_field($variation_field['name']);
+		$slug = generate_short_slug(strip_tags($variation_field['name']));
+		$taxonomy = 'pa_' . $slug;
+		$options = $variation_field['options'] ?? [];
 
 			error_log('create_variations_for_product: Processing independent field: ' . $field_name . ' with ' . count($options) . ' options');
 
@@ -3172,6 +3175,7 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 					'fieldID'       => $field_id,
 					'placeholder'   => $variation_field['placeholder'] ?? '',
 					'instructions'  => $variation_field['instructions'] ?? '',
+					'isHtml'        => $is_html,
 					'required'      => !empty($variation_field['required']),
 					'multipleSelect' => !empty($variation_field['multipleSelect']),
 				];

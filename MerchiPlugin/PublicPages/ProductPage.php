@@ -174,7 +174,6 @@ class ProductPage extends BaseController {
 
     if (!empty($uploadFields)) {
         echo '<div id="upload-design-container" class="merchi-product-form">';
-        echo '<h2 class="grouped-options-heading">Upload Your Design</h2>';
         echo '<div class="upload-field-container custom-variation-options">';
         
         foreach ($uploadFields as $item) {
@@ -714,13 +713,44 @@ class ProductPage extends BaseController {
 			return $html;
 	}
 
+	private function sanitize_instruction_html($html) {
+		$allowed_tags = array(
+			'h1' => array('class' => array(), 'id' => array()),
+			'h2' => array('class' => array(), 'id' => array()),
+			'h3' => array('class' => array(), 'id' => array()),
+			'h4' => array('class' => array(), 'id' => array()),
+			'h5' => array('class' => array(), 'id' => array()),
+			'h6' => array('class' => array(), 'id' => array()),
+			'p' => array('class' => array(), 'id' => array()),
+			'br' => array(),
+			'strong' => array('class' => array()),
+			'b' => array('class' => array()),
+			'em' => array('class' => array()),
+			'i' => array('class' => array()),
+			'u' => array('class' => array()),
+			'ul' => array('class' => array()),
+			'ol' => array('class' => array()),
+			'li' => array('class' => array()),
+			'span' => array('class' => array(), 'style' => array()),
+			'div' => array('class' => array()),
+			'a' => array('href' => array(), 'class' => array(), 'title' => array(), 'target' => array(), 'rel' => array()),
+			'blockquote' => array('class' => array()),
+			'code' => array('class' => array()),
+			'pre' => array('class' => array()),
+		);
+		return wp_kses($html, $allowed_tags);
+	}
+
 	public function render_meta_field($field, $name_prefix, $field_index = null) {
 		$slug = esc_attr($field['slug']);
-		$label = esc_html($field['label']);
 		$fieldType = intval($field['fieldType']);
 		$field_id = esc_html($field['fieldID']);
 		$placeholder = esc_attr($field['placeholder'] ?? '');
-		$instructions = esc_html($field['instructions'] ?? '');
+		$is_html = !empty($field['isHtml']);
+		
+		$label = $is_html ? $this->sanitize_instruction_html($field['label'] ?? '') : esc_html($field['label'] ?? '');
+		$instructions = $is_html ? $this->sanitize_instruction_html($field['instructions'] ?? '') : esc_html($field['instructions'] ?? '');
+		
 		$required = !empty($field['required']) ? 'required' : '';
 
 		// Check for costs using the new function
@@ -736,7 +766,9 @@ class ProductPage extends BaseController {
 			'fieldType' => $fieldType,
 			'sellerProductEditable' => !empty($field['sellerProductEditable']),
 			'multipleSelect' => !empty($field['multipleSelect']),
-			'options' => $this->get_variation_field_options($field)
+			'options' => $this->get_variation_field_options($field),
+			'instructions' => $field['instructions'] ?? '',
+			'isHtml' => $is_html
 		);
 		$variation_field_json = esc_attr(json_encode($variation_field_data));
 		$variation_unit_cost = $field['variationUnitCost'] ?? 0;
@@ -786,7 +818,10 @@ class ProductPage extends BaseController {
 				case 4: $html .= "<textarea id='{$slug}' name='{$field_name}' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-textarea'></textarea>"; break;
 				case 5: $html .= "<input type='number' id='{$slug}' name='{$field_name}' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-number'/>"; break;
 				case 10: $html .= "<input type='color' id='{$slug}' name='{$field_name}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-color'/>"; break;
-				case 8: $html .= "<p class='field-instructions'>{$instructions}</p>"; break;
+				case 8: 
+					$wrapper = $is_html ? 'div' : 'p';
+					$html .= "<{$wrapper} class='field-instructions'>{$instructions}</{$wrapper}>";
+					break;
 				default: $html .= "<input type='text' id='{$slug}' name='{$field_name}' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-text'/>"; break;
 			}
 		}

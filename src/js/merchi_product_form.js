@@ -215,6 +215,94 @@ function initializeWhenReady() {
       });
     }
 
+    // sanitize html for instructions field
+    function sanitizeInstructionHtml(html) {
+      const dangerousTags = ['script', 'style', 'iframe', 'object', 'embed', 'link', 'meta', 'form'];
+      dangerousTags.forEach(tag => {
+        const regex = new RegExp(`<${tag}[^>]*>.*?<\/${tag}>`, 'gis');
+        html = html.replace(regex, '');
+        const selfClosingRegex = new RegExp(`<${tag}[^>]*\\/?>`, 'gi');
+        html = html.replace(selfClosingRegex, '');
+      });
+
+      const selfClosingDangerousTags = ['img', 'video', 'input', 'button'];
+      selfClosingDangerousTags.forEach(tag => {
+        const regex = new RegExp(`<${tag}[^>]*\\/?>`, 'gi');
+        html = html.replace(regex, '');
+      });
+
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+
+      const allowedTags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'strong', 'b', 'em', 'i', 'u', 'ul', 'ol', 'li', 'span', 'div', 'a', 'blockquote', 'code', 'pre'];
+
+      const allowedAttributes = {
+        'a': ['href', 'class', 'title', 'target', 'rel'],
+        'span': ['class', 'style'],
+        'div': ['class'],
+        'h1': ['class', 'id'],
+        'h2': ['class', 'id'],
+        'h3': ['class', 'id'],
+        'h4': ['class', 'id'],
+        'h5': ['class', 'id'],
+        'h6': ['class', 'id'],
+        'p': ['class', 'id'],
+        'ul': ['class'],
+        'ol': ['class'],
+        'li': ['class'],
+        'blockquote': ['class'],
+        'code': ['class'],
+        'pre': ['class'],
+        'strong': ['class'],
+        'b': ['class'],
+        'em': ['class'],
+        'i': ['class']
+      };
+
+      // recursively sanitize all elements
+      function sanitizeElement(element) {
+        const tagName = element.tagName.toLowerCase();
+
+        // remove if not in whitelist
+        if (!allowedTags.includes(tagName)) {
+          element.replaceWith(...element.childNodes);
+          return;
+        }
+        const allowedAttrs = allowedAttributes[tagName] || [];
+        Array.from(element.attributes).forEach(attr => {
+          if (attr.name.startsWith('on')) {
+            element.removeAttribute(attr.name);
+          }
+          else if (['src', 'data', 'action'].includes(attr.name) && tagName !== 'a') {
+            element.removeAttribute(attr.name);
+          }
+          else if (!allowedAttrs.includes(attr.name)) {
+            element.removeAttribute(attr.name);
+          }
+          else if (attr.name === 'href') {
+            const hrefValue = attr.value.trim().toLowerCase();
+            if (hrefValue.startsWith('javascript:') ||
+              hrefValue.startsWith('data:') ||
+              hrefValue.startsWith('vbscript:') ||
+              hrefValue.includes('alert(') ||
+              hrefValue.includes('eval(')) {
+              element.removeAttribute(attr.name);
+            }
+          }
+        });
+        Array.from(element.children).forEach(sanitizeElement);
+      }
+      Array.from(tempDiv.children).forEach(sanitizeElement);
+      return tempDiv.innerHTML;
+    }
+
+    // escape html for plain text rendering
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
     // Helper function to render field HTML in JavaScript (mirrors PHP rendering logic)
     function renderFieldHtml(newVariation, namePrefix, fieldIndex, isGroup = false, groupIndex = 0) {
       const {
@@ -233,6 +321,7 @@ function initializeWhenReady() {
         required = false,
         placeholder = '',
         instructions = '',
+        isHtml = false,
         multipleSelect = false,
       } = variationField;
 
@@ -475,7 +564,10 @@ function initializeWhenReady() {
           break;
 
         case 8: // INSTRUCTIONS
-          html += `<p class="field-instructions">${instructions}</p>`;
+          const processedInstructions = isHtml ? sanitizeInstructionHtml(instructions) : escapeHtml(instructions);
+          const wrapper = isHtml ? 'div' : 'p';
+          html += `<div class="field-label">${label}${costLabel()}</div>`;
+          html += `<${wrapper} class="field-instructions">${processedInstructions}</${wrapper}>`;
           break;
 
         case 9: // IMAGE_SELECT
