@@ -11,6 +11,7 @@ class ProductPage extends BaseController {
 
 
 	public function register() {
+		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_instruction_fields_first' ], 19 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_independent_attributes' ], 20 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_grouped_attributes' ], 21 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_new_group_button' ], 25 );
@@ -119,6 +120,28 @@ class ProductPage extends BaseController {
 		}
 	}
 
+	public function custom_display_instruction_fields_first() {
+		global $product;
+		$product_id = $product->get_id();
+		$fields = get_post_meta($product_id, '_merchi_ordered_fields', true);
+		if (empty($fields) || !is_array($fields)) return;
+
+		// find instruction fields that should be shown first
+		$instructionFields = [];
+		foreach ($fields as $index => $field) {
+			if (intval($field['fieldType']) === 8) {
+				$instructionFields[] = ['field' => $field, 'index' => $index];
+			}
+		}
+
+		if (!empty($instructionFields)) {
+			echo '<div class="custom-variation-options merchi-product-form instruction-fields-first">';
+			foreach ($instructionFields as $item) {
+				echo $this->render_meta_field($item['field'], 'custom_fields', $item['index']);
+			}
+			echo '</div>';
+		}
+	}
 
 	public function custom_display_independent_attributes() {
     global $product;
@@ -134,6 +157,7 @@ class ProductPage extends BaseController {
     });
 
     // Separate fields into upload section, before-group fields, and after-group fields
+    // Exclude instruction fields (fieldType 8) as they are rendered separately first
     $uploadFields = [];
     $beforeGroupFields = [];
     $afterGroupFields = [];
@@ -142,6 +166,11 @@ class ProductPage extends BaseController {
         $fieldType = intval($field['fieldType']);
         $fieldName = strtolower($field['label'] ?? '');
         $fieldSlug = strtolower($field['slug'] ?? '');
+        
+        // skip instruction fields that are rendered first
+        if ($fieldType === 8) {
+            continue;
+        }
         
         // Upload section: file upload and enter message fields
         $isUploadField = (
