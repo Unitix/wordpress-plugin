@@ -760,7 +760,7 @@ class ProductPage extends BaseController {
 			'ul' => array('class' => array()),
 			'ol' => array('class' => array()),
 			'li' => array('class' => array()),
-			'span' => array('class' => array(), 'style' => array()),
+			'span' => array('class' => array()),
 			'div' => array('class' => array()),
 			'a' => array('href' => array(), 'class' => array(), 'title' => array(), 'target' => array(), 'rel' => array()),
 			'blockquote' => array('class' => array()),

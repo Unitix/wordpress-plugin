@@ -238,7 +238,7 @@ function initializeWhenReady() {
 
       const allowedAttributes = {
         'a': ['href', 'class', 'title', 'target', 'rel'],
-        'span': ['class', 'style'],
+        'span': ['class'],
         'div': ['class'],
         'h1': ['class', 'id'],
         'h2': ['class', 'id'],
