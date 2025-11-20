@@ -138,7 +138,7 @@ export async function patchCart(cartJson, embed = cartEmbed, options = {}) {
   }
 
   // set cartItems only for non checkout
-  if (!includeShippingFields && cleanedCartJson.cartItems?.length > 0) {
+  if (!includeShippingFields && cleanedCartJson.cartItems) {
     const cartItemEnts = cleanedCartJson.cartItems.map(item => {
       const itemEnt = new MERCHI.CartItem();
       itemEnt.id(item.id);
@@ -354,10 +354,28 @@ export async function initOrSyncCart() {
 
   // Add a lock to prevent concurrent cart operations
   const cartLockKey = 'merchi_cart_operation_lock';
-  if (localStorage.getItem(cartLockKey)) {
-    // Wait for a short time and try again
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return initOrSyncCart();
+  const LOCK_EXPIRY_MS = 5000; // 5 seconds expiry
+
+  try {
+    const existingLockTimestamp = localStorage.getItem(cartLockKey);
+
+    if (existingLockTimestamp) {
+      const lockTime = parseInt(existingLockTimestamp, 10);
+      const now = Date.now();
+      const lockAge = now - lockTime;
+
+      // check if lock is valid
+      if (isNaN(lockTime) || lockAge < 0 || lockAge > LOCK_EXPIRY_MS) {
+        // lock is stale or invalid, force removal
+        localStorage.removeItem(cartLockKey);
+      } else {
+        // lock is active, wait and retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return initOrSyncCart();
+      }
+    }
+  } catch (lockError) {
+    localStorage.removeItem(cartLockKey);
   }
 
   try {
@@ -542,15 +560,6 @@ async function handleCartItemRemoval(merchiItemId) {
     await patchCart(cartJson, cartEmbed, { includeShippingFields: false });
 
     if (!cartJson.cartItems.length) {
-      // keep the cart structure but clear items
-      cartJson.cartItems = [];
-      cartJson.subtotalCost = 0;
-      cartJson.discountTotal = 0;
-      cartJson.totalCost = 0;
-      cartJson.shipmentTotalCost = 0;
-      cartJson.taxCost = 0;
-      // Keep the cart in localStorage with empty state
-      localStorage.setItem('MerchiCart', JSON.stringify(cartJson));
       // Clear cookies but keep cart structure
       COOKIE_MANAGER?.clearCartCookies?.();
     }
