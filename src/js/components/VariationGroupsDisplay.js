@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { shouldShow, buildOptionMap } from '../utils';
 
-export default function VariationGroupsDisplay({ product, variationsGroups = [] }) {
-  if (!Array.isArray(variationsGroups) || !variationsGroups.length) return null;
+export default function VariationGroupsDisplay({ product, variationsGroups = [], variations = [] }) {
+  const hasGroups = Array.isArray(variationsGroups) && variationsGroups.length > 0;
+  const hasVariations = Array.isArray(variations) && variations.length > 0;
+
+  if (!hasGroups && !hasVariations) return null;
 
   const optionMap = buildOptionMap(product);
 
@@ -38,7 +41,7 @@ export default function VariationGroupsDisplay({ product, variationsGroups = [] 
       }
 
       allFields.push({
-        key: `${gIdx}-${i}`,
+        key: `g${gIdx}-${i}`,
         label,
         value,
         slug,
@@ -48,7 +51,7 @@ export default function VariationGroupsDisplay({ product, variationsGroups = [] 
 
     if ('quantity' in group) {
       allFields.push({
-        key: `${gIdx}-qty`,
+        key: `g${gIdx}-qty`,
         label: 'Quantity',
         value: group.quantity,
         slug: 'quantity',
@@ -56,6 +59,33 @@ export default function VariationGroupsDisplay({ product, variationsGroups = [] 
       });
     }
   });
+
+  if (hasVariations) {
+    const filteredVariations = variations.filter(shouldShow);
+    filteredVariations.forEach((v, i) => {
+      const label = v.variationField?.name || 'Field';
+      const slug = label.toLowerCase().replace(/\s+/g, '-');
+
+      let value = '';
+      if (Array.isArray(v.selectedOptions) && v.selectedOptions.length) {
+        value = v.selectedOptions
+          .map((o) => optionMap.get(String(o.optionId)) || o.value || o.optionId)
+          .join(', ');
+      } else if (optionMap.has(String(v.value))) {
+        value = optionMap.get(String(v.value));
+      } else {
+        value = v.value;
+      }
+
+      allFields.push({
+        key: `v-${i}`,
+        label,
+        value,
+        slug,
+        groupIndex: -1
+      });
+    });
+  }
 
   // show all fields without grouping (cart page)
   if (!isCheckoutPage) {
@@ -89,8 +119,8 @@ export default function VariationGroupsDisplay({ product, variationsGroups = [] 
                   }
 
                   return (
-                    <li key={`${gIdx}-${i}`} className={`wc-block-components-product-details__${slug}`} style={{ paddingLeft: 16 }}>
-                      <span className="wc-block-components-product-details__name" style={{ fontWeight: 400, marginRight: 4 }}>
+                    <li key={`g${gIdx}-${i}`} className={`wc-block-components-product-details__${slug}`} style={{ paddingLeft: 16 }}>
+                      <span className="wc-block-components-product-details__name" style={{ fontWeight: 400, marginRight: 8 }}>
                         {label}: </span>
                       <span className="wc-block-components-product-details__value"
                         style={{ whiteSpace: 'nowrap' }}>{value}</span>
@@ -99,21 +129,47 @@ export default function VariationGroupsDisplay({ product, variationsGroups = [] 
                 })}
 
               {'quantity' in group && (
-                <li key={`${gIdx}-qty`} className="wc-block-components-product-details__quantity" style={{ paddingLeft: 16 }}>
-                  <span className="wc-block-components-product-details__name" style={{ fontWeight: 400, marginRight: 4 }}>
+                <li key={`g${gIdx}-qty`} className="wc-block-components-product-details__quantity" style={{ paddingLeft: 16 }}>
+                  <span className="wc-block-components-product-details__name" style={{ fontWeight: 400, marginRight: 8 }}>
                     Quantity: </span>
                   <span className="wc-block-components-product-details__value">{group.quantity}</span>
                 </li>
               )}
             </React.Fragment>
           ))}
+
+          {variations.filter(shouldShow).map((v, i) => {
+            const label = v.variationField?.name || 'Field';
+            const slug = label.toLowerCase().replace(/\s+/g, '-');
+
+            let value = '';
+            if (Array.isArray(v.selectedOptions) && v.selectedOptions.length) {
+              value = v.selectedOptions
+                .map((o) => optionMap.get(String(o.optionId)) || o.value || o.optionId)
+                .join(', ');
+            } else if (optionMap.has(String(v.value))) {
+              value = optionMap.get(String(v.value));
+            } else {
+              value = v.value;
+            }
+
+            return (
+              <li key={`v-${i}`} className={`wc-block-components-product-details__${slug}`} style={{ marginTop: (i === 0 && hasGroups) ? 12 : 0 }}>
+                <span className="wc-block-components-product-details__name" style={{ fontWeight: 400, marginRight: 8 }}>
+                  {label}: </span>
+                <span className="wc-block-components-product-details__value"
+                  style={{ whiteSpace: 'nowrap' }}>{value}</span>
+              </li>
+            );
+          })}
         </ul>
       </div>
     );
   }
 
-  const fieldsToShow = showDetails ? allFields.length : Math.min(3, allFields.length);
-  const shouldShowDetailsButton = allFields.length > 3;
+  const maxFieldsToShow = 1;
+  const fieldsToShow = showDetails ? allFields.length : Math.min(maxFieldsToShow, allFields.length);
+  const shouldShowDetailsButton = allFields.length > 1;
 
   return (
     <div className="wc-block-components-product-metadata">
@@ -147,7 +203,7 @@ export default function VariationGroupsDisplay({ product, variationsGroups = [] 
                 className={`wc-block-components-product-details__${field.slug}`}
                 style={{ paddingLeft: variationsGroups.length > 1 ? 16 : 0 }}
               >
-                <span className="wc-block-components-product-details__name" style={{ fontWeight: 400, marginRight: 4 }}>
+                <span className="wc-block-components-product-details__name" style={{ fontWeight: 400, marginRight: 8 }}>
                   {field.label}: </span>
                 <span className="wc-block-components-product-details__value"
                   style={{ whiteSpace: 'nowrap' }}>{field.value}</span>

@@ -55,6 +55,7 @@ export default function CartItems({ onRemove }) {
                     <VariationGroupsDisplay
                       product={product}
                       variationsGroups={item.variationsGroups}
+                      variations={item.variations}
                     />
                     <div className="wc-block-cart-item__quantity">
                       <button

@@ -100,6 +100,7 @@ export default function WoocommerceCheckoutFormSideCart({ isUpdatingShipping, al
                               <VariationGroupsDisplay
                                 product={product}
                                 variationsGroups={item.variationsGroups}
+                                variations={item.variations}
                               />
                             </div>
                           </div>
