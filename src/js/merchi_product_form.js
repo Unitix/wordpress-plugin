@@ -330,9 +330,14 @@ function initializeWhenReady() {
       const requiredAttr = required ? 'required' : '';
       const requiredClass = required ? ' data-required="true"' : '';
       function isOptionSelected(option) {
-        if (!value || value === '') return false;
-        const valueArray = value.split(',');
-        return valueArray.includes(option.optionId);
+        if (value === undefined || value === null) {
+          // check if this is the default option if no value is provided
+          if (option.default) return true;
+          return false;
+        }
+        const valueStr = String(value);
+        const valueArray = valueStr.split(',');
+        return valueArray.includes(String(option.optionId));
       }
 
       // Create variation field data for JavaScript
@@ -378,6 +383,7 @@ function initializeWhenReady() {
               placeholder="${placeholder}" 
               ${requiredAttr}${commonDataAttrs}
               class="input-text"
+              value="${value !== undefined ? value : ''}"
             />`;
           break;
 
@@ -389,7 +395,13 @@ function initializeWhenReady() {
             html += `<select id="${fieldName}" name="${fieldName}"${commonDataAttrs} class="select">`;
           }
           sortedOptions.forEach((option, index) => {
-            const selected = index === 0 && !multipleSelect ? 'selected' : '';
+            let isSelected = isOptionSelected(option);
+
+            if ((value === undefined || value === null) && !multipleSelect && index === 0 && !selectableOptions.some(o => o.default)) {
+              isSelected = true;
+            }
+
+            const selected = isSelected ? 'selected' : '';
             const isEnabled = option.isVisible && option.available;
             const optionCost = costLabelForOption(option);
             const disabledAttr = !isEnabled ? 'disabled' : '';
@@ -821,9 +833,7 @@ function initializeWhenReady() {
     }
 
     async function reRenderForm(response) {
-      // This function takes the response from the price calculation, checks the variations to see
-      // if any dynamic fields have changed and if we need to render a different set of fields
-      // and then re-renders the form.
+      // This function handles dynamic field updates while preserving static fields
       const {
         variations = [],
         variationsGroups = [],
@@ -832,37 +842,113 @@ function initializeWhenReady() {
       let hasChanges = false;
 
       // Check independent variations for changes
-      const $independentContainer = jQuery('.custom-variation-options');
+      const $independentContainer = jQuery('.custom-variation-options').not('.instruction-fields-first, .after-group-fields').first();
       if ($independentContainer.length > 0) {
         const currentVariations = await processVariations($independentContainer);
 
         if (hasVariationsChanged(currentVariations, variations)) {
           hasChanges = true;
 
-          // Re-render independent variations
-          let independentHtml = '';
-          variations.forEach((variation, index) => {
-            if (variation.variationField) {
-              independentHtml += renderFieldHtml(variation, 'custom_fields', index);
+          // Define which field types are dynamic vs static
+          // use this to determine which fields should be added/removed based on api response.
+          const optionTypes = [2, 6, 7, 9, 11];
+
+          const responseMap = new Map();
+          variations.forEach(v => {
+            if (v.variationField && v.variationField.id) {
+              responseMap.set(v.variationField.id, v);
             }
           });
 
-          if (independentHtml) {
-            $independentContainer.html(independentHtml);
+          // capture current value from dom element
+          const captureCurrentValue = ($element, $wrapper, fieldType) => {
+            let currentValue = null;
 
-            // Apply current values from response to newly rendered fields
-            variations.forEach((variation) => {
-              if (variation.variationField && variation.value !== undefined && variation.value !== null) {
-                applyVariationValue($independentContainer, variation, true);
+            if (fieldType === 2) { // Select
+              currentValue = $element.val();
+            } else if (fieldType === 6) { // Checkbox
+              const checked = $wrapper.find('input:checked').map(function () { return this.value; }).get();
+              currentValue = checked;
+            } else if (fieldType === 7) { // Radio
+              const val = $wrapper.find('input:checked').val();
+              currentValue = val ? [val] : [];
+            } else if (fieldType === 9) { // Image Select
+              const checked = $wrapper.find('input:checked').map(function () { return this.value; }).get();
+              currentValue = checked;
+            } else if (fieldType === 11) { // Color Select
+              const checked = $wrapper.find('input:checked').map(function () { return this.value; }).get();
+              currentValue = checked;
+            }
+            return currentValue;
+          };
+
+          // handle existing fields in dom
+          $independentContainer.find('[data-variation-field]').each(function () {
+            const $element = jQuery(this);
+            const fieldData = $element.data('variation-field');
+            const $wrapper = $element.closest('.custom-field');
+
+            if (!fieldData || !fieldData.id) return;
+
+            const fieldId = fieldData.id;
+            const fieldType = fieldData.fieldType;
+
+            // check if this is dynamic or static type
+            const isOptionType = optionTypes.includes(fieldType);
+
+            if (responseMap.has(fieldId)) {
+              const newVariation = responseMap.get(fieldId);
+              if (isOptionType) {
+                // rerender to update options/visibility
+                const currentValue = captureCurrentValue($element, $wrapper, fieldType);
+                const index = variations.findIndex(v => v.variationField.id === fieldId);
+                // override the api value with user's current value to preserve user selection
+                if (currentValue !== null && currentValue !== undefined) {
+                  if (Array.isArray(currentValue)) {
+                    newVariation.value = currentValue.join(',');
+                  } else {
+                    newVariation.value = currentValue;
+                  }
+                }
+                const newHtml = renderFieldHtml(newVariation, 'custom_fields', index);
+                $wrapper.replaceWith(newHtml);
+                if (currentValue !== null && currentValue !== undefined) {
+                  const $restoredInput = $independentContainer.find(`[data-variation-field]`).filter(function () {
+                    const d = jQuery(this).data('variation-field');
+                    return d && d.id === fieldId;
+                  });
+
+                  if ($restoredInput.length) {
+                    $restoredInput.val(currentValue);
+                  }
+                }
+              } else {
+                // keep dom, just update data attribute for next round
+                const variationFieldJson = JSON.stringify(newVariation.variationField).replace(/"/g, '&quot;');
+                $element.attr('data-variation-field', variationFieldJson);
               }
-            });
+              responseMap.delete(fieldId);
+            } else {
 
-            // Re-initialize event handlers for the re-rendered independent variations
-            initializeVariationFields($independentContainer);
-            initializeFileUploadVariations($independentContainer);
-            initializeImageSelectVariations($independentContainer);
-            initializeColorSelectVariations($independentContainer);
-          }
+              if (isOptionType) {
+                // option-based field that is gone from response (remove)
+                $wrapper.remove();
+              } else {
+                // static field (keep it)
+              }
+            }
+          });
+
+          // add new fields from response (that weren't in dom)
+          responseMap.forEach((newVariation, fieldId) => {
+            const index = variations.findIndex(v => v.variationField.id === fieldId);
+            const newHtml = renderFieldHtml(newVariation, 'custom_fields', index);
+            $independentContainer.append(newHtml);
+          });
+          initializeVariationFields($independentContainer);
+          initializeFileUploadVariations($independentContainer);
+          initializeImageSelectVariations($independentContainer);
+          initializeColorSelectVariations($independentContainer);
         }
       }
 

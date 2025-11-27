@@ -156,9 +156,8 @@ class ProductPage extends BaseController {
         return ($a['position'] ?? 0) <=> ($b['position'] ?? 0);
     });
 
-    // Separate fields into upload section, before-group fields, and after-group fields
+    // Separate fields into before-group fields and after-group fields
     // Exclude instruction fields (fieldType 8) as they are rendered separately first
-    $uploadFields = [];
     $beforeGroupFields = [];
     $afterGroupFields = [];
     
@@ -172,49 +171,17 @@ class ProductPage extends BaseController {
             continue;
         }
         
-        // Upload section: file upload and enter message fields
-        $isUploadField = (
-            $fieldType === 3 || 
-            strpos($fieldName, 'enter your message or artwork') !== false ||
-            strpos($fieldName, 'message or artwork') !== false
-        );
-        
         // After-group section: Additional Comments and Delivery Description
         $isAfterGroupField = (
             strpos($fieldName, 'additional comments') !== false ||
             $fieldSlug === 'delivery_options_do_not'
         );
         
-        if ($isUploadField) {
-            $uploadFields[] = ['field' => $field, 'index' => $index];
-        } else if ($isAfterGroupField) {
+        if ($isAfterGroupField) {
             $afterGroupFields[] = ['field' => $field, 'index' => $index];
         } else {
             $beforeGroupFields[] = ['field' => $field, 'index' => $index];
         }
-    }
-
-    // Sort upload fields
-    usort($uploadFields, function($a, $b) {
-        $typeA = intval($a['field']['fieldType']);
-        $typeB = intval($b['field']['fieldType']);
-        return ($typeA !== $typeB) ? ($typeA - $typeB) : (($a['field']['position'] ?? 0) - ($b['field']['position'] ?? 0));
-    });
-
-    if (!empty($uploadFields)) {
-        echo '<div id="upload-design-container" class="merchi-product-form">';
-        echo '<div class="upload-field-container custom-variation-options">';
-        
-        foreach ($uploadFields as $item) {
-            if ($item['field']['type'] === 'attribute') {
-                echo $this->render_attribute_field($item['field'], 'custom_fields', false, $item['index']);
-            } else {
-                echo $this->render_meta_field($item['field'], 'custom_fields', $item['index']);
-            }
-        }
-        
-        echo '</div>';
-        echo '</div>';
     }
 
     // before the group
