@@ -140,8 +140,7 @@ function initializeWhenReady() {
 
     // Simple function to update price displays with best price
     function updatePriceDisplays(bestPrice, unitPrice) {
-      // Update all quantity field price displays
-      $('.group-quantity').each(function (index) {
+      $('.group-field-set .group-quantity').each(function () {
         const $input = $(this);
         const $priceSpan = $input.closest('.custom-field').find('.group-unit-price');
 
@@ -151,6 +150,17 @@ function initializeWhenReady() {
         // Show current unit price next to quantity buttons, no parentheses
         const newText = `$${currentUnitPrice.toFixed(2)} per unit`;
         $priceSpan.html(newText);
+      });
+
+      // Update unit price display for non-grouped products (main quantity input)
+      $('input.qty').not('.group-field-set .group-quantity').each(function () {
+        const $input = $(this);
+        const $priceSpan = $input.closest('.quantity').find('.group-unit-price, .unit-price-display, .price-per-unit');
+
+        if ($priceSpan.length && unitPrice) {
+          const newText = `$${unitPrice.toFixed(2)} per unit`;
+          $priceSpan.html(newText);
+        }
       });
     }
 
@@ -1125,6 +1135,16 @@ function initializeWhenReady() {
         updateVariationLabel($label, variation);
       });
 
+      // Update unit price display for non-grouped products
+      jQuery('input.qty').not('.group-field-set .group-quantity').each(function () {
+        const $input = jQuery(this);
+        const $priceSpan = $input.closest('.quantity').find('.group-unit-price, .unit-price-display, .price-per-unit');
+        if ($priceSpan.length && costPerUnit) {
+          const priceDisplay = `$${costPerUnit.toFixed(2)} per unit`;
+          $priceSpan.html(priceDisplay);
+        }
+      });
+
       jQuery('.price-amount').text(renderPrice(totalCost, taxType));
     }
 
@@ -1408,6 +1428,8 @@ function initializeWhenReady() {
       jQuery(document).off('click', '.quantity .minus');
       jQuery(document).off('blur.merchi', '.group-quantity');
       jQuery(document).off('input.merchi', '.group-quantity');
+      jQuery(document).off('change.merchi', '.group-quantity');
+      jQuery(document).off('input.merchi change.merchi', 'input.qty');
       jQuery(document).off('click.merchi', '.delete-group-button');
 
       // Also remove handlers directly on the buttons themselves
@@ -1436,7 +1458,12 @@ function initializeWhenReady() {
       });
 
       // Handle quantity input events (for when user types)
-      jQuery(document).on('input.merchi', '.group-quantity', calculateAndUpdatePrice);
+      jQuery(document).on('input.merchi change.merchi', '.group-quantity', calculateAndUpdatePrice);
+      jQuery(document).on('input.merchi change.merchi', 'input.qty', function (e) {
+        if (!jQuery(this).hasClass('group-quantity')) {
+          calculateAndUpdatePrice();
+        }
+      });
 
       jQuery('.add-group-button').off('click');
 
@@ -1462,9 +1489,11 @@ function initializeWhenReady() {
         e.stopPropagation();
         e.stopImmediatePropagation();
         const $button = jQuery(this);
-        const $input = $button.siblings('.group-quantity');
+        const $input = $button.closest('.quantity').find('input.qty, input.group-quantity').first();
+
         const currentValue = parseInt($input.val()) || 0;
         $input.val(currentValue + 1);
+        $input.trigger('input');
         calculateAndUpdatePrice();
         return false;
       });
@@ -1475,11 +1504,13 @@ function initializeWhenReady() {
         e.stopPropagation();
         e.stopImmediatePropagation();
         const $button = jQuery(this);
-        const $input = $button.siblings('.group-quantity');
+        const $input = $button.closest('.quantity').find('input.qty, input.group-quantity').first();
+
         const currentValue = parseInt($input.val()) || 0;
         const minValue = parseInt($input.attr('min')) || 1;
         if (currentValue > minValue) {
           $input.val(currentValue - 1);
+          $input.trigger('input');
           calculateAndUpdatePrice();
         }
         return false;
@@ -1940,9 +1971,11 @@ function initializeWhenReady() {
         variations: [],
       };
 
-      // Process group variations
-      if (groupVariationFields && groupVariationFields.length > 0) {
-        const $groups = jQuery('.group-field-set');
+      // check if there are actual groups on the page
+      const $groups = jQuery('.group-field-set');
+
+      // process group variations
+      if ($groups.length > 0) {
         for (let groupIndex = 0; groupIndex < $groups.length; groupIndex++) {
           const $group = jQuery($groups[groupIndex]);
 
@@ -1958,7 +1991,17 @@ function initializeWhenReady() {
       } else {
         // if there are no groups then we just use the quantity from the quantity input
         const minimumQuantity = productJson.minimum || 1;
-        formData.quantity = parseInt(jQuery('input.qty').val()) || minimumQuantity;
+        let $qtyInput = jQuery('#quantity');
+
+        if ($qtyInput.length === 0 || !$qtyInput.is(':visible')) {
+          const $nameInput = jQuery('input[name="quantity"]');
+          if ($nameInput.length > 0 && $nameInput.is(':visible')) {
+            $qtyInput = $nameInput.first();
+          } else {
+            $qtyInput = jQuery('form.cart input.qty, .merchi-product-form input.qty, input.qty').filter(':visible').first();
+          }
+        }
+        formData.quantity = parseInt($qtyInput.val()) || minimumQuantity;
       }
 
       // Process standalone variations
