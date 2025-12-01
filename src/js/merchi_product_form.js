@@ -186,10 +186,11 @@ function initializeWhenReady() {
     // Reusable function to update a variation label
     function updateVariationLabel($label, variation) {
       if (variation) {
-        const { onceOffCost, unitCostTotal, variationField } = variation;
+        const { onceOffCost, unitCost, unitCostTotal, variationField } = variation;
         let label = variationField.name;
         const onceOffCostLabel = onceOffCost ? ` + ( $${onceOffCost.toFixed(2)} once off )` : '';
-        const unitCostLabel = unitCostTotal ? ` + ( $${unitCostTotal.toFixed(2)} per unit )` : '';
+        const costPerUnit = unitCost !== undefined ? unitCost : unitCostTotal;
+        const unitCostLabel = costPerUnit ? ` + ( $${costPerUnit.toFixed(2)} per unit )` : '';
         label += onceOffCostLabel + unitCostLabel;
         $label.text(label);
       }
