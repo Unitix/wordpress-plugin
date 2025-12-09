@@ -352,9 +352,10 @@ function initializeWhenReady() {
       }
 
       // Create variation field data for JavaScript
-      const variationFieldJson = JSON.stringify(variationField).replace(/"/g, '&quot;');
+      // avoid issues with single quotes in content
+      const variationFieldJson = JSON.stringify(variationField).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
       const calculateAttr = isSelectableVariation(variationField) ? ' data-calculate="true"' : '';
-      const commonDataAttrs = ` data-variation-field='${variationFieldJson}'${calculateAttr}`;
+      const commonDataAttrs = ` data-variation-field="${variationFieldJson}"${calculateAttr}`;
 
       // Cost label helper
       const costLabel = () => {
@@ -935,8 +936,8 @@ function initializeWhenReady() {
                 }
               } else {
                 // keep dom, just update data attribute for next round
-                const variationFieldJson = JSON.stringify(newVariation.variationField).replace(/"/g, '&quot;');
-                $element.attr('data-variation-field', variationFieldJson);
+                // use data() to update, avoid json cut off issues (html attribute issue) 
+                $element.data('variation-field', newVariation.variationField);
               }
               responseMap.delete(fieldId);
             } else {
@@ -1376,7 +1377,7 @@ function initializeWhenReady() {
         if (!isNaN(currentValue) && currentValue < minimumQuantity) {
           $input.val(minimumQuantity);
           if (context === 'blur') {
-            calculateAndUpdatePrice();
+            $input.trigger('input');
           }
         }
       } else {
@@ -1389,7 +1390,7 @@ function initializeWhenReady() {
           if (!isNaN(currentValue) && currentValue < minimumQuantity) {
             $input.val(minimumQuantity);
             if (context === 'blur') {
-              calculateAndUpdatePrice();
+              $input.trigger('input');
             }
           }
         } else {
@@ -1398,7 +1399,8 @@ function initializeWhenReady() {
           if (!isNaN(currentValue) && currentValue < 1) {
             $input.val(1);
             if (context === 'blur') {
-              calculateAndUpdatePrice();
+              // Trigger input event to let the unified handler process it with debounce
+              $input.trigger('input');
             }
           }
         }
@@ -1459,10 +1461,11 @@ function initializeWhenReady() {
       });
 
       // Handle quantity input events (for when user types)
-      jQuery(document).on('input.merchi change.merchi', '.group-quantity', calculateAndUpdatePrice);
-      jQuery(document).on('input.merchi change.merchi', 'input.qty', function (e) {
+      // Use only 'input' event with debounce to avoid duplicate calculations
+      jQuery(document).on('input.merchi', '.group-quantity', debouncedCalculatePrice);
+      jQuery(document).on('input.merchi', 'input.qty', function (e) {
         if (!jQuery(this).hasClass('group-quantity')) {
-          calculateAndUpdatePrice();
+          debouncedCalculatePrice();
         }
       });
 
@@ -1495,7 +1498,6 @@ function initializeWhenReady() {
         const currentValue = parseInt($input.val()) || 0;
         $input.val(currentValue + 1);
         $input.trigger('input');
-        calculateAndUpdatePrice();
         return false;
       });
 
@@ -1512,7 +1514,6 @@ function initializeWhenReady() {
         if (currentValue > minValue) {
           $input.val(currentValue - 1);
           $input.trigger('input');
-          calculateAndUpdatePrice();
         }
         return false;
       });
@@ -1670,11 +1671,10 @@ function initializeWhenReady() {
       // Initialize file inputs
       initializeFileUploadVariations($group);
 
-      // Bind group-quantity change for this group
-      $group.find('.group-quantity').off('change.group').on('change.group', function () {
+      // already handled by input event
+      $group.find('.group-quantity').off('blur.group').on('blur.group', function () {
         const $input = jQuery(this);
-        validateAndCorrectQuantity($input, 'change');
-        calculateAndUpdatePrice();
+        validateAndCorrectQuantity($input, 'blur');
       });
       $group.find('.delete-group-button').off('click.group').on('click.group', actionDeleteGroup);
 
@@ -1869,10 +1869,26 @@ function initializeWhenReady() {
       $container.find('.custom-field').each(function () {
         const $fieldContainer = jQuery(this);
         const $input = $fieldContainer.find('input, select, textarea').first();
-        const variationField = $input.data('variation-field');
+        let variationField = $input.data('variation-field');
 
         // if there is no variation field then we skip
         if (!variationField) return;
+
+        // if variationField is a string, then parse it
+        if (typeof variationField === 'string') {
+          try {
+            variationField = JSON.parse(variationField);
+          } catch (e) {
+            console.error('Error parsing variationField JSON string:', e, variationField);
+            return;
+          }
+        }
+
+        // if variationField is not an object with an id property then skip
+        if (!variationField || typeof variationField !== 'object' || !variationField.id) {
+          console.warn('Invalid variationField structure:', variationField);
+          return;
+        }
 
         const variation = {
           variationField,
