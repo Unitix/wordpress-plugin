@@ -3096,7 +3096,8 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 				$variation_options = [];
 
         foreach ($options as $option) {
-					if (!empty($option['include']) && !empty($option['value'])) {
+					// for independent fields, process all options regardless of include field
+					if (!empty($option['value'])) {
 						$option_value = sanitize_text_field($option['value']);
 						$image_url = !empty($option['linkedFile']['viewUrl']) ? esc_url($option['linkedFile']['viewUrl']) : '';
 						$variation_option_cost = floatval($option['variationCost'] ?? 0);
