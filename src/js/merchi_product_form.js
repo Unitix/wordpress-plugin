@@ -34,6 +34,7 @@ function initializeWhenReady() {
     let productJson = {};
     let defaultJobJson = {};
     let productClone = {};
+    let isFirstRender = true;
 
     // Function to create a deep clone of an object
     const deepClone = (obj) => {
@@ -325,6 +326,8 @@ function initializeWhenReady() {
         variationFiles = [],
       } = newVariation;
 
+      const options = selectableOptions.length > 0 ? selectableOptions : (variationField.options || []);
+
       const {
         id: fieldId,
         name: label,
@@ -382,7 +385,7 @@ function initializeWhenReady() {
         return label;
       };
 
-      const sortedOptions = sortOptionsByPosition(selectableOptions);
+      const sortedOptions = sortOptionsByPosition(options);
       let html = `<div class="custom-field"${requiredClass}>`;
 
       switch (fieldType) {
@@ -409,7 +412,7 @@ function initializeWhenReady() {
           sortedOptions.forEach((option, index) => {
             let isSelected = isOptionSelected(option);
 
-            if ((value === undefined || value === null) && !multipleSelect && index === 0 && !selectableOptions.some(o => o.default)) {
+            if ((value === undefined || value === null) && !multipleSelect && index === 0 && !options.some(o => o.default)) {
               isSelected = true;
             }
 
@@ -702,6 +705,21 @@ function initializeWhenReady() {
         return true;
       }
 
+      // build map of field id for comparison
+      const currentFieldIds = new Set(currentVariations.map(v => (v.variationField || v).id));
+      const responseFieldIds = new Set(responseVariations.map(v => (v.variationField || v).id));
+
+      // check if field ids are different (add or remove)
+      if (currentFieldIds.size !== responseFieldIds.size) {
+        return true;
+      }
+
+      for (const fieldId of responseFieldIds) {
+        if (!currentFieldIds.has(fieldId)) {
+          return true;
+        }
+      }
+
       for (let i = 0; i < currentVariations.length; i++) {
         const current = currentVariations[i];
         const response = responseVariations[i];
@@ -737,6 +755,9 @@ function initializeWhenReady() {
               return true;
             }
           }
+        }
+        if (currentOptions.length === 0 && responseOptions.length > 0) {
+          return true;
         }
       }
       return false;
@@ -854,113 +875,66 @@ function initializeWhenReady() {
       let hasChanges = false;
 
       // Check independent variations for changes
-      const $independentContainer = jQuery('.custom-variation-options').not('.instruction-fields-first, .after-group-fields').first();
+      const $independentContainer = jQuery('.custom-variation-options').not('.instruction-fields-first').first();
       if ($independentContainer.length > 0) {
         const currentVariations = await processVariations($independentContainer);
 
-        if (hasVariationsChanged(currentVariations, variations)) {
+        // check if field structure has changed
+        const hasStructureChange = currentVariations.length !== variations.length ||
+          !currentVariations.every((cv, i) => (cv.variationField?.id) === (variations[i]?.variationField?.id));
+
+        // re-render on first load or if field structure has changed
+        if (isFirstRender || hasStructureChange) {
           hasChanges = true;
 
-          // Define which field types are dynamic vs static
-          // use this to determine which fields should be added/removed based on api response.
-          const optionTypes = [2, 6, 7, 9, 11];
+          const $contentContainer = $independentContainer.find('.merchi-fields-content').length > 0
+            ? $independentContainer.find('.merchi-fields-content').first()
+            : $independentContainer;
 
-          const responseMap = new Map();
-          variations.forEach(v => {
-            if (v.variationField && v.variationField.id) {
-              responseMap.set(v.variationField.id, v);
+          $contentContainer.find('.custom-field').each(function () {
+            const $wrapper = jQuery(this);
+            const $input = $wrapper.find('input, select, textarea').first();
+            const fieldData = $input.data('variation-field');
+            const fieldType = fieldData?.fieldType;
+
+            if (fieldType !== 8) {
+              $wrapper.remove();
             }
           });
 
-          // capture current value from dom element
-          const captureCurrentValue = ($element, $wrapper, fieldType) => {
-            let currentValue = null;
-
-            if (fieldType === 2) { // Select
-              currentValue = $element.val();
-            } else if (fieldType === 6) { // Checkbox
-              const checked = $wrapper.find('input:checked').map(function () { return this.value; }).get();
-              currentValue = checked;
-            } else if (fieldType === 7) { // Radio
-              const val = $wrapper.find('input:checked').val();
-              currentValue = val ? [val] : [];
-            } else if (fieldType === 9) { // Image Select
-              const checked = $wrapper.find('input:checked').map(function () { return this.value; }).get();
-              currentValue = checked;
-            } else if (fieldType === 11) { // Color Select
-              const checked = $wrapper.find('input:checked').map(function () { return this.value; }).get();
-              currentValue = checked;
-            }
-            return currentValue;
-          };
-
-          // handle existing fields in dom
-          $independentContainer.find('[data-variation-field]').each(function () {
-            const $element = jQuery(this);
-            const fieldData = $element.data('variation-field');
-            const $wrapper = $element.closest('.custom-field');
-
-            if (!fieldData || !fieldData.id) return;
-
-            const fieldId = fieldData.id;
-            const fieldType = fieldData.fieldType;
-
-            // check if this is dynamic or static type
-            const isOptionType = optionTypes.includes(fieldType);
-
-            if (responseMap.has(fieldId)) {
-              const newVariation = responseMap.get(fieldId);
-              if (isOptionType) {
-                // rerender to update options/visibility
-                const currentValue = captureCurrentValue($element, $wrapper, fieldType);
-                const index = variations.findIndex(v => v.variationField.id === fieldId);
-                // override the api value with user's current value to preserve user selection
-                if (currentValue !== null && currentValue !== undefined) {
-                  if (Array.isArray(currentValue)) {
-                    newVariation.value = currentValue.join(',');
-                  } else {
-                    newVariation.value = currentValue;
-                  }
-                }
-                const newHtml = renderFieldHtml(newVariation, 'custom_fields', index);
-                $wrapper.replaceWith(newHtml);
-                if (currentValue !== null && currentValue !== undefined) {
-                  const $restoredInput = $independentContainer.find(`[data-variation-field]`).filter(function () {
-                    const d = jQuery(this).data('variation-field');
-                    return d && d.id === fieldId;
-                  });
-
-                  if ($restoredInput.length) {
-                    $restoredInput.val(currentValue);
-                  }
-                }
-              } else {
-                // keep dom, just update data attribute for next round
-                // use data() to update, avoid json cut off issues (html attribute issue) 
-                $element.data('variation-field', newVariation.variationField);
+          // add all fields in correct order
+          const optionFieldTypes = [2, 6, 7, 9, 11];
+          variations.forEach((newVariation, index) => {
+            if (newVariation.variationField) {
+              if (!newVariation.selectableOptions && newVariation.variationField.options) {
+                newVariation.selectableOptions = newVariation.variationField.options;
               }
-              responseMap.delete(fieldId);
-            } else {
 
-              if (isOptionType) {
-                // option-based field that is gone from response (remove)
-                $wrapper.remove();
-              } else {
-                // static field (keep it)
+              const hasOptions = (newVariation.selectableOptions?.length || 0) > 0;
+              const isOptionField = optionFieldTypes.includes(newVariation.variationField.fieldType);
+
+              if (isFirstRender && isOptionField && !hasOptions) {
+                return;
               }
+
+              const newHtml = renderFieldHtml(newVariation, 'custom_fields', index);
+              $contentContainer.append(newHtml);
             }
           });
 
-          // add new fields from response (that weren't in dom)
-          responseMap.forEach((newVariation, fieldId) => {
-            const index = variations.findIndex(v => v.variationField.id === fieldId);
-            const newHtml = renderFieldHtml(newVariation, 'custom_fields', index);
-            $independentContainer.append(newHtml);
-          });
-          initializeVariationFields($independentContainer);
-          initializeFileUploadVariations($independentContainer);
-          initializeImageSelectVariations($independentContainer);
-          initializeColorSelectVariations($independentContainer);
+          // Initialize handlers
+          initializeVariationFields($contentContainer);
+          initializeFileUploadVariations($contentContainer);
+          initializeImageSelectVariations($contentContainer);
+          initializeColorSelectVariations($contentContainer);
+
+          if ($independentContainer.attr('data-initial-render')) {
+            $independentContainer.removeAttr('data-initial-render');
+            $independentContainer.find('.merchi-fields-loading-spinner').fadeOut(200, function () {
+              jQuery(this).remove();
+              $contentContainer.css('display', '');
+            });
+          }
         }
       }
 
@@ -1085,6 +1059,11 @@ function initializeWhenReady() {
       // Re-bind quantity buttons after re-rendering (must be after group handlers)
       if (hasChanges) {
         bindQuantityButtons();
+      }
+
+      if (isFirstRender) {
+        isFirstRender = false;
+        calculateAndUpdatePrice();
       }
     }
 

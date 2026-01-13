@@ -156,63 +156,39 @@ class ProductPage extends BaseController {
         return ($a['position'] ?? 0) <=> ($b['position'] ?? 0);
     });
 
-    // Separate fields into before-group fields and after-group fields
-    // Exclude instruction fields (fieldType 8) as they are rendered separately first
-    $beforeGroupFields = [];
-    $afterGroupFields = [];
+    // js will show fields after re-rendering with correct fields
+    echo '<div class="custom-variation-options merchi-product-form" data-initial-render="true">';
+    
+    echo '<div class="merchi-fields-loading-spinner" style="padding: 20px; text-align: center;">';
+    echo '<div style="display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #333; border-radius: 50%; animation: spin 1s linear infinite;"></div>';
+    echo '</div>';
+
+    echo '<div class="merchi-fields-content" style="display: none;">';
     
     foreach ($fields as $index => $field) {
         $fieldType = intval($field['fieldType']);
-        $fieldName = strtolower($field['label'] ?? '');
-        $fieldSlug = strtolower($field['slug'] ?? '');
         
-        // skip instruction fields that are rendered first
+        // Skip instruction fields that are rendered first
         if ($fieldType === 8) {
             continue;
         }
         
-        // After-group section: Additional Comments and Delivery Description
-        $isAfterGroupField = (
-            strpos($fieldName, 'additional comments') !== false ||
-            $fieldSlug === 'delivery_options_do_not'
-        );
-        
-        if ($isAfterGroupField) {
-            $afterGroupFields[] = ['field' => $field, 'index' => $index];
+        if ($field['type'] === 'attribute') {
+            echo $this->render_attribute_field($field, 'custom_fields', false, $index);
         } else {
-            $beforeGroupFields[] = ['field' => $field, 'index' => $index];
+            echo $this->render_meta_field($field, 'custom_fields', $index);
         }
     }
-
-    // before the group
-    if (!empty($beforeGroupFields)) {
-        echo '<div class="custom-variation-options merchi-product-form">';
-
-        foreach ($beforeGroupFields as $item) {
-            if ($item['field']['type'] === 'attribute') {
-                echo $this->render_attribute_field($item['field'], 'custom_fields', false, $item['index']);
-            } else {
-                echo $this->render_meta_field($item['field'], 'custom_fields', $item['index']);
-            }
+    
+    echo '</div>';
+    echo '</div>';
+    
+    echo '<style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
-
-        echo '</div>';
-    }
-
-    // Store after-group fields to be rendered later (after Grouped Options)
-    if (!empty($afterGroupFields)) {
-        add_action('woocommerce_before_add_to_cart_button', function() use ($afterGroupFields) {
-            echo '<div class="custom-variation-options merchi-product-form after-group-fields">';
-            foreach ($afterGroupFields as $item) {
-                if ($item['field']['type'] === 'attribute') {
-                    echo $this->render_attribute_field($item['field'], 'custom_fields', false, $item['index']);
-                } else {
-                    echo $this->render_meta_field($item['field'], 'custom_fields', $item['index']);
-                }
-            }
-            echo '</div>';
-        }, 22);
-    }
+    </style>';
 
     // Add the checkout container
     echo '<div id="merchi-checkout-container"></div>';
