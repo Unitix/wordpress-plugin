@@ -3179,6 +3179,9 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 					'isHtml'        => $is_html,
 					'required'      => !empty($variation_field['required']),
 					'multipleSelect' => !empty($variation_field['multipleSelect']),
+					'position' => $variation_field['position'] ?? 0,
+					'variationCost' => $variation_field['variationCost'] ?? 0,
+					'variationUnitCost' => $variation_field['variationUnitCost'] ?? 0,
 				];
 
 				$product_meta_inputs[] = $meta_field;
@@ -3192,6 +3195,12 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 	update_post_meta($woo_product_id, '_custom_product_fields', $product_meta_inputs);
 	update_post_meta($woo_product_id, '_merchi_ordered_fields', $merchi_ordered_fields);
 	update_post_meta($woo_product_id, '_group_variation_field_template', $grouped_field_template);
+	
+	// Save the minimum position of group fields for rendering order
+	if (!empty($grouped_field_template)) {
+		$group_min_position = min(array_column($grouped_field_template, 'position'));
+		update_post_meta($woo_product_id, '_group_fields_min_position', $group_min_position);
+	}
 
 	$default_price = null;
 	
