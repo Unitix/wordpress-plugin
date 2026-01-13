@@ -227,6 +227,23 @@ function initializeWhenReady() {
       });
     }
 
+    // parse instructions to plain text
+    function parseDraftJsInstructions(instructions) {
+      if (typeof instructions === 'string') {
+        try {
+          const parsed = JSON.parse(instructions);
+          if (parsed && parsed.blocks && Array.isArray(parsed.blocks)) {
+            return parsed.blocks.map(block => block.text || '').filter(text => text.trim()).join('\n');
+          }
+        } catch (e) {
+          return instructions;
+        }
+      } else if (instructions && typeof instructions === 'object' && instructions.blocks && Array.isArray(instructions.blocks)) {
+        return instructions.blocks.map(block => block.text || '').filter(text => text.trim()).join('\n');
+      }
+      return instructions;
+    }
+
     // sanitize html for instructions field
     function sanitizeInstructionHtml(html) {
       const dangerousTags = ['script', 'style', 'iframe', 'object', 'embed', 'link', 'meta', 'form'];
@@ -591,7 +608,8 @@ function initializeWhenReady() {
           break;
 
         case 8: // INSTRUCTIONS
-          const processedInstructions = isHtml ? sanitizeInstructionHtml(instructions) : escapeHtml(instructions);
+          let instructionsText = parseDraftJsInstructions(instructions);
+          const processedInstructions = isHtml ? sanitizeInstructionHtml(instructionsText) : escapeHtml(instructionsText);
           const wrapper = isHtml ? 'div' : 'p';
           html += `<div class="field-label">${label}${costLabel()}</div>`;
           html += `<${wrapper} class="field-instructions">${processedInstructions}</${wrapper}>`;
@@ -609,6 +627,13 @@ function initializeWhenReady() {
             >
               ${label} ${costLabel()}
             </label>`;
+          // render instructions if present
+          if (instructions) {
+            let instructionsText = parseDraftJsInstructions(instructions);
+            const processedInstructions = isHtml ? sanitizeInstructionHtml(instructionsText) : escapeHtml(instructionsText);
+            const wrapper = isHtml ? 'div' : 'p';
+            html += `<${wrapper} class="field-instructions">${processedInstructions}</${wrapper}>`;
+          }
           html += `<div class="group-variation-container" name="${fieldName}"${commonDataAttrs}>`;
           html += '<div class="image-select-options-container">';
           sortedOptions.forEach((option, optionIndex) => {
@@ -656,6 +681,13 @@ function initializeWhenReady() {
             >
               ${label} ${costLabel()}
             </label>`;
+          // render instructions if present
+          if (instructions) {
+            let instructionsText = parseDraftJsInstructions(instructions);
+            const processedInstructions = isHtml ? sanitizeInstructionHtml(instructionsText) : escapeHtml(instructionsText);
+            const wrapper = isHtml ? 'div' : 'p';
+            html += `<${wrapper} class="field-instructions">${processedInstructions}</${wrapper}>`;
+          }
           html += '<div class="color-options-grid">';
           sortedOptions.forEach((option) => {
             const isEnabled = option.isVisible && option.available;
@@ -875,7 +907,7 @@ function initializeWhenReady() {
       let hasChanges = false;
 
       // Check independent variations for changes
-      const $independentContainer = jQuery('.custom-variation-options').not('.instruction-fields-first').first();
+      const $independentContainer = jQuery('.custom-variation-options').first();
       if ($independentContainer.length > 0) {
         const currentVariations = await processVariations($independentContainer);
 
@@ -891,34 +923,27 @@ function initializeWhenReady() {
             ? $independentContainer.find('.merchi-fields-content').first()
             : $independentContainer;
 
-          $contentContainer.find('.custom-field').each(function () {
-            const $wrapper = jQuery(this);
-            const $input = $wrapper.find('input, select, textarea').first();
-            const fieldData = $input.data('variation-field');
-            const fieldType = fieldData?.fieldType;
+          // rely completely on api response
+          $contentContainer.find('.custom-field').remove();
 
-            if (fieldType !== 8) {
-              $wrapper.remove();
-            }
-          });
-
-          // add all fields in correct order
+          // render all fields in backend order
           const optionFieldTypes = [2, 6, 7, 9, 11];
           variations.forEach((newVariation, index) => {
             if (newVariation.variationField) {
+              const fieldType = newVariation.variationField.fieldType;
               if (!newVariation.selectableOptions && newVariation.variationField.options) {
                 newVariation.selectableOptions = newVariation.variationField.options;
               }
 
               const hasOptions = (newVariation.selectableOptions?.length || 0) > 0;
-              const isOptionField = optionFieldTypes.includes(newVariation.variationField.fieldType);
+              const isOptionField = optionFieldTypes.includes(fieldType);
 
               if (isFirstRender && isOptionField && !hasOptions) {
                 return;
               }
 
-              const newHtml = renderFieldHtml(newVariation, 'custom_fields', index);
-              $contentContainer.append(newHtml);
+              const html = renderFieldHtml(newVariation, 'custom_fields', index);
+              $contentContainer.append(html);
             }
           });
 
@@ -1847,8 +1872,18 @@ function initializeWhenReady() {
       const variations = [];
       $container.find('.custom-field').each(function () {
         const $fieldContainer = jQuery(this);
-        const $input = $fieldContainer.find('input, select, textarea').first();
-        let variationField = $input.data('variation-field');
+
+        // check for instruction field first
+        const $instruction = $fieldContainer.find('.field-instructions[data-variation-field]').first();
+        let variationField;
+        let $input;
+
+        if ($instruction.length > 0) {
+          variationField = $instruction.data('variation-field');
+        } else {
+          $input = $fieldContainer.find('input, select, textarea').first();
+          variationField = $input.data('variation-field');
+        }
 
         // if there is no variation field then we skip
         if (!variationField) return;
@@ -1874,6 +1909,11 @@ function initializeWhenReady() {
           selectableOptions: variationField.options || [],
           variationFiles: []
         };
+
+        if (variationField.fieldType === 8) {
+          variations.push(variation);
+          return;
+        }
 
         function getCheckedValues($fieldContainer) {
           const $checked = $fieldContainer.find('input[type="checkbox"]:checked, input[type="radio"]:checked');

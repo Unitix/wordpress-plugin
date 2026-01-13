@@ -11,7 +11,6 @@ class ProductPage extends BaseController {
 
 
 	public function register() {
-		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_instruction_fields_first' ], 19 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_independent_attributes' ], 20 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_grouped_attributes' ], 21 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_new_group_button' ], 25 );
@@ -166,13 +165,6 @@ class ProductPage extends BaseController {
     echo '<div class="merchi-fields-content" style="display: none;">';
     
     foreach ($fields as $index => $field) {
-        $fieldType = intval($field['fieldType']);
-        
-        // Skip instruction fields that are rendered first
-        if ($fieldType === 8) {
-            continue;
-        }
-        
         if ($field['type'] === 'attribute') {
             echo $this->render_attribute_field($field, 'custom_fields', false, $index);
         } else {
@@ -792,7 +784,7 @@ class ProductPage extends BaseController {
 				case 10: $html .= "<input type='color' id='{$slug}' name='{$field_name}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-color'/>"; break;
 				case 8: 
 					$wrapper = $is_html ? 'div' : 'p';
-					$html .= "<{$wrapper} class='field-instructions'>{$instructions}</{$wrapper}>";
+					$html .= "<{$wrapper} class='field-instructions' data-variation-field='{$variation_field_json}'>{$instructions}</{$wrapper}>";
 					break;
 				default: $html .= "<input type='text' id='{$slug}' name='{$field_name}' placeholder='{$placeholder}' {$required} data-variation-field='{$variation_field_json}' data-calculate='" . ($has_cost ? 'true' : 'false') . "' class='input-text'/>"; break;
 			}
