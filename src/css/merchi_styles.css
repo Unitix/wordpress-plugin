@@ -583,7 +583,7 @@ span.round-tab:hover {
 }
 
 .image-select-option {
-  flex: 0 0 110px;
+  flex: 0 0 90px;
   position: relative;
   background: white;
   border-radius: 6px;
@@ -638,7 +638,7 @@ span.round-tab:hover {
 .image-container {
   position: relative;
   width: 100%;
-  height: 180px;
+  height: 150px;
   background: #fff;
   display: flex;
   align-items: center;
