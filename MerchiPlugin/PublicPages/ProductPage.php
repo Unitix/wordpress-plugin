@@ -169,35 +169,69 @@ class ProductPage extends BaseController {
         return ($a['position'] ?? 0) <=> ($b['position'] ?? 0);
     });
 
-    // js will show fields after re-rendering with correct fields
-    echo '<div class="custom-variation-options merchi-product-form" data-initial-render="true">';
-    
-    echo '<div class="merchi-fields-loading-spinner" style="padding: 20px; text-align: center;">';
-    echo '<div style="display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #333; border-radius: 50%; animation: spin 1s linear infinite;"></div>';
-    echo '</div>';
+    // check if product has dynamic fields
+    $has_dynamic_fields = $this->has_dynamic_fields($product_id);
 
-    echo '<div class="merchi-fields-content" style="display: none;">';
-    
-    foreach ($fields as $index => $field) {
-        if ($field['type'] === 'attribute') {
-            echo $this->render_attribute_field($field, 'custom_fields', false, $index);
-        } else {
-            echo $this->render_meta_field($field, 'custom_fields', $index);
+    if ($has_dynamic_fields) {
+        // show loading spinner for products with dynamic fields
+        echo '<div class="custom-variation-options merchi-product-form" data-initial-render="true">';
+        echo '<div class="merchi-fields-loading-spinner" style="padding: 20px; text-align: center;">';
+        echo '<div style="display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #333; border-radius: 50%; animation: spin 1s linear infinite;"></div>';
+        echo '</div>';
+        echo '<div class="merchi-fields-content" style="display: none;">';
+        
+        foreach ($fields as $index => $field) {
+            if ($field['type'] === 'attribute') {
+                echo $this->render_attribute_field($field, 'custom_fields', false, $index);
+            } else {
+                echo $this->render_meta_field($field, 'custom_fields', $index);
+            }
         }
+        
+        echo '</div>';
+        echo '</div>';
+        echo '<style>
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>';
+    } else {
+        echo '<div class="custom-variation-options merchi-product-form">';
+        
+        foreach ($fields as $index => $field) {
+            if ($field['type'] === 'attribute') {
+                echo $this->render_attribute_field($field, 'custom_fields', false, $index);
+            } else {
+                echo $this->render_meta_field($field, 'custom_fields', $index);
+            }
+        }
+        
+        echo '</div>';
     }
-    
-    echo '</div>';
-    echo '</div>';
-    
-    echo '<style>
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>';
 
     // Add the checkout container
     echo '<div id="merchi-checkout-container"></div>';
+	}
+
+	private function has_dynamic_fields($product_id) {
+		$merchi_product_data = get_post_meta($product_id, '_merchi_product_data', true);		
+		if (empty($merchi_product_data['product'])) {
+			return false;
+		}
+		
+		$product_data = $merchi_product_data['product'];
+		$fields_to_check = [];
+		if (!empty($product_data['independentVariationFields'])) {
+			$fields_to_check = array_merge($fields_to_check, $product_data['independentVariationFields']);
+		}
+		
+		foreach ($fields_to_check as $field) {
+			if (!empty($field['selectedBy'])) {
+				return true;
+			}
+		}		
+		return false;
 	}
 
 	public function custom_display_grouped_attributes() {
