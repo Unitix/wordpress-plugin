@@ -576,14 +576,14 @@ span.round-tab:hover {
    D) Image select widget
    -----------------------------------------------------*/
 .image-select-options-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 17px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 15px;
   margin: 10px 0 20px;
 }
 
 .image-select-option {
-  flex: 0 0 90px;
+  width: 100%;
   position: relative;
   background: white;
   border-radius: 6px;

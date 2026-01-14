@@ -400,23 +400,19 @@ label.custom-attribute-option {
 
 /* Color Selector Styles */
 .color-options-grid {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-top: 5px;
-  max-width: 465px;
 }
 
 .color-option {
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
   align-items: center;
   cursor: pointer;
-  margin-bottom: 5px;
-  width: 45px;
-  /* Fixed width for the entire option */
-  margin: 0 auto;
-  /* Center the option in its grid cell */
+  width: calc(8.33% - 9px);
+  margin: 0;
   position: relative;
 }
 
@@ -498,7 +494,21 @@ label.custom-attribute-option {
 
 @media (max-width: 768px) {
   .color-options-grid {
-    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  .color-option {
+    flex: 0 0 calc((100% - 48px) / 5);
+    min-width: 0;
+  }
+
+  .color-option-inner {
+    width: 40px;
+    height: 40px;
+  }
+
+  .color-name {
+    font-size: 10px;
   }
 }
 
