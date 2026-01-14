@@ -2546,6 +2546,9 @@ function import_merchi_product_data($woo_product_id) {
         update_post_meta($woo_product_id, 'allowPaymentUpfront', $allow_payment_upfront);
     }
 
+    $groups_first = !empty($data['product']['groupsFirst']);
+    update_post_meta($woo_product_id, 'groupsFirst', $groups_first);
+
     // Handle feature image
     $feature_image_url = null;
     $feature_image_id = null;

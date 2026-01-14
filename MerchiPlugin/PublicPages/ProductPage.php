@@ -11,9 +11,7 @@ class ProductPage extends BaseController {
 
 
 	public function register() {
-		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_independent_attributes' ], 20 );
-		add_action('woocommerce_before_add_to_cart_button', [ $this, 'custom_display_grouped_attributes' ], 21 );
-		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_new_group_button' ], 25 );
+		add_action('woocommerce_before_add_to_cart_button', [ $this, 'render_variation_fields_in_order' ], 20 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_default_quantity' ], 27 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_total_price' ], 30 );
 		add_action('woocommerce_before_add_to_cart_button', [ $this, 'display_action_buttons_container_start' ], 35 );
@@ -25,6 +23,22 @@ class ProductPage extends BaseController {
 		add_filter( 'woocommerce_quantity_input_args', [ $this, 'remove_quantity_field' ], 10, 2 );
 		add_filter( 'woocommerce_loop_add_to_cart_link', [ $this, 'add_loading_spinner_to_button' ], 10, 2 );
 		add_filter( 'woocommerce_single_add_to_cart_button', [ $this, 'add_loading_spinner_to_button' ], 10, 2 );
+	}
+
+	public function render_variation_fields_in_order() {
+		global $product;
+		$product_id = $product->get_id();
+		
+		$groups_first = get_post_meta($product_id, 'groupsFirst', true);
+		$groups_first = filter_var($groups_first, FILTER_VALIDATE_BOOLEAN);
+			
+		if ($groups_first) {
+			$this->custom_display_grouped_attributes();
+			$this->custom_display_independent_attributes();
+		} else {
+			$this->custom_display_independent_attributes();
+			$this->custom_display_grouped_attributes();
+		}
 	}
 
 	public function enqueue_merchi_scripts() {
@@ -247,6 +261,8 @@ class ProductPage extends BaseController {
 		echo '<div class="group-cost-display" data-group-index="0" data-group-cost="0"><span class="loading-spinner"></span></div>';
 		echo '<button type="button" class="button wp-element-button delete-group-button" style="display: none;">Delete Group</button>';
 		echo '</div>';
+
+		$this->display_new_group_button();
 
 		echo '</div>';
 	}
