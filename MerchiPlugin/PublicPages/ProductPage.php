@@ -591,11 +591,11 @@ class ProductPage extends BaseController {
 							}
 							$html .= '</select>';
 					}
-			} 
-			// CHECKBOX type (6)
-			else if ($field_type === 6) {
-				$html .= "<label for='{$slug}'>{$label}</label>";
-					$html .= '<div class="checkbox-options-container">';
+		} 
+		// CHECKBOX type (6)
+		else if ($field_type === 6) {
+			$html .= "<div class='field-label'>{$label}</div>";
+				$html .= '<div class="checkbox-options-container">';
 					foreach ($terms as $index => $term) {
 							$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
 							$variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
@@ -613,11 +613,11 @@ class ProductPage extends BaseController {
 							$html .= '</div>';
 					}
 					$html .= '</div>';
-			} 
-			// RADIO type (7)
-			else if ($field_type === 7) {
-					$html .= "<label for='{$slug}'>{$label}</label>";
-					$html .= '<div class="radio-options-container">';
+		} 
+		// RADIO type (7)
+		else if ($field_type === 7) {
+				$html .= "<div class='field-label'>{$label}</div>";
+				$html .= '<div class="radio-options-container">';
 					foreach ($terms as $index => $term) {
 							$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
 							$variation_unit_cost = get_term_meta($term->term_id, 'variationUnitCost', true);
@@ -639,12 +639,12 @@ class ProductPage extends BaseController {
 							$html .= '</div>';
 					}
 					$html .= '</div>';
-			}
-			// IMAGE_SELECT type (9)
-			else if ($field_type === 9) {
-					$label_group_index = $is_group ? '0' : 'false';
-					$html .= "<label for='{$slug}' data-group-index='{$label_group_index}' data-update-label='true' data-variation-field-id='{$field_id}'>{$label}</label>";
-					$is_multiple = !empty($field['multipleSelect']);
+		}
+		// IMAGE_SELECT type (9)
+		else if ($field_type === 9) {
+				$label_group_index = $is_group ? '0' : 'false';
+				$html .= "<div class='field-label' data-group-index='{$label_group_index}' data-update-label='true' data-variation-field-id='{$field_id}'>{$label}</div>";
+				$is_multiple = !empty($field['multipleSelect']);
 					$input_type = $is_multiple ? 'checkbox' : 'radio';
 					$html .= '<div class="group-variation-container" name="job.variationsGroups[0].variations[1]"' . $common_data_attrs . '>';
 					$html .= '<div class="image-select-options-container">';
@@ -691,12 +691,12 @@ class ProductPage extends BaseController {
 					}
 					$html .= '</div>';
 					$html .= '</div>';
-			} 
-			// COLOUR_SELECT type (11)
-			else if ($field_type === 11) {
-					$label_group_index = $is_group ? '0' : 'false';
-					$html .= "<label for='{$slug}' data-group-index='{$label_group_index}' data-update-label='true' data-variation-field-id='{$field_id}'>{$label}</label>";
-					$is_multiple = !empty($field['multipleSelect']);
+		}
+		// COLOUR_SELECT type (11)
+		else if ($field_type === 11) {
+				$label_group_index = $is_group ? '0' : 'false';
+				$html .= "<div class='field-label' data-group-index='{$label_group_index}' data-update-label='true' data-variation-field-id='{$field_id}'>{$label}</div>";
+				$is_multiple = !empty($field['multipleSelect']);
 					$input_type = $is_multiple ? 'checkbox' : 'radio';
 					$html .= '<div class="color-options-grid">';
 					foreach ($terms as $index => $term) {
@@ -810,7 +810,7 @@ class ProductPage extends BaseController {
 		$options = $this->get_variation_field_options($field);
 		if (!empty($options)) {
 			// Render as select dropdown for meta fields with options
-			$html .= "<select name='{$field_name}' {$required} data-variation-field='{$variation_field_json}'>";
+			$html .= "<select id='{$slug}' name='{$field_name}' {$required} data-variation-field='{$variation_field_json}'>";
 			foreach ($options as $option) {
 				// Option can be array or string
 				if (is_array($option)) {

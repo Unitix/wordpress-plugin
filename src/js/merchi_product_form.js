@@ -358,6 +358,7 @@ function initializeWhenReady() {
 
       const slug = label.toLowerCase().replace(/[^a-z0-9]/g, '_');
       const fieldName = namePrefix + '.variations[' + fieldIndex + ']';
+      const uniqueFieldId = `field_${fieldId}_${fieldIndex}_${groupIndex}`;
       const requiredAttr = required ? 'required' : '';
       const requiredClass = required ? ' data-required="true"' : '';
       function isOptionSelected(option) {
@@ -407,10 +408,11 @@ function initializeWhenReady() {
 
       switch (fieldType) {
         case 1: // TEXT
-          html += `<label for="${fieldName}">${label}${costLabel()}</label>`;
+          html += `<label for="${uniqueFieldId}">${label}${costLabel()}</label>`;
           html += `
             <input
               type="text"
+              id="${uniqueFieldId}"
               name="${fieldName}"
               placeholder="${placeholder}" 
               ${requiredAttr}${commonDataAttrs}
@@ -420,11 +422,11 @@ function initializeWhenReady() {
           break;
 
         case 2: // SELECT
-          html += `<label for="${fieldName}">${label}</label>`;
+          html += `<label for="${uniqueFieldId}">${label}</label>`;
           if (multipleSelect) {
-            html += `<select multiple id="${fieldName}" name="${fieldName}"${commonDataAttrs} class="select">`;
+            html += `<select multiple id="${uniqueFieldId}" name="${fieldName}"${commonDataAttrs} class="select">`;
           } else {
-            html += `<select id="${fieldName}" name="${fieldName}"${commonDataAttrs} class="select">`;
+            html += `<select id="${uniqueFieldId}" name="${fieldName}"${commonDataAttrs} class="select">`;
           }
           sortedOptions.forEach((option, index) => {
             let isSelected = isOptionSelected(option);
@@ -451,12 +453,12 @@ function initializeWhenReady() {
           break;
 
         case 3: // FILE
-          html += `<label for="${fieldName}">${label}${costLabel()}</label>`;
-          html += `<label class="custom-upload-wrapper">
+          html += `<label for="${uniqueFieldId}">${label}${costLabel()}</label>`;
+          html += `<label class="custom-upload-wrapper" for="${uniqueFieldId}">
             <div class="upload-icon">📎</div>
             <div class="upload-instruction">Drop file here or click to browse</div>
             <div class="upload-types">.jpeg, .jpg, .gif, .png, .pdf</div>
-            <input type="file" name="${fieldName}" multiple ${requiredAttr} accept=".jpeg,.jpg,.gif,.png,.pdf"${commonDataAttrs} class="input-file"/>
+            <input type="file" id="${uniqueFieldId}" name="${fieldName}" multiple ${requiredAttr} accept=".jpeg,.jpg,.gif,.png,.pdf"${commonDataAttrs} class="input-file"/>
           </label>`;
           // Render existing files if any
           if (Array.isArray(variationFiles) && variationFiles.length > 0) {
@@ -545,28 +547,30 @@ function initializeWhenReady() {
           break;
 
         case 4: // TEXTAREA
-          html += `<label for="${fieldName}">${label}${costLabel()}</label>`;
-          html += `<textarea name="${fieldName}" placeholder="${placeholder}" ${requiredAttr}${commonDataAttrs} class="input-textarea"></textarea>`;
+          html += `<label for="${uniqueFieldId}">${label}${costLabel()}</label>`;
+          html += `<textarea id="${uniqueFieldId}" name="${fieldName}" placeholder="${placeholder}" ${requiredAttr}${commonDataAttrs} class="input-textarea"></textarea>`;
           break;
 
         case 5: // NUMBER
-          html += `<label for="${fieldName}">${label}${costLabel()}</label>`;
-          html += `<input type="number" name="${fieldName}" placeholder="${placeholder}" ${requiredAttr}${commonDataAttrs} class="input-number"/>`;
+          html += `<label for="${uniqueFieldId}">${label}${costLabel()}</label>`;
+          html += `<input type="number" id="${uniqueFieldId}" name="${fieldName}" placeholder="${placeholder}" ${requiredAttr}${commonDataAttrs} class="input-number"/>`;
           break;
 
         case 6: // CHECKBOX
-          html += `<label for="${fieldName}">${label}</label>`;
+          html += `<div class="field-label">${label}</div>`;
           html += '<div class="checkbox-options-container">';
-          sortedOptions.forEach(option => {
+          sortedOptions.forEach((option, optIdx) => {
             const isEnabled = option.isVisible && option.available;
             const checked = isOptionSelected(option) ? 'checked' : '';
             const optionCost = costLabelForOption(option);
             const disabledAttr = !isEnabled ? 'disabled' : '';
+            const optionId = `${uniqueFieldId}_opt${optIdx}`;
             html += `
                 <div class="checkbox-option">
-                  <label for="${fieldName}" class="checkbox-label">
+                  <label for="${optionId}" class="checkbox-label">
                     <input
                       type="checkbox"
+                      id="${optionId}"
                       name="${fieldName}"
                       value="${option.optionId}"${checked}${commonDataAttrs}
                       data-variation-field-value="${option.optionId}"
@@ -581,18 +585,20 @@ function initializeWhenReady() {
           break;
 
         case 7: // RADIO
-          html += `<label for="${fieldName}">${label}</label>`;
+          html += `<div class="field-label">${label}</div>`;
           html += '<div class="radio-options-container">';
-          sortedOptions.forEach((option) => {
+          sortedOptions.forEach((option, optIdx) => {
             const isEnabled = option.isVisible && option.available;
             const checked = isOptionSelected(option) ? 'checked' : '';
             const optionCost = costLabelForOption(option);
             const disabledAttr = !isEnabled ? 'disabled' : '';
+            const optionId = `${uniqueFieldId}_opt${optIdx}`;
             html += `
                 <div class="radio-option">
-                  <label class="radio-label" for="${fieldName}">
+                  <label class="radio-label" for="${optionId}">
                     <input
                       type="radio"
+                      id="${optionId}"
                       name="${fieldName}"
                       value="${option.optionId}"
                       ${checked}${commonDataAttrs}
@@ -619,14 +625,14 @@ function initializeWhenReady() {
           const labelGroupIndex = isGroup ? groupIndex : 'false';
           const inputType = multipleSelect ? 'checkbox' : 'radio';
           html += `
-            <label
-              for="${slug}"
+            <div
+              class="field-label"
               data-group-index="${labelGroupIndex}"
               data-update-label="true"
               data-variation-field-id="${fieldId}"
             >
               ${label} ${costLabel()}
-            </label>`;
+            </div>`;
           // render instructions if present
           if (instructions) {
             let instructionsText = parseDraftJsInstructions(instructions);
@@ -666,21 +672,21 @@ function initializeWhenReady() {
           break;
 
         case 10: // COLOR
-          html += `<label for="${fieldName}">${label}${costLabel()}</label>`;
-          html += `<input type="color" id="${fieldName}" name="${fieldName}" ${requiredAttr}${commonDataAttrs} class="input-color"/>`;
+          html += `<label for="${uniqueFieldId}">${label}${costLabel()}</label>`;
+          html += `<input type="color" id="${uniqueFieldId}" name="${fieldName}" ${requiredAttr}${commonDataAttrs} class="input-color"/>`;
           break;
 
         case 11: // COLOR_SELECT
           const colorInputType = multipleSelect ? 'checkbox' : 'radio';
           html += `
-            <label
-              for="${fieldName}"
+            <div
+              class="field-label"
               data-group-index="${isGroup ? groupIndex : 'false'}"
               data-update-label="true"
               data-variation-field-id="${fieldId}"
             >
               ${label} ${costLabel()}
-            </label>`;
+            </div>`;
           // render instructions if present
           if (instructions) {
             let instructionsText = parseDraftJsInstructions(instructions);
@@ -689,14 +695,16 @@ function initializeWhenReady() {
             html += `<${wrapper} class="field-instructions">${processedInstructions}</${wrapper}>`;
           }
           html += '<div class="color-options-grid">';
-          sortedOptions.forEach((option) => {
+          sortedOptions.forEach((option, optIdx) => {
             const isEnabled = option.isVisible && option.available;
             const checked = isOptionSelected(option) ? 'checked' : '';
             const disabledAttr = !isEnabled ? 'disabled' : '';
+            const optionId = `${uniqueFieldId}_opt${optIdx}`;
             html += `
-              <label class="color-option" for="${fieldName}" data-full-name="${option.value}">
+              <label class="color-option" for="${optionId}" data-full-name="${option.value}">
                 <input
                   type="${colorInputType}"
+                  id="${optionId}"
                   name="${fieldName}"
                   value="${option.optionId}"
                   ${checked}${commonDataAttrs}

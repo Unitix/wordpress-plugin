@@ -3149,12 +3149,7 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 					wp_set_object_terms($woo_product_id, $variation_options, $taxonomy);
 					error_log('create_variations_for_product: Set terms for taxonomy ' . $taxonomy . ': ' . implode(', ', $variation_options));
 
-					$attributes_to_add[$taxonomy] = [
-						'name'         => wc_attribute_taxonomy_name($slug),
-						'is_visible'   => 1,
-						'is_variation' => 0,
-						'is_taxonomy'  => 1
-					];
+
 				}
 
 				$merchi_ordered_fields[] = [
@@ -3194,7 +3189,41 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 	}
 
 	error_log('create_variations_for_product: Saving product meta data');
-	update_post_meta($woo_product_id, '_product_attributes', $attributes_to_add);
+	// don't save Merchi variations as wooCommerce attributes
+	$existing_attributes = get_post_meta($woo_product_id, '_product_attributes', true);
+	if (!empty($existing_attributes) && is_array($existing_attributes)) {
+		$merchi_taxonomies = [];
+		foreach ($merchi_ordered_fields as $field) {
+			if (!empty($field['taxonomy'])) {
+				$merchi_taxonomies[] = $field['taxonomy'];
+			}
+		}
+		foreach ($grouped_field_template as $field) {
+			if (!empty($field['taxonomy'])) {
+				$merchi_taxonomies[] = $field['taxonomy'];
+			}
+		}
+		// remove merchi taxonomies from existing attributes
+		foreach ($merchi_taxonomies as $taxonomy) {
+			unset($existing_attributes[$taxonomy]);
+			$sanitized_key = sanitize_title($taxonomy);
+			if ($sanitized_key !== $taxonomy) {
+				unset($existing_attributes[$sanitized_key]);
+			}
+			foreach ($existing_attributes as $key => $value) {
+				if (is_array($value) && !empty($value['name']) && $value['name'] === $taxonomy) {
+					unset($existing_attributes[$key]);
+				}
+			}
+		}
+		if (!empty($existing_attributes)) {
+			update_post_meta($woo_product_id, '_product_attributes', $existing_attributes);
+		} else {
+			update_post_meta($woo_product_id, '_product_attributes', []);
+		}
+	} else {
+		update_post_meta($woo_product_id, '_product_attributes', []);
+	}
 	update_post_meta($woo_product_id, '_custom_product_fields', $product_meta_inputs);
 	update_post_meta($woo_product_id, '_merchi_ordered_fields', $merchi_ordered_fields);
 	update_post_meta($woo_product_id, '_group_variation_field_template', $grouped_field_template);
