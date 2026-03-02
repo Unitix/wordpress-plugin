@@ -1121,7 +1121,7 @@ function initializeWhenReady() {
           groupCost = 0,
         } = variationsGroups[i];
 
-        jQuery('label[data-update-label="true"][data-group-index="' + i + '"]').each(function () {
+        jQuery('[data-update-label="true"][data-group-index="' + i + '"]').each(function () {
           const $label = jQuery(this);
           const variationFieldId = $label.data('variation-field-id');
           const variation = variations.find(v => v.variationField?.id === variationFieldId);
@@ -1142,7 +1142,7 @@ function initializeWhenReady() {
         $groupFieldSet.find('.group-unit-price').html(priceDisplay);
       }
 
-      jQuery('label[data-update-label="true"][data-group-index="false"]').each(function () {
+      jQuery('[data-update-label="true"][data-group-index="false"]').each(function () {
         const $label = jQuery(this);
         const variationFieldId = $label.data('variation-field-id');
         const variation = variations.find(v => v.variationField?.id === variationFieldId);
