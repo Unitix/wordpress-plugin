@@ -3053,6 +3053,8 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 					'position' => $group_field['position'] ?? 0,
 					'variationCost' => floatval($group_field['variationCost'] ?? 0),
 					'variationUnitCost' => floatval($group_field['variationUnitCost'] ?? 0),
+					'instructions' => $group_field['instructions'] ?? '',
+					'isHtml' => $is_html,
 				];
 			} else {
 				$grouped_field_template[] = [
@@ -3164,6 +3166,8 @@ function create_variations_for_product($woo_product_id, $merchi_product_data) {
 					'position' => $variation_field['position'] ?? 0,
 					'variationCost' => $variation_field['variationCost'] ?? 0,
 					'variationUnitCost' => $variation_field['variationUnitCost'] ?? 0,
+					'instructions' => $variation_field['instructions'] ?? '',
+					'isHtml' => $is_html,
 				];
 			} else {
 				$meta_field = [

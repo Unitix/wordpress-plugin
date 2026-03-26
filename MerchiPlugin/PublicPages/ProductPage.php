@@ -544,7 +544,9 @@ class ProductPage extends BaseController {
 					'fieldType' => $field_type,
 					'sellerProductEditable' => !empty($field['sellerProductEditable']),
 					'multipleSelect' => $is_multiple,
-					'options' => $options
+					'options' => $options,
+					'instructions' => $field['instructions'] ?? '',
+					'isHtml' => !empty($field['isHtml']),
 			);
 
 			// Encode variation field data for data attribute
@@ -555,9 +557,12 @@ class ProductPage extends BaseController {
 			// Add variation field data to all input elements
 			$common_data_attrs = ' data-variation-field=\''.$variation_field_json.'\'';
 
+			$instructions_markup = $this->variation_field_instructions_markup($field);
+
 			// SELECT field type (2)
 			if ($field_type === 2) {
 					$html .= "<label for='{$slug}'>{$label}</label>";
+					$html .= $instructions_markup;
 					if ($is_multiple) {
 							$html .= '<select multiple id="' . $slug . '" name="' . $field_name . '" ' . $common_data_attrs . ' data-calculate="' . ($has_cost ? 'true' : 'false') . '" class="select">';
 							foreach ($terms as $term) {
@@ -595,6 +600,7 @@ class ProductPage extends BaseController {
 		// CHECKBOX type (6)
 		else if ($field_type === 6) {
 			$html .= "<div class='field-label'>{$label}</div>";
+				$html .= $instructions_markup;
 				$html .= '<div class="checkbox-options-container">';
 					foreach ($terms as $index => $term) {
 							$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
@@ -617,6 +623,7 @@ class ProductPage extends BaseController {
 		// RADIO type (7)
 		else if ($field_type === 7) {
 				$html .= "<div class='field-label'>{$label}</div>";
+				$html .= $instructions_markup;
 				$html .= '<div class="radio-options-container">';
 					foreach ($terms as $index => $term) {
 							$variation_option_id = get_term_meta($term->term_id, 'variation_option_id', true);
@@ -644,6 +651,7 @@ class ProductPage extends BaseController {
 		else if ($field_type === 9) {
 				$label_group_index = $is_group ? '0' : 'false';
 				$html .= "<div class='field-label' data-group-index='{$label_group_index}' data-update-label='true' data-variation-field-id='{$field_id}'>{$label}</div>";
+				$html .= $instructions_markup;
 				$is_multiple = !empty($field['multipleSelect']);
 					$input_type = $is_multiple ? 'checkbox' : 'radio';
 					$html .= '<div class="group-variation-container" name="job.variationsGroups[0].variations[1]"' . $common_data_attrs . '>';
@@ -696,6 +704,7 @@ class ProductPage extends BaseController {
 		else if ($field_type === 11) {
 				$label_group_index = $is_group ? '0' : 'false';
 				$html .= "<div class='field-label' data-group-index='{$label_group_index}' data-update-label='true' data-variation-field-id='{$field_id}'>{$label}</div>";
+				$html .= $instructions_markup;
 				$is_multiple = !empty($field['multipleSelect']);
 					$input_type = $is_multiple ? 'checkbox' : 'radio';
 					$html .= '<div class="color-options-grid">';
@@ -725,6 +734,50 @@ class ProductPage extends BaseController {
 
 			$html .= '</div>';
 			return $html;
+	}
+
+	private function parse_draft_js_instruction_text( $instructions_raw ) {
+		if ( ! is_string( $instructions_raw ) || $instructions_raw === '' ) {
+			return '';
+		}
+		$parsed = json_decode( $instructions_raw, true );
+		if ( ! is_array( $parsed ) || empty( $parsed['blocks'] ) || ! is_array( $parsed['blocks'] ) ) {
+			return (string) $instructions_raw;
+		}
+		$lines = array();
+		foreach ( $parsed['blocks'] as $block ) {
+			if ( ! is_array( $block ) ) {
+				continue;
+			}
+			$text = isset( $block['text'] ) ? trim( (string) $block['text'] ) : '';
+			if ( $text !== '' ) {
+				$lines[] = $text;
+			}
+		}
+		return implode( "\n", $lines );
+	}
+
+	/**
+	 * Markup for variation field instructions (below title, above inputs).
+	 *
+	 * @param array $field Template field (attribute or meta).
+	 */
+	private function variation_field_instructions_markup( array $field ) {
+		$raw = $field['instructions'] ?? '';
+		if ( $raw === '' || $raw === null ) {
+			return '';
+		}
+		$is_html = ! empty( $field['isHtml'] );
+		if ( $is_html ) {
+			$inner = $this->sanitize_instruction_html( (string) $raw );
+		} else {
+			$inner = nl2br( esc_html( $this->parse_draft_js_instruction_text( (string) $raw ) ) );
+		}
+		if ( $inner === '' ) {
+			return '';
+		}
+		$wrapper = $is_html ? 'div' : 'p';
+		return '<' . $wrapper . " class='field-instructions'>" . $inner . '</' . $wrapper . '>';
 	}
 
 	private function sanitize_instruction_html($html) {
@@ -801,6 +854,7 @@ class ProductPage extends BaseController {
 		// Only add for attribute if it's not an instruction field (case 8)
 		if ($fieldType !== 8) {
 			$html .= "<label for='{$slug}'>{$label} {$this->cost_label_content($variation_unit_cost, $variation_cost)}</label>";
+			$html .= $this->variation_field_instructions_markup( $field );
 		} else {
 			$html .= "<div class='field-label'>{$label} {$this->cost_label_content($variation_unit_cost, $variation_cost)}</div>";
 		}

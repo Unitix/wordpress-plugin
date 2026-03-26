@@ -405,10 +405,25 @@ function initializeWhenReady() {
 
       const sortedOptions = sortOptionsByPosition(options);
       let html = `<div class="custom-field"${requiredClass}>`;
+      const appendFieldInstructions = () => {
+        if (!instructions) return;
+
+        let instructionsText = parseDraftJsInstructions(instructions);
+        if (instructionsText === null || instructionsText === undefined) return;
+        if (typeof instructionsText !== 'string') {
+          instructionsText = String(instructionsText);
+        }
+        if (!instructionsText.trim()) return;
+
+        const processedInstructions = isHtml ? sanitizeInstructionHtml(instructionsText) : escapeHtml(instructionsText);
+        const wrapper = isHtml ? 'div' : 'p';
+        html += `<${wrapper} class="field-instructions">${processedInstructions}</${wrapper}>`;
+      };
 
       switch (fieldType) {
         case 1: // TEXT
           html += `<label for="${uniqueFieldId}">${label}${costLabel()}</label>`;
+          appendFieldInstructions();
           html += `
             <input
               type="text"
@@ -423,6 +438,7 @@ function initializeWhenReady() {
 
         case 2: // SELECT
           html += `<label for="${uniqueFieldId}">${label}</label>`;
+          appendFieldInstructions();
           if (multipleSelect) {
             html += `<select multiple id="${uniqueFieldId}" name="${fieldName}"${commonDataAttrs} class="select">`;
           } else {
@@ -454,6 +470,7 @@ function initializeWhenReady() {
 
         case 3: // FILE
           html += `<label for="${uniqueFieldId}">${label}${costLabel()}</label>`;
+          appendFieldInstructions();
           html += `<label class="custom-upload-wrapper" for="${uniqueFieldId}">
             <div class="upload-icon">📎</div>
             <div class="upload-instruction">Drop file here or click to browse</div>
@@ -548,16 +565,19 @@ function initializeWhenReady() {
 
         case 4: // TEXTAREA
           html += `<label for="${uniqueFieldId}">${label}${costLabel()}</label>`;
+          appendFieldInstructions();
           html += `<textarea id="${uniqueFieldId}" name="${fieldName}" placeholder="${placeholder}" ${requiredAttr}${commonDataAttrs} class="input-textarea"></textarea>`;
           break;
 
         case 5: // NUMBER
           html += `<label for="${uniqueFieldId}">${label}${costLabel()}</label>`;
+          appendFieldInstructions();
           html += `<input type="number" id="${uniqueFieldId}" name="${fieldName}" placeholder="${placeholder}" ${requiredAttr}${commonDataAttrs} class="input-number"/>`;
           break;
 
         case 6: // CHECKBOX
           html += `<div class="field-label">${label}</div>`;
+          appendFieldInstructions();
           html += '<div class="checkbox-options-container">';
           sortedOptions.forEach((option, optIdx) => {
             const isEnabled = option.isVisible && option.available;
@@ -586,6 +606,7 @@ function initializeWhenReady() {
 
         case 7: // RADIO
           html += `<div class="field-label">${label}</div>`;
+          appendFieldInstructions();
           html += '<div class="radio-options-container">';
           sortedOptions.forEach((option, optIdx) => {
             const isEnabled = option.isVisible && option.available;
@@ -633,13 +654,7 @@ function initializeWhenReady() {
             >
               ${label} ${costLabel()}
             </div>`;
-          // render instructions if present
-          if (instructions) {
-            let instructionsText = parseDraftJsInstructions(instructions);
-            const processedInstructions = isHtml ? sanitizeInstructionHtml(instructionsText) : escapeHtml(instructionsText);
-            const wrapper = isHtml ? 'div' : 'p';
-            html += `<${wrapper} class="field-instructions">${processedInstructions}</${wrapper}>`;
-          }
+          appendFieldInstructions();
           html += `<div class="group-variation-container" name="${fieldName}"${commonDataAttrs}>`;
           html += '<div class="image-select-options-container">';
           sortedOptions.forEach((option, optionIndex) => {
@@ -673,6 +688,7 @@ function initializeWhenReady() {
 
         case 10: // COLOR
           html += `<label for="${uniqueFieldId}">${label}${costLabel()}</label>`;
+          appendFieldInstructions();
           html += `<input type="color" id="${uniqueFieldId}" name="${fieldName}" ${requiredAttr}${commonDataAttrs} class="input-color"/>`;
           break;
 
@@ -687,13 +703,7 @@ function initializeWhenReady() {
             >
               ${label} ${costLabel()}
             </div>`;
-          // render instructions if present
-          if (instructions) {
-            let instructionsText = parseDraftJsInstructions(instructions);
-            const processedInstructions = isHtml ? sanitizeInstructionHtml(instructionsText) : escapeHtml(instructionsText);
-            const wrapper = isHtml ? 'div' : 'p';
-            html += `<${wrapper} class="field-instructions">${processedInstructions}</${wrapper}>`;
-          }
+          appendFieldInstructions();
           html += '<div class="color-options-grid">';
           sortedOptions.forEach((option, optIdx) => {
             const isEnabled = option.isVisible && option.available;
@@ -724,6 +734,7 @@ function initializeWhenReady() {
 
         default:
           html += `<label for="${fieldName}">${label}${costLabel()}</label>`;
+          appendFieldInstructions();
           html += `
             <input
               type="text"
