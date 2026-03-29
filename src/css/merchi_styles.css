@@ -40,6 +40,10 @@
   margin: 20px 0 0 20px;
 }
 
+.merchi-product-form .field-instructions {
+  font-size: 0.9em;
+}
+
 .independent-variations .colour-select-option-container,
 .independent-variations .form-check-radio-option {
   display: inline-block;
