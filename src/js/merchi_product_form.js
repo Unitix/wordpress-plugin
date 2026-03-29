@@ -422,7 +422,7 @@ function initializeWhenReady() {
 
       switch (fieldType) {
         case 1: // TEXT
-          html += `<label for="${uniqueFieldId}">${label}${costLabel()}</label>`;
+          html += `<label class="variation-field-title" for="${uniqueFieldId}">${label}${costLabel()}</label>`;
           appendFieldInstructions();
           html += `
             <input
@@ -437,7 +437,7 @@ function initializeWhenReady() {
           break;
 
         case 2: // SELECT
-          html += `<label for="${uniqueFieldId}">${label}</label>`;
+          html += `<label class="variation-field-title" for="${uniqueFieldId}">${label}</label>`;
           appendFieldInstructions();
           if (multipleSelect) {
             html += `<select multiple id="${uniqueFieldId}" name="${fieldName}"${commonDataAttrs} class="select">`;
@@ -469,7 +469,7 @@ function initializeWhenReady() {
           break;
 
         case 3: // FILE
-          html += `<label for="${uniqueFieldId}">${label}${costLabel()}</label>`;
+          html += `<label class="variation-field-title" for="${uniqueFieldId}">${label}${costLabel()}</label>`;
           appendFieldInstructions();
           html += `<label class="custom-upload-wrapper" for="${uniqueFieldId}">
             <div class="upload-icon">📎</div>
@@ -564,19 +564,19 @@ function initializeWhenReady() {
           break;
 
         case 4: // TEXTAREA
-          html += `<label for="${uniqueFieldId}">${label}${costLabel()}</label>`;
+          html += `<label class="variation-field-title" for="${uniqueFieldId}">${label}${costLabel()}</label>`;
           appendFieldInstructions();
           html += `<textarea id="${uniqueFieldId}" name="${fieldName}" placeholder="${placeholder}" ${requiredAttr}${commonDataAttrs} class="input-textarea"></textarea>`;
           break;
 
         case 5: // NUMBER
-          html += `<label for="${uniqueFieldId}">${label}${costLabel()}</label>`;
+          html += `<label class="variation-field-title" for="${uniqueFieldId}">${label}${costLabel()}</label>`;
           appendFieldInstructions();
           html += `<input type="number" id="${uniqueFieldId}" name="${fieldName}" placeholder="${placeholder}" ${requiredAttr}${commonDataAttrs} class="input-number"/>`;
           break;
 
         case 6: // CHECKBOX
-          html += `<div class="field-label">${label}</div>`;
+          html += `<div class="field-label variation-field-title">${label}</div>`;
           appendFieldInstructions();
           html += '<div class="checkbox-options-container">';
           sortedOptions.forEach((option, optIdx) => {
@@ -605,7 +605,7 @@ function initializeWhenReady() {
           break;
 
         case 7: // RADIO
-          html += `<div class="field-label">${label}</div>`;
+          html += `<div class="field-label variation-field-title">${label}</div>`;
           appendFieldInstructions();
           html += '<div class="radio-options-container">';
           sortedOptions.forEach((option, optIdx) => {
@@ -638,7 +638,7 @@ function initializeWhenReady() {
           let instructionsText = parseDraftJsInstructions(instructions);
           const processedInstructions = isHtml ? sanitizeInstructionHtml(instructionsText) : escapeHtml(instructionsText);
           const wrapper = isHtml ? 'div' : 'p';
-          html += `<div class="field-label">${label}${costLabel()}</div>`;
+          html += `<div class="field-label variation-field-title">${label}${costLabel()}</div>`;
           html += `<${wrapper} class="field-instructions">${processedInstructions}</${wrapper}>`;
           break;
 
@@ -647,7 +647,7 @@ function initializeWhenReady() {
           const inputType = multipleSelect ? 'checkbox' : 'radio';
           html += `
             <div
-              class="field-label"
+              class="field-label variation-field-title"
               data-group-index="${labelGroupIndex}"
               data-update-label="true"
               data-variation-field-id="${fieldId}"
@@ -687,7 +687,7 @@ function initializeWhenReady() {
           break;
 
         case 10: // COLOR
-          html += `<label for="${uniqueFieldId}">${label}${costLabel()}</label>`;
+          html += `<label class="variation-field-title" for="${uniqueFieldId}">${label}${costLabel()}</label>`;
           appendFieldInstructions();
           html += `<input type="color" id="${uniqueFieldId}" name="${fieldName}" ${requiredAttr}${commonDataAttrs} class="input-color"/>`;
           break;
@@ -696,7 +696,7 @@ function initializeWhenReady() {
           const colorInputType = multipleSelect ? 'checkbox' : 'radio';
           html += `
             <div
-              class="field-label"
+              class="field-label variation-field-title"
               data-group-index="${isGroup ? groupIndex : 'false'}"
               data-update-label="true"
               data-variation-field-id="${fieldId}"
@@ -733,7 +733,7 @@ function initializeWhenReady() {
           break;
 
         default:
-          html += `<label for="${fieldName}">${label}${costLabel()}</label>`;
+          html += `<label class="variation-field-title" for="${fieldName}">${label}${costLabel()}</label>`;
           appendFieldInstructions();
           html += `
             <input

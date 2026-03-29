@@ -930,9 +930,9 @@ ul.cst-breadcrumb>li.cst-breadcrumb-li i.cst-delimiter {
   max-width: 800px;
 }
 
-.custom-field label {
+.custom-field .variation-field-title {
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 700;
   color: #787878;
   margin-bottom: 8px;
   display: block;
