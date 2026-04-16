@@ -121,7 +121,7 @@ function initializeWhenReady() {
         if (bestPrice !== unitPrice) {
           // Show price range with tooltip
           $priceRangeDisplay.html(
-            `<span class="price-range-text">$${bestPrice.toFixed(2)} <span class="price-separator">—</span> $${unitPrice.toFixed(2)} per unit</span> ` +
+            `<span class="price-range-text">From $${bestPrice.toFixed(2)} <span class="price-separator">—</span> $${unitPrice.toFixed(2)} per unit</span> ` +
             `<span class="price-tooltip-icon" data-tooltip="Unit price varies depending on the quantity you choose, with discounts applied at higher quantities.">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
@@ -133,7 +133,7 @@ function initializeWhenReady() {
         } else {
           // Show only unit price when no best price
           $priceRangeDisplay.html(
-            `<span class="price-range-text">$${unitPrice.toFixed(2)} per unit</span>`
+            `<span class="price-range-text">From $${unitPrice.toFixed(2)} per unit</span>`
           );
         }
       }
