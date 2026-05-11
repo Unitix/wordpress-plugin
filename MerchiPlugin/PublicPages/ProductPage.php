@@ -247,6 +247,7 @@ class ProductPage extends BaseController {
 		if (!empty($merchi_product_data['product']['minimum'])) {
 			$minimum_quantity = intval($merchi_product_data['product']['minimum']);
 		}
+		$minimum_per_group = !empty($merchi_product_data['product']['minimumPerGroup']);
 
 		if (empty($group_fields_template)) return;
 
@@ -255,7 +256,7 @@ class ProductPage extends BaseController {
 			return ($a['position'] ?? 0) <=> ($b['position'] ?? 0);
 		});
 
-		echo '<div id="grouped-fields-container" class="merchi-product-form">';
+		echo '<div id="grouped-fields-container" class="merchi-product-form" data-minimum="' . esc_attr($minimum_quantity) . '" data-minimum-per-group="' . ($minimum_per_group ? 'true' : 'false') . '">';
 		echo '<h2 class="grouped-options-heading">Grouped Options:</h2>';
 
 		echo '<div class="group-field-set" data-group-index="0">';
@@ -272,7 +273,16 @@ class ProductPage extends BaseController {
 		// Add group quantity field after variation fields
 		echo '<div class="custom-field">';
 		if ($minimum_quantity > 1) {
-			echo '<label for="quantity">Quantity <span class="price-tooltip-icon" data-tooltip="This product requires a minimum order of ' . esc_attr($minimum_quantity) . ' units">
+			$quantity_tooltip = $minimum_per_group
+				? sprintf(
+					'This product requires a minimum order of %d units per group.',
+					$minimum_quantity
+				)
+				: sprintf(
+					'This product requires a minimum order of %d units.',
+					$minimum_quantity
+				);
+			echo '<label for="quantity">Quantity <span class="price-tooltip-icon" data-tooltip="' . esc_attr($quantity_tooltip) . '">
 				<svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 					<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
 					<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>

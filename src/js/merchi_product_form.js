@@ -1015,6 +1015,9 @@ function initializeWhenReady() {
           // Re-render group variations
           let groupsHtml = '<h2 class="grouped-options-heading">Grouped Options:</h2>';
 
+          const { minimumPerGroup: rerenderMinPerGroup } = getMOQSettings();
+          const rerenderGroupMinQty = rerenderMinPerGroup ? (productJson.minimum || 1) : 1;
+
           variationsGroups.forEach((group, groupIndex) => {
             const { variations: groupVariations = [], quantity = 1, groupCost = 0 } = group;
 
@@ -1039,11 +1042,11 @@ function initializeWhenReady() {
             const quantityInputId = `group-quantity-${groupIndex}`;
             groupsHtml += `
             <div class="custom-field">
-              <label for="${quantityInputId}">Quantity</label>
+              <label for="${quantityInputId}">${getGroupedQuantityLabelHtml()}</label>
               <div class="quantity">
                 <div class="number-button">
                   <input type="button" value="-" class="minus" data-group-index="${groupIndex}">
-                  <input type="number" class="qty group-quantity" id="${quantityInputId}" name="variationsGroups[${groupIndex}].quantity" value="${quantity}" min="1" data-group-index="${groupIndex}" aria-label="Product quantity" step="1" inputmode="numeric" autocomplete="off">
+                  <input type="number" class="qty group-quantity" id="${quantityInputId}" name="variationsGroups[${groupIndex}].quantity" value="${quantity}" min="${rerenderGroupMinQty}" data-group-index="${groupIndex}" aria-label="Product quantity" step="1" inputmode="numeric" autocomplete="off">
                   <input type="button" value="+" class="plus" data-group-index="${groupIndex}">
                 </div>
                 <span class="group-unit-price">( $${costPerUnit.toFixed(2)} per unit )</span>
@@ -1399,6 +1402,26 @@ function initializeWhenReady() {
       return { minimumPerGroup, groupCount };
     }
 
+    function getGroupedQuantityLabelHtml() {
+      const min = parseInt(productJson.minimum, 10) || 1;
+      if (min <= 1) {
+        return 'Quantity';
+      }
+      const { minimumPerGroup } = getMOQSettings();
+      const tooltip = minimumPerGroup
+        ? `This product requires a minimum order of ${min} units per group.`
+        : `This product requires a minimum order of ${min} units.`;
+      const tooltipAttr = tooltip.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+      return (
+        'Quantity <span class="price-tooltip-icon" data-tooltip="' +
+        tooltipAttr +
+        '"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+        '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>' +
+        '<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<circle cx="12" cy="17" r="1" fill="currentColor"/></svg></span>'
+      );
+    }
+
     // Helper function to validate and correct quantity for a single input
     function validateAndCorrectQuantity($input, context = 'change') {
       const { minimumPerGroup, groupCount } = getMOQSettings();
@@ -1657,10 +1680,9 @@ function initializeWhenReady() {
           if ($input.hasClass('group-quantity')) {
             $input.attr('data-group-index', index);
 
-            // Update label to show only "Quantity" without price
             $input.closest('.custom-field')
               .find('label')
-              .html('Quantity');
+              .html(getGroupedQuantityLabelHtml());
           }
         });
       });
@@ -1787,7 +1809,7 @@ function initializeWhenReady() {
           $input
             .closest('.custom-field')
             .find('label')
-            .html('Quantity');
+            .html(getGroupedQuantityLabelHtml());
         } else {
           // For variation fields, try to find and apply the default value
           const variationFieldData = $input.data('variation-field');
@@ -2254,16 +2276,16 @@ function validateForm() {
   // Validate quantities based on minimumPerGroup setting
   const $groupedContainer = jQuery('#grouped-fields-container');
   const minimumPerGroup = $groupedContainer.length > 0 ? $groupedContainer.attr('data-minimum-per-group') === 'true' : false;
+  const productMinimum = parseInt($groupedContainer.attr('data-minimum')) || 1;
   const groupCount = jQuery('.group-quantity').length;
 
   if (minimumPerGroup) {
-    // Each group must meet minimum quantity
+    // Each group must independently meet the minimum quantity
     jQuery('.group-quantity').each(function () {
       const $input = jQuery(this);
       const quantity = parseInt($input.val());
-      const minimumQuantity = parseInt($input.attr('min')) || 1;
-      if (isNaN(quantity) || quantity < minimumQuantity) {
-        errors.push(`Each group quantity must be at least ${minimumQuantity}`);
+      if (isNaN(quantity) || quantity < productMinimum) {
+        errors.push(`Each group quantity must be at least ${productMinimum}`);
         $input.addClass('field-error');
       } else {
         $input.removeClass('field-error');
@@ -2273,10 +2295,8 @@ function validateForm() {
     if (groupCount === 1) {
       const $input = jQuery('.group-quantity').first();
       const quantity = parseInt($input.val());
-      // Get minimum from the input's min attribute or default to 1
-      const minimumQuantity = parseInt($input.attr('min')) || 1;
-      if (isNaN(quantity) || quantity < minimumQuantity) {
-        errors.push(`Quantity must be at least ${minimumQuantity}`);
+      if (isNaN(quantity) || quantity < productMinimum) {
+        errors.push(`Quantity must be at least ${productMinimum}`);
         $input.addClass('field-error');
       } else {
         $input.removeClass('field-error');
@@ -2285,22 +2305,18 @@ function validateForm() {
       let totalQuantity = 0;
       jQuery('.group-quantity').each(function () {
         const $input = jQuery(this);
-        const quantity = parseInt($input.val()) || 0;
-        totalQuantity += quantity;
+        totalQuantity += parseInt($input.val()) || 0;
         $input.removeClass('field-error');
       });
 
-      const minimumQuantity = parseInt(jQuery('.group-quantity').first().attr('min')) || 1;
-      if (totalQuantity < minimumQuantity) {
-        errors.push(`Total quantity across all groups must be at least ${minimumQuantity} (currently ${totalQuantity})`);
+      if (totalQuantity < productMinimum) {
+        errors.push(`Total quantity across all groups must be at least ${productMinimum} (currently ${totalQuantity})`);
         jQuery('.group-quantity').addClass('field-error');
 
-        // Check if error message already exists, if not add it
         if (jQuery('.moq-error-message').length === 0) {
           jQuery('.group-quantity').each(function () {
-            const $input = jQuery(this);
-            const $quantityContainer = $input.closest('.quantity');
-            $quantityContainer.after(`<div class="moq-error-message" style="color: #d00; font-size: 12px; margin-top: 4px;">The total quantity of all groups must be at least ${minimumQuantity}</div>`);
+            const $quantityContainer = jQuery(this).closest('.quantity');
+            $quantityContainer.after(`<div class="moq-error-message" style="color: #d00; font-size: 12px; margin-top: 4px;">The total quantity of all groups must be at least ${productMinimum}</div>`);
           });
         }
       } else {
