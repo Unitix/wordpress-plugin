@@ -1069,7 +1069,18 @@ function initializeWhenReady() {
             groupsHtml += '</div>';
           });
 
+          groupsHtml += `
+            <div class="merchi-new-group-container">
+              <button type="button" class="button wp-element-button add-group-button">+ NEW GROUP</button>
+            </div>`;
+
           $groupsContainer.html(groupsHtml);
+
+          jQuery('.add-group-button').off('click').on('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            addNewGroup();
+          });
 
           // Apply current values from response to newly rendered group fields
           variationsGroups.forEach((group, groupIndex) => {
@@ -1873,7 +1884,12 @@ function initializeWhenReady() {
         console.log('Malformed group HTML before append:', $newGroup.html());
         return;
       }
-      jQuery("#grouped-fields-container").append($newGroup);
+      const $newGroupAnchor = jQuery('#grouped-fields-container .merchi-new-group-container');
+      if ($newGroupAnchor.length) {
+        $newGroupAnchor.before($newGroup);
+      } else {
+        jQuery('#grouped-fields-container').append($newGroup);
+      }
 
       // Initialize handlers for this new group only
       initializeGroupVariationHandlers($newGroup);
