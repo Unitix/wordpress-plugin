@@ -16,6 +16,7 @@ export default function WoocommerceCartForm() {
   } = useCart();
 
   const [firstPaintDone, setFirstPaintDone] = useState(false);
+  const [removingKey, setRemovingKey] = useState(null);
   const apiRoot = getWpApiRoot();
 
   useEffect(() => {
@@ -44,6 +45,9 @@ export default function WoocommerceCartForm() {
       return;
     }
 
+    const itemReactKey = item.cartUid ?? item.key ?? item?.product?.id ?? idx;
+    setRemovingKey(itemReactKey);
+
     // get current valid nonce
     const nonce = await ensureWooNonce();
 
@@ -61,56 +65,60 @@ export default function WoocommerceCartForm() {
       });
     }
 
-    let res = await postRemove(nonce);
-    if (res.status === 403) {
-      const fresh = await fetchWooNonce();
-      res = await postRemove(fresh);
-    }
-    if (!res.ok) {
-      console.error('[Cart] Woo remove-item error:', res.status, res.statusText);
-      return;
-    }
-
-    updateWooNonce(res);
-    await res.json()
-
-    // sync the merchicart
     try {
-      if (!cart?.id || !cart?.token) {
-        await initializeCart();
+      let res = await postRemove(nonce);
+      if (res.status === 403) {
+        const fresh = await fetchWooNonce();
+        res = await postRemove(fresh);
       }
-      const merchiItemId = item?.id ?? item?.merchi_cart_item_id;
-      const nextItems = cart.cartItems.filter((ci, i) =>
-        merchiItemId != null ? ci?.id !== merchiItemId : i !== idx
-      );
-
-      if (nextItems.length === cart.cartItems.length) {
-        await refreshCart();
+      if (!res.ok) {
+        console.error('[Cart] Woo remove-item error:', res.status, res.statusText);
         return;
       }
-      const nextCartJson = {
-        ...cart,
-        cartItems: nextItems,
-      };
 
-      await updateCart(
-        nextCartJson,
-        cart?.cartEmbed,
-        {
-          includeShippingFields: false,
-          preserveShippingInLocalStorage: true,
+      updateWooNonce(res);
+      await res.json();
+
+      // sync the merchicart
+      try {
+        if (!cart?.id || !cart?.token) {
+          await initializeCart();
         }
-      );
+        const merchiItemId = item?.id ?? item?.merchi_cart_item_id;
+        const nextItems = cart.cartItems.filter((ci, i) =>
+          merchiItemId != null ? ci?.id !== merchiItemId : i !== idx
+        );
 
-      if (window?.jQuery?.fn) {
-        window.jQuery(document.body).trigger("wc_fragment_refresh");
+        if (nextItems.length === cart.cartItems.length) {
+          await refreshCart();
+          return;
+        }
+        const nextCartJson = {
+          ...cart,
+          cartItems: nextItems,
+        };
+
+        await updateCart(
+          nextCartJson,
+          cart?.cartEmbed,
+          {
+            includeShippingFields: false,
+            preserveShippingInLocalStorage: true,
+          }
+        );
+
+        if (window?.jQuery?.fn) {
+          window.jQuery(document.body).trigger("wc_fragment_refresh");
+        }
+      } catch (e) {
+        console.warn('[Cart] updateCart remove failed, fallback to refresh:', e?.message || e);
+        await refreshCart();
       }
-    } catch (e) {
-      console.warn('[Cart] updateCart remove failed, fallback to refresh:', e?.message || e);
-      await refreshCart();
+    } finally {
+      setRemovingKey(null);
     }
   },
-    [apiRoot, cart?.id, cart?.cartItems, cart?.cartEmbed, updateCart, refreshCart]
+    [apiRoot, cart?.id, cart?.cartItems, cart?.cartEmbed, updateCart, refreshCart, setRemovingKey]
   );
 
   if (loading && !firstPaintDone) {
@@ -153,7 +161,7 @@ export default function WoocommerceCartForm() {
         <div className="wp-block-woocommerce-cart">
           <div className="wc-block-components-notice-snackbar-list" tabIndex="-1" />
           <div className="wc-block-components-sidebar-layout wc-block-cart wp-block-woocommerce-filled-cart-block is-large">
-            <CartItems onRemove={handleRemove} />
+            <CartItems onRemove={handleRemove} removingKey={removingKey} />
             <CartTotals />
           </div>
         </div>

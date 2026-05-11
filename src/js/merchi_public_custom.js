@@ -299,7 +299,7 @@ function setCookie(name, value, days) {
   COOKIE_MANAGER.setCookie(name, value, days);
 }
 
-async function createCart() {
+async function createCart(embed = cartEmbed) {
   const domainId = scriptData.merchi_domain;
   const domain = new MERCHI.Domain().id(domainId);
   const cart = new MERCHI.Cart().domain(domain);
@@ -317,7 +317,7 @@ async function createCart() {
         console.error("failed, status =", status, "data =", data);
         reject(data);
       },
-      cartEmbed
+      embed
     );
   });
 }
@@ -345,7 +345,7 @@ export async function getCart(id, token, embed = cartEmbed) {
  *    d. If fetched cart is same as localStorage, uses the fetched/server cart.
  * @returns {Promise<object|null>} A promise that resolves with the Merchi cart entity or null on failure/critical error.
  */
-export async function initOrSyncCart() {
+export async function initOrSyncCart(embed = cartEmbed) {
   // MERCHI, createCart, getCart, scriptData are assumed to be in scope
   if (!MERCHI || !createCart || !getCart || !scriptData) {
     console.error("MERCHI_LOG: Critical dependencies (MERCHI, createCart, getCart, scriptData) not found in scope. Cart initialization failed.");
@@ -371,7 +371,7 @@ export async function initOrSyncCart() {
       } else {
         // lock is active, wait and retry
         await new Promise(resolve => setTimeout(resolve, 1000));
-        return initOrSyncCart();
+        return initOrSyncCart(embed);
       }
     }
   } catch (lockError) {
@@ -387,7 +387,7 @@ export async function initOrSyncCart() {
     if (!localCartJSONString) {
       // CREATE NEW CART No cart in localStorage, create a new one
       try {
-        const newCart = await createCart();
+        const newCart = await createCart(embed);
         return newCart;
       } catch (error) {
         console.error("MERCHI_LOG: Error during createCart execution:", error);
@@ -403,7 +403,7 @@ export async function initOrSyncCart() {
         // IF ERROR PARSING LOCAL STORAGE CART DATA, CLEAR LOCAL STORAGE AND CREATE NEW CART
         localStorage.removeItem("MerchiCart");
         try {
-          const newCart = await createCart();
+          const newCart = await createCart(embed);
           return newCart;
         } catch (error) {
           console.error("MERCHI_LOG: Error during createCart after clearing invalid cart data:", error);
@@ -415,7 +415,7 @@ export async function initOrSyncCart() {
       if (!localCartData || !localCartData.id || !localCartData.token) {
         localStorage.removeItem("MerchiCart");
         try {
-          const newCart = await createCart();
+          const newCart = await createCart(embed);
           return newCart;
         } catch (error) {
           console.error("MERCHI_LOG: Error during createCart after clearing invalid cart data:", error);
@@ -430,7 +430,7 @@ export async function initOrSyncCart() {
 
       while (retryCount < maxRetries) {
         try {
-          serverCart = await getCart(localCartData.id, localCartData.token);
+          serverCart = await getCart(localCartData.id, localCartData.token, embed);
           break;
         } catch (error) {
           retryCount++;
@@ -447,7 +447,7 @@ export async function initOrSyncCart() {
       if (!serverCart) {
         localStorage.removeItem("MerchiCart");
         try {
-          const newCartFallback = await createCart();
+          const newCartFallback = await createCart(embed);
           return newCartFallback;
         } catch (error) {
           console.error("MERCHI_LOG: Error during fallback createCart:", error);
@@ -477,6 +477,19 @@ jQuery(document).ready(function ($) {
   if (window.initOrSyncCartCalled) {
     return;
   }
+
+  const reactCartTargetIds = [
+    'woocommerce-cart-form',
+    'woocommerce-checkout-form',
+    'order-confirmation-root',
+  ];
+  const hasReactCartProvider = reactCartTargetIds.some(function (id) {
+    return document.getElementById(id);
+  });
+  if (hasReactCartProvider) {
+    return;
+  }
+
   window.initOrSyncCartCalled = true;
 
   if (typeof initOrSyncCart === 'function') {

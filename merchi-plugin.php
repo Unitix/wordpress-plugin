@@ -1100,67 +1100,20 @@ function merchi_cart_item_post($cart_item_json, $cart_token) {
         );
     }
 
-    // Embed the cart in the cart item on response
     $cart_item_embed = [
         'cart' => (object) [
             'cartItems' => [
-                'product' => (object)[
-                    'domain' => (object)[
-                        'company' => (object)[
-                            'defaultTaxType' => (object)[],
-                            'taxTypes'       => (object)[]
-                        ]
-                    ],
-                    'featureImage'              => (object)[],  
-                    'groupVariationFields'      => (object)[   
-                        'options' => (object)[ 'linkedFile' => (object)[] ]
-                    ],
-                    'images'                    => (object)[],  
-                    'independentVariationFields'=> (object)[  
-                        'options' => (object)[ 'linkedFile' => (object)[] ]
-                    ],
-                    'taxType'                   => (object)[]
+                'product'          => (object)[],
+                'variations'       => (object)[
+                    'variationField' => (object)[],
                 ],
-                'taxType'          => (object)[],
-                'variations'       => (object)[     // variationsEmbed
-                    'selectedOptions' => (object)[],
-                    'variationField'  => (object)[  // optionsEmbed
-                        'options' => (object)[ 'linkedFile' => (object)[] ],
-                        'variationCostDiscountGroup'  => (object)[],
-                        'variationUnitCostDiscountGroup' => (object)[]
-                    ],
-                    'variationFiles' => (object)[]
-                ],
-                'variationsGroups' => (object)[     // variationsGroupsEmbed
+                'variationsGroups' => (object)[
                     'variations' => (object)[
-                        'selectedOptions' => (object)[],
-                        'variationField'  => (object)[
-                            'options' => (object)[ 'linkedFile' => (object)[] ],
-                            'variationCostDiscountGroup'  => (object)[],
-                            'variationUnitCostDiscountGroup' => (object)[]
-                        ],
-                        'variationFiles' => (object)[]
-                    ]
+                        'variationField' => (object)[],
+                    ],
                 ],
             ],
-            'client'        => [ 'emailAddresses' => (object)[], 'profilePicture' => (object)[] ],
-            'clientCompany' => (object)[],
-            'domain'        => [
-                'company' => [
-                    'defaultTaxType'         => (object)[],
-                    'isStripeAccountEnabled' => (object)[],
-                    'taxTypes'               => (object)[],
-                ],
-            ],
-            'invoice'         => (object)[],
-            'receiverAddress' => (object)[],
-            'shipmentGroups'  => [
-                'cartItems'    => [ 'product' => (object)[] ],
-                'quotes'       => [ 'shipmentMethod' => [ 'originAddress' => (object)[], 'taxType' => (object)[] ] ],
-                'selectedQuote'=> [ 'shipmentMethod' => [ 'originAddress' => (object)[], 'taxType' => (object)[] ] ],
-            ],
-            'discountItems'   => (object)[],
-        ]
+        ],
     ];
     // Convert embed to JSON and URL encode
     $embed_json = json_encode($cart_item_embed);

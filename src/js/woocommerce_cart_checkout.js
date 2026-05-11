@@ -4,6 +4,7 @@ import WoocommerceCheckoutForm from './components/WoocommerceCheckoutForm';
 import WoocommerceCartForm from './components/WoocommerceCartForm';
 import OrderConfirmation from './components/OrderConfirmation';
 import { CartProvider } from './contexts/CartContext';
+import { cartPageEmbed } from './utils';
 
 // Initialize React component when the document is ready
 document.addEventListener('DOMContentLoaded', function () {
@@ -11,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (cartFormContainer) {
     const root = createRoot(cartFormContainer);
     root.render(
-      <CartProvider>
+      <CartProvider embed={cartPageEmbed}>
         <WoocommerceCartForm />
       </CartProvider>
     );

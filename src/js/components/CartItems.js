@@ -2,7 +2,7 @@ import React from 'react';
 import VariationGroupsDisplay from './VariationGroupsDisplay'
 import { useCart } from '../contexts/CartContext';
 
-export default function CartItems({ onRemove }) {
+export default function CartItems({ onRemove, removingKey }) {
   const { cartItems } = useCart();
 
   if (!cartItems?.length) return null;
@@ -42,14 +42,32 @@ export default function CartItems({ onRemove }) {
             const total = item.totalCost ?? 0;
 
             const wooKey = getWooKey(item, idx);
+            const reactKey = item.cartUid ?? item.key ?? product.id ?? idx;
+            const isRemoving = removingKey != null && removingKey === reactKey;
 
             return (
-              <tr key={item.cartUid ?? item.key ?? product.id} className="wc-block-cart-items__row" tabIndex={-1}>
-
+              <tr
+                key={reactKey}
+                className={
+                  'wc-block-cart-items__row' +
+                  (isRemoving ? ' merchi-cart-row--removing' : '')
+                }
+                tabIndex={-1}
+              >
                 <td className="wc-block-cart-item__image" aria-hidden="true">
                   <a href={product.url || '#'} tabIndex={-1}><img src={thumb} alt="" /></a>
                 </td>
-                <td className="wc-block-cart-item__product">
+
+                <td className={'wc-block-cart-item__product' + (isRemoving ? ' merchi-cart-item-product-cell' : '')}>
+                  {isRemoving && (
+                    <div
+                      className="merchi-cart-item-remove-overlay"
+                      aria-label="Removing item…"
+                      role="status"
+                    >
+                      <div className="merchi-cart-item-remove-spinner" aria-hidden="true" />
+                    </div>
+                  )}
                   <div className="wc-block-cart-item__wrap">
                     <span className="wc-block-components-product-name">{name}</span>
                     <VariationGroupsDisplay

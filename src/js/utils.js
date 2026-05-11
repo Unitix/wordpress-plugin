@@ -66,6 +66,31 @@ export const cartEmbed = {
   discountItems: {},
 };
 
+// Slim embed used ONLY by the React cart page
+export const cartPageEmbed = {
+  cartItems: {
+    product: {
+      featureImage: {},
+      images: {},
+      groupVariationFields: { options: {} },
+      independentVariationFields: { options: {} },
+    },
+    variations: {
+      selectedOptions: {},
+      variationField: {},
+      variationFiles: {},
+    },
+    variationsGroups: {
+      variations: {
+        selectedOptions: {},
+        variationField: {},
+        variationFiles: {},
+      },
+    },
+  },
+  discountItems: {},
+};
+
 export function getCookieByName(name) {
   const cookies = document.cookie.split(";");
 
@@ -201,6 +226,20 @@ export const buildOptionMap = (product = {}) => {
   const map = new Map();
   fields.forEach((f) =>
     (f.options || []).forEach((o) => map.set(String(o.id), o.value))
+  );
+  return map;
+};
+
+export const buildOptionInfoMap = (product = {}) => {
+  const fields = [
+    ...(product.groupVariationFields || []),
+    ...(product.independentVariationFields || []),
+  ];
+  const map = new Map();
+  fields.forEach((f) =>
+    (f.options || []).forEach((o) =>
+      map.set(String(o.id), { value: o.value, colour: o.colour || null })
+    )
   );
   return map;
 };

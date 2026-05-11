@@ -14,7 +14,7 @@ const readCartFromStorage = () => {
   }
 };
 
-export const CartProvider = ({ children }) => {
+export const CartProvider = ({ children, embed }) => {
   const [cart, setCart] = useState(readCartFromStorage());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -44,11 +44,16 @@ export const CartProvider = ({ children }) => {
     setError(null);
 
     try {
-      const cartEntity = await initOrSyncCart();
+      const previousCart = embed ? readCartFromStorage() : null;
+
+      const cartEntity = await initOrSyncCart(embed);
       if (cartEntity) {
         const cartJson = MERCHI.toJson(cartEntity);
-        setCart(cartJson);
-        localStorage.setItem('MerchiCart', JSON.stringify(cartJson));
+        const merged = previousCart
+          ? { ...previousCart, ...cartJson }
+          : cartJson;
+        setCart(merged);
+        localStorage.setItem('MerchiCart', JSON.stringify(merged));
       } else {
         // If cart initialization fails, use what's in localStorage
         setCart(readCartFromStorage());
@@ -61,7 +66,7 @@ export const CartProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [MERCHI]);
+  }, [MERCHI, embed]);
 
   const refreshCart = useCallback(async () => {
     const currentCart = readCartFromStorage();
@@ -73,17 +78,20 @@ export const CartProvider = ({ children }) => {
     setError(null);
 
     try {
-      const cartEntity = await getCart(currentCart.id, currentCart.token);
+      const cartEntity = await getCart(currentCart.id, currentCart.token, embed);
       const cartJson = MERCHI.toJson(cartEntity);
-      setCart(cartJson);
-      localStorage.setItem('MerchiCart', JSON.stringify(cartJson));
+      const merged = embed
+        ? { ...currentCart, ...cartJson }
+        : cartJson;
+      setCart(merged);
+      localStorage.setItem('MerchiCart', JSON.stringify(merged));
     } catch (err) {
       console.error('Cart refresh failed:', err);
       setError('Failed to refresh cart');
     } finally {
       setIsUpdating(false);
     }
-  }, [MERCHI]);
+  }, [MERCHI, embed]);
 
   const updateCart = useCallback(async (cartData, embed, options = {}) => {
     setIsUpdating(true);
