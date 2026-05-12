@@ -94,7 +94,7 @@ class ProductPage extends BaseController {
 			'merchi_product_form',
 			plugin_dir_url(dirname(dirname(__FILE__))) . 'dist/js/merchi_product_form.js',
 			['jquery', 'merchi_sdk', 'merchi_checkout_init'],
-			null,
+			'1.0.0',
 			true
 		);
 
